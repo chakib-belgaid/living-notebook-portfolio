@@ -1,6 +1,8 @@
 import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
+export type Season = "spring" | "summer" | "autumn" | "winter";
+
 export interface Garden {
   setProgress: (p: number, immediate?: boolean) => void;
   setMotion: (paused: boolean) => void;
@@ -12,9 +14,15 @@ export interface Garden {
   plantAt: (x: number, y: number) => number;
   /** Local hour, 5–23. Moves the sun; lanterns and fireflies come out after dusk. */
   setHour: (hour: number) => void;
+  /** Cloud cover and rain or snow, both 0–1. Clouds soften the sun and its shadows. */
+  setWeather: (cloud: number, precip: number) => void;
   /** Glide the camera to a named spot, or back to the whole garden. Shift moves the garden on screen as a fraction of the view. */
   focus: (spot: string | null, shiftX?: number, shiftY?: number) => void;
   stats: () => { triangles: number; calls: number; ms: number };
+  /** Recolours foliage, flowers, fallen leaves, and drifting petals for the season. */
+  setSeason: (season: Season) => void;
+  /** 0–1 mist that hides the far side of the garden, in the page's paper colour. */
+  setFog: (amount: number, color: number) => void;
   dispose: () => void;
 }
 const smooth = (a: number, b: number, v: number) =>
@@ -501,6 +509,7 @@ export function createGarden(
     material: T.MeshStandardMaterial;
     flora: boolean;
     glass: boolean;
+    key: ColorName;
   }[] = [];
   for (const [color, geometries] of batches) {
     const material = new T.MeshStandardMaterial({
@@ -530,7 +539,7 @@ export function createGarden(
     mesh.receiveShadow = true;
     world.add(mesh);
     if (color !== "glass") solidMeshes.push(mesh);
-    materials.push({ material, flora, glass: color === "glass" });
+    materials.push({ material, flora, glass: color === "glass", key: color });
   }
   const lineMaterial = new T.LineBasicMaterial({
     color: 0x777b7d,
@@ -913,6 +922,164 @@ export function createGarden(
   const raycaster = new T.Raycaster();
   const pointer = new T.Vector2();
   const MAX_TREES = 24;
+
+  /* Seasons. Foliage colours per batch, how many flowers are out, what lies
+     on the terraces, and what drifts down through the garden. */
+  const seasonColors: Record<
+    Season,
+    Partial<Record<ColorName, number>> & { plants: number[] }
+  > = {
+    spring: {
+      leaf: 0x8fb35a,
+      leafLight: 0xf2d3de,
+      leafDark: 0x5a8a55,
+      grass: 0xa9c886,
+      flower: 0xf2bfd2,
+      coral: 0xf8ecf1,
+      plants: [0x9cc062, 0xf0bfd0, 0xbfd77e, 0x5a8a55],
+    },
+    summer: {
+      leaf: 0x6f9448,
+      leafLight: 0x97b35e,
+      leafDark: 0x3f6b46,
+      grass: 0x93ad6e,
+      flower: 0xf0b94a,
+      coral: 0xd9694f,
+      plants: [0x6f9448, 0x97b35e, 0x4e7551, 0x3f6b46],
+    },
+    autumn: {
+      leaf: 0xc9772f,
+      leafLight: 0xe0a640,
+      leafDark: 0x5d6e3f,
+      grass: 0xb5a46a,
+      flower: 0xd88a3a,
+      coral: 0xb8452f,
+      plants: [0xd2812f, 0xe5ad45, 0xa8452b, 0x5d6e3f],
+    },
+    winter: {
+      leaf: 0xdbe3e1,
+      leafLight: 0xf2f5f4,
+      leafDark: 0x4f6a5c,
+      grass: 0xd2d9d1,
+      flower: 0xe7eceb,
+      coral: 0xe7eceb,
+      plants: [0xe3eae8, 0x4f6a5c, 0xf2f5f4, 0x5d7767],
+    },
+  };
+  const flowerAmount: Record<Season, number> = {
+    spring: 1,
+    summer: 1,
+    autumn: 0.45,
+    winter: 0,
+  };
+  const litterColors: Record<Season, number[]> = {
+    spring: [0xf6cadb, 0xfbeef3, 0xf2b5ca],
+    summer: [],
+    autumn: [0xd2812f, 0xe5ad45, 0xa8452b, 0xc25f2a],
+    winter: [0xf7f9fa, 0xeef3f5],
+  };
+  let season: Season = "summer";
+  let litter: T.InstancedMesh | null = null;
+  const litterMaterial = new T.MeshStandardMaterial({
+    roughness: 1,
+    transparent: true,
+    opacity: 0,
+    side: T.DoubleSide,
+  });
+  // Scatter fallen leaves (or petals, or snow) on the flat tops of the terraces.
+  function buildLitter() {
+    const saved = { s: world.scale.clone(), r: world.rotation.y };
+    world.scale.set(1, 1, 1);
+    world.rotation.y = 0;
+    world.updateMatrixWorld(true);
+    const down = new T.Vector3(0, -1, 0);
+    const spots: T.Vector3[] = [];
+    for (let i = 0; i < 260 && spots.length < 170; i++) {
+      raycaster.set(
+        new T.Vector3((random() - 0.5) * 10.4, 12, (random() - 0.5) * 8.4),
+        down,
+      );
+      const hit = raycaster
+        .intersectObjects(solidMeshes, false)
+        .find((h) => h.face && h.face.normal.y > 0.7);
+      if (hit) spots.push(hit.point.clone());
+    }
+    world.scale.copy(saved.s);
+    world.rotation.y = saved.r;
+    world.updateMatrixWorld(true);
+    const mesh = new T.InstancedMesh(
+      new T.CircleGeometry(0.05, 7).rotateX(-Math.PI / 2),
+      litterMaterial,
+      spots.length,
+    );
+    const m = new T.Matrix4();
+    spots.forEach((p, i) => {
+      temp.position.set(p.x, p.y + 0.012, p.z);
+      temp.rotation.set(0, random() * Math.PI, 0);
+      const k = 0.7 + random() * 0.8;
+      temp.scale.set(k * 1.6, 1, k);
+      temp.updateMatrix();
+      m.copy(temp.matrix);
+      mesh.setMatrixAt(i, m);
+      mesh.setColorAt(i, new T.Color(0xffffff));
+    });
+    mesh.receiveShadow = true;
+    mesh.userData.total = spots.length;
+    world.add(mesh);
+    litter = mesh;
+  }
+  function paintLitter() {
+    if (!litter) return;
+    const colors = litterColors[season];
+    const c = new T.Color();
+    for (let i = 0; i < litter.count; i++) {
+      c.setHex(colors.length ? colors[i % colors.length] : 0xffffff);
+      litter.setColorAt(i, c);
+    }
+    litter.instanceColor!.needsUpdate = true;
+    // Petals are sparser than autumn leaves; summer terraces stay swept.
+    litter.count = Math.round(
+      litter.userData.total *
+        (season === "spring" ? 0.45 : season === "summer" ? 0 : 1),
+    );
+  }
+  const fallGeometry = new T.BufferGeometry();
+  const fallSeeds: number[] = [];
+  for (let i = 0; i < 70; i++)
+    fallSeeds.push((random() - 0.5) * 11, random(), (random() - 0.5) * 9);
+  fallGeometry.setAttribute(
+    "position",
+    new T.Float32BufferAttribute(fallSeeds, 3),
+  );
+  const fallOpacity = { value: 0 },
+    fallSize = { value: 12 },
+    fallColor = { value: new T.Color(0xd2812f) };
+  const fallMaterial = new T.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uTime: timeUniform,
+      uOpacity: fallOpacity,
+      uColor: fallColor,
+      uSize: fallSize,
+    },
+    vertexShader: `uniform float uTime;uniform float uSize;varying float vSpin;void main(){vec3 p=position;float t=fract(p.y+uTime*.045);p.y=6.8-t*6.6;p.x+=sin(uTime*.6+position.z*2.)*.45+t*1.2;p.z+=cos(uTime*.5+position.x)*.3;vSpin=uTime*2.+position.x*3.;vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;gl_PointSize=uSize;}`,
+    fragmentShader:
+      "uniform float uOpacity;uniform vec3 uColor;varying float vSpin;void main(){vec2 q=gl_PointCoord-.5;float c=cos(vSpin),s=sin(vSpin);q=mat2(c,-s,s,c)*q;q.x*=1.9*(.55+.45*abs(sin(vSpin*.7)));if(length(q)>.5)discard;gl_FragColor=vec4(uColor*(.85+.3*q.y),uOpacity);}",
+  });
+  world.add(new T.Points(fallGeometry, fallMaterial));
+  function applySeason() {
+    const palette = seasonColors[season];
+    materials.forEach(({ material, key }) => {
+      const hex = palette[key];
+      if (hex !== undefined) material.color.setHex(hex);
+    });
+    plantLeaves.forEach((m, i) => m.color.setHex(palette.plants[i]));
+    if (!litter) buildLitter();
+    paintLitter();
+    fallColor.value.setHex(season === "spring" ? 0xf4c3d5 : 0xd2812f);
+    dirty = true;
+  }
   let targetProgress = 0,
     progress = 0,
     paused = false,
@@ -937,6 +1104,11 @@ export function createGarden(
     shiftGoal = new T.Vector2();
   let renderMs = 0;
   let shadowStrength = 1;
+  let fogAmount = 0,
+    fogTarget = 0;
+  const mist = new T.Fog(0xf1f2ee, 30, 60);
+  let weatherCloud = 0,
+    weatherPrecip = 0;
   const observer = new IntersectionObserver(
     (entries) => {
       visible = entries[0].isIntersecting;
@@ -976,11 +1148,16 @@ export function createGarden(
     night = T.MathUtils.clamp(night, 0, 1);
     // The sun never drops low enough to throw shadows off the sheet.
     sun.position.set(lerp(-9, 9, arc), 8 + height * 8, lerp(9, 6, height));
-    shadowStrength = (0.35 + 0.65 * height) * (1 - night * 0.7);
+    const overcast = weatherCloud * 0.6 + weatherPrecip * 0.25;
+    shadowStrength =
+      (0.35 + 0.65 * height) * (1 - night * 0.7) * (1 - overcast * 0.9);
     sunColor.setHex(0xff9d5c).lerp(new T.Color(0xffefd4), smooth(0, 0.55, height));
     sunColor.lerp(new T.Color(0x9fb4e8), night);
     sun.color.copy(sunColor);
-    sun.intensity = (0.9 + 2.4 * height) * (1 - night * 0.82);
+    sun.intensity =
+      (0.9 + 2.4 * height) * (1 - night * 0.82) * (1 - overcast * 0.7);
+    sunColor.lerp(new T.Color(0xdfe5ec), overcast * 0.6);
+    sun.color.copy(sunColor);
     sky.intensity = (1.4 + 1.1 * height) * (1 - night * 0.55);
     sky.color.setHex(0xf7fbff).lerp(new T.Color(0x6d84bd), night);
     sky.groundColor.setHex(0x839073).lerp(new T.Color(0x2b3550), night);
@@ -1024,6 +1201,7 @@ export function createGarden(
       Math.abs(targetProgress - progress) > 0.0001 ||
       Math.abs(rotationTarget - rotation) > 0.0001 ||
       Math.abs(focusGoal - focusAmount) > 0.0005 ||
+      Math.abs(fogTarget - fogAmount) > 0.002 ||
       shift.distanceTo(shiftGoal) > 0.0005 ||
       growing;
     if ((paused || progress < 0.5) && !changed && !dirty) return;
@@ -1054,8 +1232,10 @@ export function createGarden(
     world.scale.setScalar(lerp(0.77, 1, smooth(0, 0.72, progress)));
     world.scale.y *= lerp(0.72, 1, smooth(0.1, 0.55, progress));
     world.rotation.y = rotation;
-    materials.forEach(({ material, flora, glass }) => {
-      material.opacity = flora ? life : solid * (glass ? 0.38 : 1);
+    materials.forEach(({ material, flora, glass, key }) => {
+      const bloom =
+        key === "flower" || key === "coral" ? flowerAmount[season] : 1;
+      material.opacity = flora ? life * bloom : solid * (glass ? 0.38 : 1);
       const transparent = material.opacity < 0.995;
       if (material.transparent !== transparent) {
         material.transparent = transparent;
@@ -1083,7 +1263,20 @@ export function createGarden(
     glowMaterial.opacity = glow * 0.95;
     glowMaterial.visible = glow > 0.01;
     fireflyOpacity.value = night * life;
-    butterflyMaterial.opacity = life;
+    butterflyMaterial.opacity =
+      life * (season === "summer" || season === "spring" ? 1 : 0);
+    litterMaterial.opacity = life;
+    litterMaterial.visible = life > 0.01;
+    fallOpacity.value =
+      life *
+      (season === "autumn" ? 0.95 : season === "spring" ? 0.85 : 0) *
+      (1 - fogAmount * 0.65);
+    fogAmount = lerp(fogAmount, fogTarget, reduced ? 1 : Math.min(dt * 1.5, 1));
+    if (fogAmount > 0.002) {
+      scene.fog = mist;
+      mist.near = lerp(30, 9.5, fogAmount);
+      mist.far = lerp(60, 27, fogAmount);
+    } else scene.fog = null;
     waterfallOpacity.value = smooth(0.59, 0.85, progress);
     droneBodyMaterial.opacity = life;
     droneTrimMaterial.opacity = life;
@@ -1136,6 +1329,8 @@ export function createGarden(
     camera.right = half * aspect - shift.x * half * aspect * 2;
     camera.top = half - shift.y * half * 2;
     camera.bottom = -half - shift.y * half * 2;
+    // Leaves and petals keep the same size relative to the garden.
+    fallSize.value = (height / (2 * half)) * 0.2 * renderer.getPixelRatio();
     const angle =
       lerp(0.69, 0.78, smooth(0.3, 1, progress)) - (1 - drawn) * 0.45;
     const look = lookDefault.clone().lerp(focusPoint, focusAmount);
@@ -1204,6 +1399,20 @@ export function createGarden(
         .find((h) => h.face && h.face.normal.y > 0.7);
       if (!hit) return -1;
       return makeTree(world.worldToLocal(hit.point.clone()));
+    },
+    setSeason(value) {
+      season = value;
+      applySeason();
+    },
+    setFog(amount, color) {
+      fogTarget = amount;
+      mist.color.setHex(color);
+      dirty = true;
+    },
+    setWeather(cloud, precip) {
+      weatherCloud = cloud;
+      weatherPrecip = precip;
+      applyLight();
     },
     setHour(value) {
       hour = value;

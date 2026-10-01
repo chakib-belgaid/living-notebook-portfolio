@@ -1,5 +1,15 @@
 import "./style.css";
-import type { Garden } from "./scene";
+import type { Garden, Season } from "./scene";
+import { createSky } from "./sky";
+import {
+  currentWeather,
+  placeFromDevice,
+  placeFromTimeZone,
+  presets,
+  type Place,
+  type Weather,
+  type WeatherKind,
+} from "./weather";
 
 type Spot = "whisperbook" | "wattch" | "about" | "contact";
 
@@ -95,8 +105,10 @@ const moonIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div class="stage" id="stage">
+    <canvas class="sky sky-back" aria-hidden="true"></canvas>
     <div id="scene" role="img" aria-label="A garden of stone terraces, pavilions, and water. It is drawn first as pencil lines, then as a blue engineering drawing, then built and planted."></div>
     <p class="scene-fallback" hidden>The garden can’t be drawn in this browser. Everything else on the page still works.</p>
+    <canvas class="sky sky-front" aria-hidden="true"></canvas>
     ${spotOrder.map((s) => `<button type="button" class="hotspot" data-spot="${s}" tabindex="-1">${spotNames[s]}</button>`).join("")}
   </div>
 
@@ -106,7 +118,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <button type="button" class="link" data-open="whisperbook">Work</button>
       <button type="button" class="link" data-open="about">About</button>
       <button type="button" class="link" data-open="contact">Contact</button>
-      <button type="button" class="link quiet" id="theme-toggle" aria-pressed="false">Blueprint<span class="wide-only"> paper</span></button>
+      <button type="button" class="link quiet" id="theme-toggle" aria-pressed="false" aria-label="Blueprint paper"><span class="wide-only">Blueprint paper</span><svg class="narrow-only" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg></button>
     </nav>
   </header>
 
@@ -134,20 +146,34 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </div>
 
   <aside class="dock" aria-label="Garden controls">
-    <section class="widget widget-light" data-from="2" aria-labelledby="light-title">
+    <section class="widget widget-sky" data-from="0" aria-labelledby="sky-title">
       <div class="widget-head">
-        <h3 id="light-title">Light</h3>
+        <h3 id="sky-title">Sky</h3>
         <output id="hour-readout" for="hour">1:00 pm</output>
       </div>
+      <p class="sky-report" id="sky-report" aria-live="polite">Looking up the weather</p>
       <div class="sky-arc" aria-hidden="true"><span class="sky-body"></span></div>
       <input type="range" id="hour" min="5" max="23" step="0.25" value="13" aria-label="Time of day" />
-      <button type="button" class="link small" id="hour-now">Use my clock</button>
+      <div class="weather-chips" role="group" aria-label="Weather">
+        <button type="button" class="chip" data-weather="live" aria-pressed="true">Live</button>
+        ${(["clear", "cloudy", "rain", "snow", "storm", "fog"] as WeatherKind[]).map((k) => `<button type="button" class="chip" data-weather="${k}" aria-pressed="false">${{ clear: "Clear", cloudy: "Clouds", rain: "Rain", snow: "Snow", storm: "Storm", fog: "Fog" }[k as "clear"]}</button>`).join("")}
+      </div>
+      <p class="widget-foot">
+        <button type="button" class="link small" id="hour-now">Use my clock</button>
+        <button type="button" class="link small" id="locate">Use my exact location</button>
+      </p>
+      <p class="widget-foot credit"><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo</a></p>
     </section>
 
     <section class="widget widget-garden" data-from="3" aria-labelledby="garden-title">
       <div class="widget-head">
         <h3 id="garden-title">Garden</h3>
         <output id="tree-count">0 of 24 trees</output>
+      </div>
+      <p class="season-report" id="season-report" aria-live="polite"></p>
+      <div class="weather-chips" role="group" aria-label="Season">
+        <button type="button" class="chip" data-season="now" aria-pressed="true">Now</button>
+        ${(["spring", "summer", "autumn", "winter"] as Season[]).map((k) => `<button type="button" class="chip" data-season="${k}" aria-pressed="false">${k[0].toUpperCase() + k.slice(1)}</button>`).join("")}
       </div>
       <div class="widget-actions">
         <button type="button" class="chip" id="plant-mode" aria-pressed="false">Plant by clicking</button>
@@ -169,6 +195,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <article class="panel" id="panel" aria-labelledby="panel-title" hidden>
     <div class="panel-inner" id="panel-content"></div>
   </article>
+  <div class="mist" aria-hidden="true"></div>
   <p id="announce" class="sr-only" role="status"></p>
 `;
 
@@ -178,6 +205,9 @@ const $$ = <E extends HTMLElement>(s: string) => [
   ...document.querySelectorAll<E>(s),
 ];
 let garden: Garden | undefined;
+// 0–1 mist over the garden and the page, set by the weather.
+let fog = 0;
+const sky = createSky($(".sky-back"), $(".sky-front"));
 const announce = (text: string) => ($("#announce").textContent = text);
 
 /* Theme: white paper or blueprint paper. */
@@ -198,6 +228,8 @@ function syncTheme() {
     dark ? "#0e2b48" : "#f1f2ee",
   );
   garden?.setTheme(dark);
+  sky.refresh(dark);
+  applyFog();
 }
 themeButton.addEventListener("click", () => {
   dark = !dark;
@@ -225,6 +257,7 @@ const motionButton = $<HTMLButtonElement>("#motion-toggle");
 function syncMotion() {
   motionButton.textContent = paused ? "Resume motion" : "Pause motion";
   garden?.setMotion(paused);
+  sky.setMotion(paused);
 }
 motionButton.addEventListener("click", () => {
   paused = !paused;
@@ -286,6 +319,7 @@ function measure() {
   if (s !== stage) {
     stage = s;
     root.dataset.stage = String(s);
+    sky.refresh(dark);
     chapterEls.forEach((c, i) => {
       const active = i === s;
       c.classList.toggle("active", active);
@@ -307,6 +341,7 @@ function measure() {
     h.inert = !live;
   });
   garden?.setProgress(growth, reduced);
+  sky.setGrowth(growth);
 }
 
 let queued = false;
@@ -364,13 +399,7 @@ function setHour(h: number) {
     1,
     smoothstep(19.2, 21.5, h) + (1 - smoothstep(5, 6.6, h)),
   );
-  const golden = Math.max(
-    0,
-    1 - Math.abs(h - 7) / 1.6,
-    1 - Math.abs(h - 19) / 1.6,
-  );
   root.style.setProperty("--night", night.toFixed(3));
-  root.style.setProperty("--golden", golden.toFixed(3));
   root.style.setProperty(
     "--arc",
     Math.min(Math.max((h - 5) / 18, 0), 1).toFixed(3),
@@ -380,6 +409,7 @@ function setHour(h: number) {
     $(".sky-body").innerHTML = isNight ? moonIcon : sunIcon;
   }
   garden?.setHour(h);
+  sky.setHour(h);
 }
 hourInput.addEventListener("input", () => setHour(Number(hourInput.value)));
 $("#hour-now").addEventListener("click", () => {
@@ -387,6 +417,130 @@ $("#hour-now").addEventListener("click", () => {
   announce(`Light set to ${formatHour(clockHour())}.`);
 });
 setHour(clockHour());
+
+/* Weather: live from the visitor's place, or a chosen preview. */
+let place: Place | null = null;
+let live: Weather | null = null;
+let weatherMode: "live" | WeatherKind = "live";
+const report = $("#sky-report");
+const fogByKind: Record<WeatherKind, number> = {
+  clear: 0,
+  partly: 0,
+  cloudy: 0.1,
+  fog: 1,
+  drizzle: 0.3,
+  rain: 0.35,
+  snow: 0.4,
+  storm: 0.45,
+};
+function applyFog() {
+  const paper = getComputedStyle(root).getPropertyValue("--paper").trim();
+  garden?.setFog(fog, parseInt(paper.slice(1), 16) || 0xf1f2ee);
+  // Capped so the notes stay readable through the thickest fog.
+  $(".mist").style.opacity = String(fog * 0.6);
+}
+function currentWeatherState() {
+  return weatherMode === "live" ? (live ?? presets.partly) : presets[weatherMode];
+}
+function applyWeather() {
+  const w = currentWeatherState();
+  fog = fogByKind[w.kind];
+  applyFog();
+  sky.setWeather(w);
+  garden?.setWeather(w.cloud, w.precip);
+  root.dataset.weather = w.kind;
+  $$<HTMLButtonElement>("[data-weather]").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.weather === weatherMode)),
+  );
+  if (weatherMode !== "live")
+    report.textContent = `Previewing ${w.label.toLowerCase()}.`;
+  else if (live && place)
+    report.textContent = `${live.label}, ${Math.round(live.temperature ?? 0)}°C in ${place.name}.`;
+}
+async function loadWeather(from: Place) {
+  live = await currentWeather(from);
+  place = from;
+  applyWeather();
+  applySeason();
+}
+
+/* Seasons follow the date and the hemisphere of the weather location. */
+let seasonMode: "now" | Season = "now";
+function seasonNow(): Season {
+  const month = new Date().getMonth();
+  const north: Season[] = ["winter", "winter", "spring", "spring", "spring", "summer", "summer", "summer", "autumn", "autumn", "autumn", "winter"];
+  const s = north[month];
+  if (!place || place.latitude >= 0) return s;
+  return ({ spring: "autumn", summer: "winter", autumn: "spring", winter: "summer" } as const)[s];
+}
+function applySeason() {
+  const s = seasonMode === "now" ? seasonNow() : seasonMode;
+  garden?.setSeason(s);
+  root.dataset.season = s;
+  const name = s[0].toUpperCase() + s.slice(1);
+  $("#season-report").textContent =
+    seasonMode !== "now"
+      ? `Previewing ${s}.`
+      : place
+        ? `${name} in ${place.name}.`
+        : `${name}.`;
+  $$<HTMLButtonElement>("[data-season]").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.season === seasonMode)),
+  );
+}
+$$<HTMLButtonElement>("[data-season]").forEach((b) =>
+  b.addEventListener("click", () => {
+    seasonMode = b.dataset.season as typeof seasonMode;
+    applySeason();
+  }),
+);
+async function startWeather() {
+  try {
+    let granted = false;
+    try {
+      granted =
+        (await navigator.permissions?.query({ name: "geolocation" }))
+          ?.state === "granted";
+    } catch {
+      /* Permissions API unavailable. */
+    }
+    const from = granted ? await placeFromDevice() : await placeFromTimeZone();
+    if (!from) {
+      report.textContent =
+        "Your time zone doesn’t name a city. Use your exact location for live weather.";
+      applyWeather();
+      return;
+    }
+    await loadWeather(from);
+  } catch {
+    report.textContent = "Live weather isn’t available right now.";
+    applyWeather();
+  }
+}
+$$<HTMLButtonElement>("[data-weather]").forEach((b) =>
+  b.addEventListener("click", () => {
+    weatherMode = b.dataset.weather as typeof weatherMode;
+    applyWeather();
+  }),
+);
+$("#locate").addEventListener("click", async () => {
+  report.textContent = "Finding your location";
+  try {
+    weatherMode = "live";
+    await loadWeather(await placeFromDevice());
+  } catch {
+    report.textContent = place
+      ? `Location wasn’t shared. Showing ${place.name}.`
+      : "Location wasn’t shared.";
+    applyWeather();
+  }
+});
+applyWeather();
+applySeason();
+startWeather();
+setInterval(() => {
+  if (place && !document.hidden) loadWeather(place).catch(() => {});
+}, 15 * 60 * 1000);
 
 /* Planting. */
 const MAX_TREES = 24;
@@ -590,6 +744,8 @@ import("./scene")
     syncTheme();
     syncMotion();
     setHour(Number(hourInput.value));
+    applyWeather();
+    applySeason();
     measure();
   })
   .catch((error) => {

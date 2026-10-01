@@ -3,7 +3,7 @@
 /* The garden fills the screen; everything else is a slip of notebook paper
    laid over it. main.ts sets --grow (0–1) from scroll, which also sets the
    weight and ink of every headline: thin graphite while sketched, full ink in
-   bloom. --night and --golden come from the Light widget. */
+   bloom. --night comes from the Sky widget; sky.ts paints the sky itself. */
 :root {
   --paper: #f1f2ee;
   --ink: #1b2333;
@@ -15,12 +15,9 @@
   --hairline: color-mix(in srgb, var(--ink) 15%, transparent);
   --slip: color-mix(in srgb, var(--paper) 86%, transparent);
   --lift: 0 18px 40px -24px color-mix(in srgb, var(--ink) 45%, transparent);
-  --dusk: #2b3d66;
-  --dawn: #f2c38f;
   --stage: var(--graphite);
   --grow: 0;
   --night: 0;
-  --golden: 0;
   --arc: 0.5;
   --edge: clamp(1rem, 2.4vw, 2rem);
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
@@ -50,8 +47,6 @@
   --blueprint: #8cc8f2;
   --stone: #d8c6a6;
   --leaf: #a6d79b;
-  --dusk: #050f1d;
-  --dawn: #c9875a;
   color-scheme: dark;
 }
 
@@ -170,31 +165,20 @@ button {
 .planting .stage {
   cursor: crosshair;
 }
-/* The sky behind the garden: warm at dawn and dusk, deep at night. Only once
-   the garden has been built. */
-.stage::before,
-.stage::after {
-  content: "";
+/* Sky canvases from sky.ts: one behind the garden, one in front for rain,
+   snow, fog, and lightning. */
+.sky {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  transition: opacity 0.4s ease;
 }
-.stage::before {
-  background: radial-gradient(
-    ellipse 70% 65% at 55% 48%,
-    color-mix(in srgb, var(--dawn) 70%, transparent),
-    transparent 70%
-  );
-  opacity: calc(var(--golden) * clamp(0, (var(--grow) - 0.45) * 3, 1) * 0.8);
+.sky-back {
+  z-index: 0;
 }
-.stage::after {
-  background: radial-gradient(
-    ellipse 85% 80% at 55% 50%,
-    var(--dusk),
-    color-mix(in srgb, var(--dusk) 0%, var(--paper)) 95%
-  );
-  opacity: calc(var(--night) * clamp(0, (var(--grow) - 0.45) * 3, 1) * 0.92);
+.sky-front {
+  z-index: 2;
 }
 #scene {
   position: absolute;
@@ -313,6 +297,14 @@ button {
 }
 .masthead > * {
   pointer-events: auto;
+}
+.owner,
+.masthead nav {
+  background: var(--slip);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 0.3rem 0.95rem;
 }
 .owner {
   font-size: 1.125rem;
@@ -627,6 +619,39 @@ button {
   stroke-width: 1.4;
   stroke-linecap: round;
 }
+.sky-report {
+  margin: 0 0 0.2rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--muted);
+}
+.weather-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.35rem 0 0.4rem;
+}
+.weather-chips .chip {
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8125rem;
+}
+.weather-chips .chip[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.widget-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 0.75rem;
+  margin: 0;
+}
+.widget-foot.credit {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
 #hour {
   width: 100%;
   margin: 0.2rem 0 0.25rem;
@@ -643,6 +668,64 @@ button {
   display: block;
   width: 100%;
   height: 2.75rem;
+}
+
+/* Mist: drifting veils over the notes, ruler, and widgets when it is foggy
+   (lighter in rain and snow). The building pages and masthead stay clear. */
+.mist {
+  position: fixed;
+  inset: -10% -30%;
+  z-index: 12;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(
+      ellipse 38% 22% at 20% 70%,
+      color-mix(in srgb, var(--paper) 70%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 45% 18% at 70% 85%,
+      color-mix(in srgb, var(--paper) 75%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 35% 20% at 55% 45%,
+      color-mix(in srgb, var(--paper) 45%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      transparent 20%,
+      color-mix(in srgb, var(--paper) 22%, transparent)
+    );
+  transition: opacity 2.5s ease;
+  animation: drift 38s ease-in-out infinite alternate;
+}
+@keyframes drift {
+  from {
+    transform: translateX(-6%);
+  }
+  to {
+    transform: translateX(6%);
+  }
+}
+/* In fog the paper slips turn frosted and the callouts recede. */
+:root[data-weather="fog"] .note,
+:root[data-weather="fog"] .widget,
+:root[data-weather="fog"] .ruler {
+  background: color-mix(in srgb, var(--paper) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(0.7);
+  box-shadow: 0 0 40px -6px color-mix(in srgb, var(--paper) 90%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+:root[data-weather="fog"] .hotspot.visible:not(:hover, .selected) {
+  opacity: 0.72;
+}
+.season-report {
+  margin: 0 0 0.1rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--muted);
 }
 
 /* A building's notes. */
@@ -773,7 +856,6 @@ button {
 @media (max-width: 899px) {
   .masthead {
     padding-block: 0.85rem;
-    background: linear-gradient(var(--paper) 55%, transparent);
   }
   .masthead nav {
     gap: 0.9rem;
@@ -782,6 +864,10 @@ button {
     white-space: nowrap;
     font-size: 1rem;
   }
+  .owner,
+  .masthead nav {
+    padding: 0.25rem 0.75rem;
+  }
   .wide-only {
     display: none;
   }
@@ -789,7 +875,7 @@ button {
     margin-left: 0;
   }
   #scene {
-    inset: 3rem 0 17rem;
+    inset: 3rem 0 27.5rem;
   }
   .note {
     left: 0.75rem;
@@ -833,9 +919,17 @@ button {
   .widget-head {
     margin-bottom: 0.3rem;
   }
-  .widget-light .sky-arc,
-  #hour-now {
+  .widget-sky .sky-arc,
+  .widget-sky .widget-foot {
     display: none;
+  }
+  .widget-sky {
+    width: 17.5rem;
+  }
+  .weather-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
   .widget-actions {
     flex-wrap: nowrap;
@@ -846,14 +940,17 @@ button {
   .widget-meter {
     display: none;
   }
-  /* Once the tools appear, the note moves up to make room for them. */
-  :root[data-stage="2"] .note,
-  :root[data-stage="3"] .note {
-    bottom: 10.75rem;
+  /* The note sits above the widget row. */
+  .note,
+  :root[data-stage] .chapter.active .note {
+    bottom: 14.5rem;
   }
-  :root[data-stage="2"] #scene,
-  :root[data-stage="3"] #scene {
-    bottom: 25rem;
+  .widget-sky .widget-head {
+    display: none;
+  }
+  .narrow-only {
+    display: inline;
+    vertical-align: -0.2em;
   }
   .reading .dock {
     opacity: 0;
@@ -881,18 +978,19 @@ button {
 }
 @media (max-width: 899px) and (max-height: 700px) {
   #scene {
-    inset: 3rem 0 15rem;
+    inset: 3rem 0 25rem;
   }
-  :root[data-stage="2"] #scene,
-  :root[data-stage="3"] #scene {
-    bottom: 22rem;
-  }
-  :root[data-stage="2"] .note-copy,
-  :root[data-stage="3"] .note-copy {
+  .note-hint {
     display: none;
   }
   .note-copy {
     font-size: 0.9375rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .narrow-only {
+    display: none;
   }
 }
 
