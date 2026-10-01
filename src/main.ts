@@ -1,4 +1,3 @@
-import "./style.css";
 import type { Garden, Season } from "./scene";
 import { createSky } from "./sky";
 import {
@@ -11,183 +10,12 @@ import {
   type WeatherKind,
 } from "./weather";
 
-type Spot = "whisperbook" | "wattch" | "about" | "contact";
-
-const projects = {
-  whisperbook: {
-    title: "Whisperbook",
-    place: "The reading pavilion",
-    field: "Local AI on Android",
-    lede: "Your books, given a voice.",
-    intro:
-      "An offline Android app that turns your own EPUBs and PDFs into multi-voice audiobooks, with synchronized reading. Nothing is uploaded.",
-    built:
-      "I designed and built it end to end: document import, speaker attribution, local voice casting, progressive narration, playback, and MP3 export.",
-    decision:
-      "Privacy is part of the architecture. The app has no network permission at runtime. Audio is prepared in small, finalized segments, so the first chapter can play while the rest of the book is still being narrated.",
-    tech: ["Kotlin", "Jetpack Compose", "Supertonic 3", "Media3"],
-    url: "https://github.com/chakib-belgaid/whisper-book",
-    image: "/assets/whisperbook.webp",
-    size: [420, 920],
-    alt: "Whisperbook's Android player showing the current chapter, the narrating voice, and playback controls",
-    caption: "The player. Books and narration stay on the phone.",
-  },
-  wattch: {
-    title: "Wattch Core",
-    place: "The water-wheel observatory",
-    field: "Systems and energy",
-    lede: "Energy measurement developers can rely on.",
-    intro:
-      "A foundation for energy-aware software. A Rust daemon connects hardware counters to reproducible traces, Python workflows, and editor tools.",
-    built:
-      "I designed and implemented the daemon and client boundary, the typed protocol, deterministic validation, replayable capture tools, the Python client, and the Energy Tests workflow for VS Code.",
-    decision:
-      "Keep the evidence intact. Privileged acquisition is separated from everyday clients, raw traces stay replayable, and synthetic test data is always labeled as synthetic, never passed off as a hardware measurement.",
-    tech: ["Rust", "Linux RAPL", "Python", "VS Code"],
-    url: "https://github.com/chakib-belgaid/wattch-core",
-    image: "/assets/wattch.png",
-    size: [1100, 620],
-    alt: "The Energy Tests panel in VS Code listing results from a deterministic test run",
-    caption:
-      "Energy Tests on a deterministic run. These synthetic values check the workflow, not real energy use.",
-  },
-};
-
-const spotOrder: Spot[] = ["whisperbook", "wattch", "about", "contact"];
-const spotNames: Record<Spot, string> = {
-  whisperbook: "Whisperbook",
-  wattch: "Wattch Core",
-  about: "About me",
-  contact: "Write to me",
-};
-
-/* The story is a run of beats. The garden holds still through a stage's beats
-   and only grows between stages. Blueprint walks the career up the tower;
-   Build walks through each project, a few notes per building; Bloom is where
-   to write. */
-const stages = ["Sketch", "Blueprint", "Build", "Bloom"];
-const stageProgress = [0, 0.33, 0.66, 1];
-type WidgetSpot = Exclude<Spot, "about">;
-type Beat = {
-  stage: number;
-  title: string;
-  copy: string;
-  label?: string;
-  lede?: string;
-  hint?: string;
-  /** More of the note, after the copy (HTML). */
-  body?: string;
-  /** Lights a level of the tower (see highlightPath). */
-  path?: number;
-  /** The camera visits this building. */
-  spot?: Spot;
-  /** This building's widget mounts in the note's [data-widget] slot. */
-  widget?: WidgetSpot;
-};
-
-/* A project as three notes: what it is (and a try of it), what I built, and
-   the decision that shaped it, with its screenshot. */
-function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
-  const p = projects[spot];
-  return [
-    {
-      stage: 2,
-      label: p.place,
-      title: p.title,
-      lede: p.lede,
-      copy: p.intro,
-      body: `<dl class="note-facts">
-          <div><dt>Field</dt><dd>${p.field}</dd></div>
-          <div><dt>Built with</dt><dd>${p.tech.join(", ")}</dd></div>
-          <div><dt>Source</dt><dd><a href="${p.url}" target="_blank" rel="noopener noreferrer">Read it on GitHub</a></dd></div>
-        </dl>
-        <section class="note-widget try"><h3>Try it</h3><div data-widget></div></section>`,
-      spot,
-      widget: spot,
-    },
-    { stage: 2, label: p.title, title: "What I built", copy: p.built, spot },
-    {
-      stage: 2,
-      label: p.title,
-      title: "The decision that shaped it",
-      copy: p.decision,
-      body: `<figure class="proof proof-${spot}">
-          <img src="${p.image}" alt="${p.alt}" width="${p.size[0]}" height="${p.size[1]}" decoding="async" />
-          <figcaption>${p.caption}</figcaption>
-        </figure>`,
-      spot,
-    },
-  ];
-}
-const email = "chakib.belgaid@gmail.com";
-const beats: Beat[] = [
-  {
-    stage: 0,
-    title: "Chakib Belgaid",
-    copy: "Product engineer, Ph.D. I build applied AI, developer tools, and software that can account for the energy it uses.",
-    hint: "Scroll, or drag the ruler, to build the garden.",
-  },
-  {
-    stage: 1,
-    title: "A question first, then a structure",
-    copy: "Can a phone narrate a whole book without sending a page to a server? How much energy does a test suite use? I write the question down, then draw the system that could answer it. I like following an idea all the way from a rough sketch to something people can use, and checking what is actually true along the way.",
-    hint: "The tower holds the path so far, from the ground up.",
-  },
-  {
-    stage: 1,
-    label: "2014–2018",
-    title: "Co-founder and CTO, Funecs",
-    copy: "Led product, engineering and client delivery for a serious-games advertising startup.",
-    path: 0,
-  },
-  {
-    stage: 1,
-    label: "2018–2022",
-    title: "Ph.D., University of Lille and Inria",
-    copy: "Doctoral research on green coding and empirical, energy-aware software engineering.",
-    path: 1,
-  },
-  {
-    stage: 1,
-    label: "2022–2024",
-    title: "Research engineer, Qarnot Computing and Inria",
-    copy: "Moved energy-measurement research toward operational infrastructure and deployed PowerAPI across 100+ nodes.",
-    path: 2,
-  },
-  {
-    stage: 1,
-    label: "2024–now",
-    title: "Lead AI engineer, MCQ Scan",
-    copy: "Leads production-facing agent workflows, model optimization, APIs, frontend integration and deployment.",
-    path: 3,
-  },
-  {
-    stage: 2,
-    title: "Constraints decided early",
-    copy: "Whisperbook has no network permission at all. Wattch keeps raw traces replayable and labels synthetic data as synthetic. Most of the work is in decisions people never see.",
-  },
-  ...projectBeats("whisperbook"),
-  ...projectBeats("wattch"),
-  {
-    stage: 3,
-    label: "The greenhouse",
-    title: "Write to me",
-    copy: "For product engineering, applied AI, or energy-aware software.",
-    body: `<p class="note-email"><a href="mailto:${email}">${email}</a></p>
-      <section class="note-widget" data-widget></section>
-      <p class="note-links"><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> and <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a></p>`,
-    widget: "contact",
-  },
-];
-// The first beat of each stage, where the ruler's stage ticks point.
-const stageStart = stages.map((_, s) => beats.findIndex((b) => b.stage === s));
-// Where the masthead links and the building labels lead.
-const spotBeat: Record<Spot, number> = {
-  whisperbook: beats.findIndex((b) => b.spot === "whisperbook"),
-  wattch: beats.findIndex((b) => b.spot === "wattch"),
-  about: stageStart[1],
-  contact: stageStart[3],
-};
+import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, type Spot, type WidgetSpot } from "./content";
+import { createNavigation, type SectionId } from "./navigation";
+import { mountContact } from "./contact";
+import { widgetLifecycle } from "./widgets";
+import { createTransferEstimate } from "./transfer";
+import { initEvidence } from "./evidence";
 
 /* Headline letters are wrapped so they can be set in one after another. */
 function lettered(text: string) {
@@ -205,33 +33,25 @@ function lettered(text: string) {
 const sunIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>`;
 const moonIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.8A8 8 0 0 1 9.2 4.5a8 8 0 1 0 10.3 10.3Z"/></svg>`;
 
-document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
+document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", `
+  <div id="experience">
   <div class="stage" id="stage">
     <canvas class="sky sky-back" aria-hidden="true"></canvas>
     <div id="scene" role="img" aria-label="A garden of stone terraces, pavilions, and water. It is drawn first as pencil lines, then as a blue engineering drawing, then built and planted."></div>
-    <p class="scene-fallback" hidden>The garden can’t be drawn in this browser. Everything else on the page still works.</p>
+    <div class="scene-fallback"><img src="/assets/garden-preview.png" width="1440" height="900" alt="The notebook garden, with a reading pavilion and water-wheel observatory." /><p data-fallback-message>Preparing the garden. The portfolio is ready to read.</p></div>
     <canvas class="sky sky-front" aria-hidden="true"></canvas>
-    ${spotOrder.map((s) => `<div class="hotspot" data-spot="${s}"><button type="button" class="hotspot-title" data-open="${s}" tabindex="-1">${spotNames[s]}</button></div>`).join("")}
+    ${spotOrder.map((s) => `<div class="hotspot" data-spot="${s}"><a href="#${s}" class="hotspot-title" tabindex="-1">${spotNames[s]}</a></div>`).join("")}
   </div>
-
-  <header class="masthead">
-    <a class="owner" href="#" data-home>Chakib Belgaid</a>
-    <nav aria-label="Sections">
-      <button type="button" class="link" data-open="whisperbook">Work</button>
-      <button type="button" class="link" data-open="about">About</button>
-      <button type="button" class="link" data-open="contact">Contact</button>
-    </nav>
-  </header>
 
   <main class="chapters">
     ${beats
       .map(
         (b, i) => `${i > 0 && b.stage !== beats[i - 1].stage ? `
       <div class="move" data-move="${i}" aria-hidden="true"></div>` : ""}
-      <section class="chapter" data-chapter="${i}" aria-labelledby="chapter-${i}">
+      <section class="chapter" data-chapter="${i}" aria-label="${b.title}" inert>
         <div class="note">
           <p class="note-stage">${stages[b.stage]}${b.label ? ` · ${b.label}` : ""}</p>
-          ${i === 0 ? `<h1 id="chapter-${i}" tabindex="-1">${lettered(b.title)}</h1>` : `<h2 id="chapter-${i}" tabindex="-1">${lettered(b.title)}</h2>`}
+          ${i === 0 ? `<h1 id="chapter-${i}" tabindex="-1">${lettered(b.title)}</h1>` : `<h2 id="chapter-${i}" tabindex="-1">${b.title}</h2>`}
           ${b.lede ? `<p class="note-lede">${b.lede}</p>` : ""}
           <p class="note-copy">${b.copy}</p>
           ${b.body ? `<div class="note-body">${b.body}</div>` : ""}
@@ -247,17 +67,17 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Story" />
       <div class="ruler-ticks" aria-hidden="true">
         ${beats.map((_, i) => `<span class="ruler-dot" data-dot="${i}"></span>`).join("")}
-        ${stages.map((s, i) => `<button type="button" tabindex="-1" data-go="${i}">${s}</button>`).join("")}
       </div>
+      <div class="stage-buttons" role="group" aria-label="Garden stages">${stages.map((s, i) => `<button type="button" data-go="${i}" aria-label="Go to ${s}">${s}</button>`).join("")}</div>
     </div>
     <button type="button" class="ruler-motion" id="motion-toggle" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>
   </div>
 
-  <aside class="dock" aria-label="Garden controls">
+  <details class="dock"><summary>Garden controls</summary><div class="dock-body">
     <section class="widget widget-carbon" data-from="0" aria-labelledby="carbon-label">
       <p class="carbon-figure" aria-live="off" data-carbon-figure>—</p>
-      <p class="carbon-label" id="carbon-label">This page’s carbon footprint so far</p>
-      <p class="widget-fine carbon-source" data-carbon-source></p>
+      <p class="carbon-label" id="carbon-label">Estimated impact of reported data transfer</p>
+      <p class="widget-fine carbon-source" data-carbon-source></p><details class="carbon-details"><summary>Details</summary><p class="widget-fine">Reported transfer bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, using decimal GB. Sustainable Web Design Model v4 includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded. Cached resources add no reported network bytes. This does not measure device energy or accumulate the garden’s rendering cost; a cached visit still uses energy.</p><a class="widget-fine" href="https://sustainablewebdesign.org/estimating-digital-emissions/" target="_blank" rel="noopener noreferrer">Read the methodology ↗</a></details>
     </section>
 
     <section class="widget widget-sky" data-from="3" aria-labelledby="sky-title">
@@ -295,11 +115,12 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <button type="button" class="chip" id="turn">Turn</button>
       </div>
     </section>
-  </aside>
+  </div></details>
 
   <div class="mist" aria-hidden="true"></div>
+  </div>
   <p id="announce" class="sr-only" role="status"></p>
-`;
+`);
 
 const root = document.documentElement;
 const $ = <E extends HTMLElement>(s: string) => document.querySelector<E>(s)!;
@@ -309,13 +130,21 @@ const $$ = <E extends HTMLElement>(s: string) => [
 let garden: Garden | undefined;
 // 0–1 mist over the garden and the page, set by the weather.
 let fog = 0;
-const sky = createSky($(".sky-back"), $(".sky-front"));
+let sky: ReturnType<typeof createSky> | undefined;
+const compact = matchMedia("(max-width: 899px), (max-height: 599px)");
+let reading = true;
+let previewEnabled = false;
+let requestedView = new URL(location.href).searchParams.get("view");
+let gardenLoading: Promise<void> | undefined;
+const readingContact = widgetLifecycle();
+const illustration = widgetLifecycle();
+let activeIllustration: HTMLDetailsElement | undefined;
 const announce = (text: string) => ($("#announce").textContent = text);
 
 /* The notebook is always drawn on blueprint paper. */
 function syncTheme() {
   garden?.setTheme(true);
-  sky.refresh(true);
+  sky?.refresh(true);
   applyFog();
 }
 syncTheme();
@@ -326,19 +155,26 @@ let reduced = reducedQuery.matches;
 let paused = reduced;
 const motionButton = $<HTMLButtonElement>("#motion-toggle");
 function syncMotion() {
-  motionButton.setAttribute("aria-pressed", String(paused));
-  motionButton.title = paused ? "Resume motion" : "Pause motion";
-  garden?.setMotion(paused);
-  sky.setMotion(paused);
+  const stopped = paused || reduced;
+  motionButton.setAttribute("aria-pressed", String(stopped));
+  root.dataset.motionPaused = String(stopped);
+  motionButton.disabled = reduced;
+  motionButton.title = reduced ? "Motion paused by your system preference" : paused ? "Resume motion" : "Pause motion";
+  motionButton.setAttribute("aria-label", motionButton.title);
+  garden?.setMotion(stopped || (reading && !previewEnabled));
+  sky?.setMotion(stopped || (reading && !previewEnabled));
 }
 motionButton.addEventListener("click", () => {
   paused = !paused;
   syncMotion();
+  if (reading) garden?.setProgress(Number(scrub.value) / 1000, reduced || paused);
+  else measure();
 });
 reducedQuery.addEventListener("change", (e) => {
   reduced = e.matches;
   paused = reduced;
   syncMotion();
+  if (reading) garden?.setProgress(Number(scrub.value) / 1000, reduced || paused);
   measure();
 });
 syncMotion();
@@ -396,7 +232,7 @@ function layoutRuler() {
 
 /* The camera follows the story: a lit level of the tower in Blueprint, a
    building in Build. */
-const narrow = matchMedia("(max-width: 899px)");
+const narrow = compact;
 function syncStory() {
   const b = beats[beat];
   garden?.highlightPath(b?.path ?? null);
@@ -411,63 +247,28 @@ function syncStory() {
 function syncWidgets() {
   widgets.forEach((w) => {
     const from = narrow.matches ? 3 : Number(w.dataset.from);
-    const show = stage >= from;
+    const show = reading ? previewEnabled : stage >= from;
     w.classList.toggle("shown", show);
     w.inert = !show;
   });
 }
 
-/* On narrow screens the garden sits at the top, in a frame of one size per
-   stage: from below the masthead down to the top of that stage's tallest
-   note, so no note of the stage covers it. The camera eases from one frame
-   to the next as the stage changes. */
-let frames: [number, number][] = [];
-// A note's widget is only mounted while it shows, so each slot keeps the
-// height its widget takes, measured once per width by mounting it briefly.
-let slotsFor = 0;
-function sizeSlots() {
-  if (innerWidth === slotsFor) return;
-  slotsFor = innerWidth;
-  chapterEls.forEach((c, i) => {
-    const b = beats[i];
-    const slot = c.querySelector<HTMLElement>("[data-widget]");
-    if (!b.widget || !slot) return;
-    slot.style.minHeight = "";
-    const cleanup = i === beat ? null : mountProjectWidget(b.widget, slot);
-    slot.style.minHeight = `${slot.offsetHeight}px`;
-    cleanup?.();
-  });
-}
+/* Compact layouts keep the garden in a separate, predictable frame. */
 function measureFrames() {
-  if (!narrow.matches) return frameGarden();
-  sizeSlots();
-  const h = $("#scene").clientHeight || innerHeight;
-  const top = $(".masthead").offsetHeight;
-  frames = stages.map((_, s) => {
-    let bottom = h;
-    chapterEls.forEach((c, i) => {
-      if (beats[i].stage !== s) return;
-      const note = c.querySelector<HTMLElement>(".note")!;
-      const noteTop = h - parseFloat(getComputedStyle(note).bottom) - note.offsetHeight;
-      bottom = Math.min(bottom, noteTop - 16);
-    });
-    return [top / h, Math.max(bottom, top + 0.15 * h) / h];
-  });
+  root.style.setProperty("--header-clearance", `${$(".masthead").getBoundingClientRect().height}px`);
   frameGarden();
 }
-function frameGarden() {
-  const f = narrow.matches ? frames[stage] : undefined;
-  garden?.frame(f?.[0] ?? 0, f?.[1] ?? 1);
-}
+new ResizeObserver(() => measureFrames()).observe($(".masthead"));
+function frameGarden() { garden?.frame(reading ? 0.04 : 0.08, reading ? 0.96 : 0.95); }
 
 /* One widget is mounted at a time, in the active note. */
-let widgetCleanup: (() => void) | null = null;
+const noteWidget = widgetLifecycle();
 function mountNoteWidget() {
-  widgetCleanup?.();
-  widgetCleanup = null;
+  noteWidget.replace();
+  if (reading) return;
   const b = beats[beat];
   const slot = chapterEls[beat]?.querySelector<HTMLElement>("[data-widget]");
-  if (b?.widget && slot) widgetCleanup = mountProjectWidget(b.widget, slot);
+  if (b?.widget && slot) noteWidget.replace(() => mountProjectWidget(b.widget!, slot));
 }
 
 /* Links scroll the story to a beat; once there, focus moves to its heading. */
@@ -477,12 +278,24 @@ function focusHeading(i: number) {
 }
 function goTo(i: number) {
   setPlanting(false);
-  scrollTo({ top: holdAt(i), behavior: reduced ? "instant" : "smooth" });
+  scrollTo({ top: holdAt(i), behavior: reduced || paused ? "instant" : "smooth" });
   if (beat === i) focusHeading(i);
   else focusTo = i;
 }
 
 function measure() {
+  if (reading) {
+    const sections: SectionId[] = ["intro", "work", "whisperbook", "wattch", "about", "contact"];
+    let current: SectionId = "intro";
+    for (const id of sections) {
+      const section = $("#" + id);
+      const threshold = Math.max(innerHeight * 0.35, parseFloat(getComputedStyle(section).scrollMarginTop) || 0);
+      if (section.getBoundingClientRect().top <= threshold + 1) current = id;
+    }
+    navigation.passive(current);
+    root.style.setProperty("--grow", "1");
+    return;
+  }
   layoutRuler();
   const now = storyAt(scrollY);
   const s = now.stage;
@@ -497,11 +310,12 @@ function measure() {
       : `${stages[s]}, note ${now.beat + 1} of ${beats.length}`,
   );
   if (s !== stage) {
+    performance.mark(`notebook:stage:${stages[s]}`);
     stage = s;
     root.dataset.stage = String(s);
-    sky.refresh(true);
+    sky?.refresh(true);
     $$<HTMLButtonElement>("[data-go]").forEach((b, i) =>
-      b.classList.toggle("current", i === s),
+      { b.classList.toggle("current", i === s); if (i === s) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); },
     );
     syncWidgets();
     frameGarden();
@@ -511,13 +325,15 @@ function measure() {
     chapterEls.forEach((c, i) => {
       const active = i === beat;
       c.classList.toggle("active", active);
-      c.querySelector<HTMLElement>(".note")!.inert = !active;
+      c.inert = !active;
+      c.setAttribute("aria-hidden", String(!active));
     });
     $$<HTMLElement>("[data-dot]").forEach((d, i) =>
       d.classList.toggle("current", i === beat),
     );
     mountNoteWidget();
     syncStory();
+    if (beat >= 0) navigation.passive(sectionForBeat(beat));
     if (beat >= 0 && beat === focusTo) {
       focusTo = -1;
       focusHeading(beat);
@@ -526,11 +342,11 @@ function measure() {
   const live = growth > 0.86 && !!garden;
   hotspots.forEach((h) => {
     h.classList.toggle("visible", live);
-    h.querySelector("button")!.tabIndex = live ? 0 : -1;
+    h.querySelector<HTMLAnchorElement>("a")!.tabIndex = live ? 0 : -1;
     h.inert = !live;
   });
-  garden?.setProgress(growth, reduced);
-  sky.setGrowth(growth);
+  garden?.setProgress(growth, reduced || paused);
+  sky?.setGrowth(growth);
 }
 
 let queued = false;
@@ -544,31 +360,36 @@ function schedule() {
 }
 addEventListener("scroll", schedule, { passive: true });
 addEventListener("resize", () => {
-  schedule();
+  const section = navigation.section;
+  if (reading !== (compact.matches || requestedView === "read")) syncPresentation();
   measureFrames();
+  navigation.go(section, false, false);
 });
 // A link's scroll that ends short of its beat (the visitor took over) drops
 // the focus it would have moved.
 addEventListener("scrollend", () => {
   measure();
   focusTo = -1;
+  navigation.settled();
 });
 
-scrub.addEventListener("input", () =>
-  scrollTo({ top: (Number(scrub.value) / 1000) * maxScroll(), behavior: "instant" }),
-);
-$$<HTMLButtonElement>("[data-go]").forEach((b) =>
-  b.addEventListener("click", () =>
-    scrollTo({
-      top: holdAt(stageStart[Number(b.dataset.go)]),
-      behavior: reduced ? "instant" : "smooth",
-    }),
-  ),
-);
-$("[data-home]").addEventListener("click", (e) => {
-  e.preventDefault();
-  scrollTo({ top: 0, behavior: reduced ? "instant" : "smooth" });
+scrub.addEventListener("input", () => {
+  if (reading) {
+    const growth = Number(scrub.value) / 1000;
+    garden?.setProgress(growth, reduced || paused); sky?.setGrowth(growth);
+    scrub.setAttribute("aria-valuetext", `${Math.round(growth * 100)}% garden growth`);
+  } else scrollTo({top: (Number(scrub.value) / 1000) * maxScroll(), behavior: "instant"});
 });
+$$<HTMLButtonElement>("[data-go]").forEach((button) => button.addEventListener("click", () => {
+  const s = Number(button.dataset.go);
+  if (reading) {
+    garden?.setProgress(stageProgress[s], reduced || paused);
+    sky?.setGrowth(stageProgress[s]);
+    scrub.value = String(stageProgress[s] * 1000);
+    scrub.setAttribute("aria-valuetext", stages[s]);
+    $$<HTMLButtonElement>("[data-go]").forEach((b, i) => { if (i === s) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+  } else navigation.go(sectionForBeat(stageStart[s]));
+}));
 
 /* Light: the garden follows the visitor's clock until they pick an hour. */
 const hourInput = $<HTMLInputElement>("#hour");
@@ -604,7 +425,7 @@ function setPaper(night: number) {
       .join("");
   root.style.setProperty("--paper", paper);
   $("meta[name=theme-color]").setAttribute("content", paper);
-  sky.refresh(true);
+  sky?.refresh(true);
   applyFog();
 }
 function setHour(h: number) {
@@ -626,7 +447,7 @@ function setHour(h: number) {
     $(".sky-body").innerHTML = isNight ? moonIcon : sunIcon;
   }
   garden?.setHour(h);
-  sky.setHour(h);
+  sky?.setHour(h);
 }
 hourInput.addEventListener("input", () => setHour(Number(hourInput.value)));
 $("#hour-now").addEventListener("click", () => {
@@ -663,10 +484,10 @@ function applyWeather() {
   const w = currentWeatherState();
   fog = fogByKind[w.kind];
   applyFog();
-  sky.setWeather(w);
+  sky?.setWeather(w);
   garden?.setWeather(w.cloud, w.precip);
   root.dataset.weather = w.kind;
-  $$<HTMLButtonElement>("[data-weather]").forEach((b) =>
+  $$<HTMLButtonElement>("button[data-weather]").forEach((b) =>
     b.setAttribute("aria-pressed", String(b.dataset.weather === weatherMode)),
   );
   if (weatherMode !== "live")
@@ -701,11 +522,11 @@ function applySeason() {
       : place
         ? `${name} in ${place.name}.`
         : `${name}.`;
-  $$<HTMLButtonElement>("[data-season]").forEach((b) =>
+  $$<HTMLButtonElement>("button[data-season]").forEach((b) =>
     b.setAttribute("aria-pressed", String(b.dataset.season === seasonMode)),
   );
 }
-$$<HTMLButtonElement>("[data-season]").forEach((b) =>
+$$<HTMLButtonElement>("button[data-season]").forEach((b) =>
   b.addEventListener("click", () => {
     seasonMode = b.dataset.season as typeof seasonMode;
     applySeason();
@@ -734,7 +555,7 @@ async function startWeather() {
     applyWeather();
   }
 }
-$$<HTMLButtonElement>("[data-weather]").forEach((b) =>
+$$<HTMLButtonElement>("button[data-weather]").forEach((b) =>
   b.addEventListener("click", () => {
     weatherMode = b.dataset.weather as typeof weatherMode;
     applyWeather();
@@ -754,7 +575,6 @@ $("#locate").addEventListener("click", async () => {
 });
 applyWeather();
 applySeason();
-startWeather();
 setInterval(() => {
   if (place && !document.hidden) loadWeather(place).catch(() => {});
 }, 15 * 60 * 1000);
@@ -822,43 +642,11 @@ stageEl.addEventListener("pointercancel", () => {
   root.classList.remove("turning");
 });
 
-/* The page's carbon footprint, on the side the whole way. It is an estimate,
-   not a measurement: the bytes this page has loaded over the network (the
-   browser's own resource timing; cached files count as nothing), times the
-   Sustainable Web Design model v4. That is 0.194 kWh/GB operational plus
-   0.106 kWh/GB embodied, at the global average grid of 494 gCO2e/kWh. */
-const gramsPerByte = ((0.055 + 0.059 + 0.08 + 0.012 + 0.013 + 0.081) * 494) / 1e9;
-let bytesLoaded = 0;
-let timing = false;
-try {
-  const counter = new PerformanceObserver((list) => {
-    for (const e of list.getEntries()) bytesLoaded += (e as PerformanceResourceTiming).transferSize ?? 0;
-  });
-  counter.observe({ type: "navigation", buffered: true });
-  counter.observe({ type: "resource", buffered: true });
-  timing = PerformanceObserver.supportedEntryTypes?.includes("resource") ?? false;
-} catch {
-  // No resource timing: the card says so.
-}
-const carbons = new Set<{ figure: HTMLElement; source: HTMLElement }>();
-carbons.add({
-  figure: $("[data-carbon-figure]"),
-  source: $("[data-carbon-source]"),
-});
+const transfer = createTransferEstimate();
 function drawCarbon() {
-  let figure = "—";
-  let source = "This browser does not report what the page has loaded.";
-  if (timing) {
-    const grams = bytesLoaded * gramsPerByte;
-    const size =
-      bytesLoaded >= 1e6 ? `${(bytesLoaded / 1e6).toFixed(1)} MB` : `${Math.round(bytesLoaded / 1e3)} kB`;
-    figure = grams < 0.01 ? "Under 0.01 g CO₂e" : `${grams.toFixed(grams < 1 ? 2 : 1)} g CO₂e`;
-    source = `${size} loaded · Sustainable Web Design model, world grid. Estimated, not measured.`;
-  }
-  for (const c of carbons) {
-    if (c.figure.textContent !== figure) c.figure.textContent = figure;
-    if (c.source.textContent !== source) c.source.textContent = source;
-  }
+  const { figure, source } = transfer.read();
+  $("[data-carbon-figure]").textContent = figure;
+  $("[data-carbon-source]").textContent = source;
 }
 drawCarbon();
 
@@ -1031,51 +819,7 @@ function mountPlayer(el: HTMLElement) {
   };
 }
 
-/* Contact: a note that becomes an email in the visitor's own mail app. */
-function mountNote(el: HTMLElement) {
-  el.innerHTML = `<h3>Leave a note</h3>
-    <label class="note-label" for="note-text">Your note</label>
-    <textarea id="note-text" maxlength="600" rows="4" aria-describedby="note-count"></textarea>
-    <p class="note-count" id="note-count"><span>0</span> of 600 characters</p>
-    <div class="widget-actions">
-      <button type="button" class="chip" data-send disabled>Send by email</button>
-      <button type="button" class="chip" data-copy>Copy address</button>
-    </div>
-    <p class="widget-fine">This opens your email app. Nothing is sent or stored by this page.</p>`;
-  const text = el.querySelector("textarea")!;
-  const send = el.querySelector<HTMLButtonElement>("[data-send]")!;
-  const copy = el.querySelector<HTMLButtonElement>("[data-copy]")!;
-  let copiedTimer = 0;
-  text.addEventListener("input", () => {
-    el.querySelector(".note-count span")!.textContent = String(text.value.length);
-    const empty = !text.value.trim();
-    send.disabled = empty;
-    garden?.setPostbox(empty ? "idle" : "writing");
-  });
-  send.addEventListener("click", () => {
-    if (!text.value.trim()) return;
-    const link = document.createElement("a");
-    link.href = `mailto:${email}?subject=From%20the%20garden&body=${encodeURIComponent(text.value)}`;
-    link.click();
-    garden?.setPostbox("sent");
-  });
-  copy.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(email);
-      copy.textContent = "Copied";
-      clearTimeout(copiedTimer);
-      copiedTimer = window.setTimeout(() => (copy.textContent = "Copy address"), 2000);
-    } catch {
-      // Select the address on the page so it can be copied by hand.
-      const address = document.querySelector(".note-email a");
-      if (address) getSelection()?.selectAllChildren(address);
-    }
-  });
-  return () => {
-    clearTimeout(copiedTimer);
-    garden?.setPostbox("idle");
-  };
-}
+const mountNote = (el: HTMLElement) => mountContact(el, () => garden);
 
 function mountProjectWidget(spot: WidgetSpot, container: HTMLElement) {
   const cleanup = {
@@ -1089,46 +833,156 @@ function mountProjectWidget(spot: WidgetSpot, container: HTMLElement) {
   };
 }
 
-document.addEventListener("click", (e) => {
-  const t = (e.target as HTMLElement).closest<HTMLElement>("[data-open]");
-  if (t) goTo(spotBeat[t.dataset.open as Spot]);
+function sectionForBeat(i: number): SectionId {
+  if (i >= spotBeat.contact) return "contact";
+  if (i >= spotBeat.wattch) return "wattch";
+  if (i >= spotBeat.whisperbook) return "whisperbook";
+  if (i >= stageStart[2]) return "work";
+  if (i >= stageStart[1]) return "about";
+  return "intro";
+}
+const sectionBeat: Record<SectionId, number> = { intro: 0, work: stageStart[2], ...spotBeat };
+const navigation = createNavigation((section, focus) => {
+  setPlanting(false);
+  if (reading) {
+    const target = $("#" + section);
+    const behavior = !focus || reduced || paused ? "instant" : "smooth";
+    if (section === "intro") scrollTo({top: 0, behavior});
+    else target.scrollIntoView({ behavior, block: "start" });
+    if (focus) target.querySelector<HTMLElement>("h1,h2,h3")?.focus({preventScroll:true});
+  } else {
+    if (focus) goTo(sectionBeat[section]);
+    else { scrollTo({top:holdAt(sectionBeat[section]), behavior:"instant"}); measure(); }
+  }
+}, () => {
+  requestedView = new URL(location.href).searchParams.get("view");
+  previewEnabled = requestedView === "garden";
+  syncPresentation();
+  if (!reading || previewEnabled) void loadGarden();
 });
-narrow.addEventListener("change", () => {
+
+function syncPresentation() {
+  const previous = reading;
+  reading = compact.matches || requestedView === "read";
+  root.dataset.view = reading ? "read" : "garden";
+  root.dataset.preview = String(previewEnabled);
+  $("#portfolio").hidden = !reading;
+  $(".chapters").hidden = reading;
+  $(".chapters").inert = reading;
+  $(".mist").hidden = reading;
+  const stageElement = $("#stage");
+  (reading ? $("#preview-frame") : $("#experience")).prepend(stageElement);
+  stageElement.hidden = reading && !previewEnabled;
+  for (const element of [$<HTMLElement>(".ruler"), $<HTMLElement>(".dock")]) {
+    (reading ? $("#preview-tools") : $("#experience")).append(element);
+    element.hidden = reading && !previewEnabled;
+  }
+  $(".static-garden").hidden = reading && previewEnabled;
+  const toggle = $<HTMLAnchorElement>(".view-switch");
+  toggle.dataset.view = reading ? "garden" : "read";
+  toggle.href = `?view=${toggle.dataset.view}${location.hash}`;
+  toggle.textContent = reading ? (previewEnabled && compact.matches ? "Close garden" : "Explore garden") : "Read portfolio";
+  if (previous !== reading) {
+    noteWidget.dispose();
+    illustration.dispose();
+    if (activeIllustration) activeIllustration.open = false;
+    activeIllustration = undefined;
+    readingContact.replace(reading ? () => mountNote($("[data-contact-read]")) : undefined);
+    if (!reading) { beat = -1; stage = -1; rulerFor = ""; }
+  }
+  syncMotion();
   syncWidgets();
   measureFrames();
-  syncStory();
+  if (reading && previewEnabled) {
+    garden?.setProgress(1, reduced || paused); garden?.focus(null); sky?.setGrowth(1);
+    scrub.value = "1000";
+    scrub.setAttribute("aria-valuetext", "Bloom");
+    $$<HTMLButtonElement>("[data-go]").forEach((b, i) => { if (i === 3) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+  }
+}
+
+$$<HTMLAnchorElement>("[data-view]").forEach(a => a.addEventListener("click", e => {
+  if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  const section = navigation.section;
+  requestedView = a.dataset.view!;
+  previewEnabled = compact.matches && previewEnabled && a.classList.contains("view-switch") ? false : requestedView === "garden";
+  const url = new URL(location.href);
+  url.searchParams.set("view", compact.matches && !previewEnabled ? "read" : requestedView);
+  history.pushState(null, "", url);
+  syncPresentation();
+  if (!reading || previewEnabled) void loadGarden();
+  navigation.go(section, false);
+}));
+compact.addEventListener("change", () => {
+  const section = navigation.section;
+  syncPresentation();
+  navigation.go(section, false, false);
+  if (!reading || previewEnabled) void loadGarden();
 });
 
-measure();
-measureFrames();
-document.fonts?.ready.then(() => {
-  schedule();
-  measureFrames();
-});
+$$<HTMLDetailsElement>("[data-illustration]").forEach(details => details.addEventListener("toggle", () => {
+  if (!reading) return;
+  if (details.open) {
+    if (activeIllustration && activeIllustration !== details) activeIllustration.open = false;
+    activeIllustration = details;
+    illustration.replace(() => mountProjectWidget(details.dataset.illustration as WidgetSpot, details.querySelector<HTMLElement>("[data-reading-widget]")!));
+  } else if (activeIllustration === details) { illustration.dispose(); activeIllustration = undefined; }
+}));
 
-import("./scene")
-  .then(({ createGarden }) => {
-    garden = createGarden($("#scene"), hotspots);
-    // A meter mounted before the garden arrived is mounted again, so it can
-    // measure.
-    if (beats[beat]?.widget === "wattch") mountNoteWidget();
-    syncTheme();
+async function loadGarden() {
+  if (gardenLoading) return gardenLoading;
+  performance.mark("notebook:scene-request");
+  gardenLoading = (async () => {
+    // Two animation frames let the semantic page paint before scene work starts.
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    sky = createSky($(".sky-back"), $(".sky-front"));
     syncMotion();
-    setHour(Number(hourInput.value));
-    applyWeather();
-    applySeason();
-    measure();
-    // The meter is taller once it can measure.
-    slotsFor = 0;
+    const { createGarden } = await import("./scene");
+    const quality = compact.matches || new URL(location.href).searchParams.get("quality") === "low" ? "low" : "full";
+    garden = await createGarden($("#scene"), hotspots, quality);
+    $(".scene-fallback").hidden = true;
+    $("#scene").addEventListener("garden-context-lost", () => {
+      $(".scene-fallback").hidden = false;
+      $("[data-fallback-message]").textContent = "The garden’s graphics connection was lost. The portfolio and links still work.";
+      announce("Garden graphics unavailable. Portfolio navigation remains available.");
+    });
+    $("#scene").addEventListener("garden-context-restored", () => $(".scene-fallback").hidden = true);
+    syncTheme(); syncMotion(); setHour(Number(hourInput.value)); applyWeather(); applySeason();
+    if (reading) { garden.setProgress(1, reduced || paused); sky.setGrowth(1); }
+    else {
+      // The meter needs a renderer; contact and speech already work while loading.
+      if (beats[beat]?.widget === "wattch") mountNoteWidget();
+      measure(); syncStory();
+    }
+    if (activeIllustration?.open && activeIllustration.dataset.illustration === "wattch") {
+      illustration.replace(() => mountProjectWidget("wattch", activeIllustration!.querySelector<HTMLElement>("[data-reading-widget]")!));
+    }
+    const draftField = document.querySelector<HTMLTextAreaElement>(reading ? "[data-contact-read] textarea" : ".chapter.active textarea");
+    garden.setPostbox(draftField?.value.trim() ? "writing" : "idle");
+    garden.setNarrating(!!document.querySelector('.play[aria-label="Stop"]'));
     measureFrames();
-    syncStory();
-  })
-  .catch((error) => {
+    void startWeather();
+  })().catch(error => {
     console.warn("The garden could not be drawn.", error);
     $(".scene-fallback").hidden = false;
+    $("[data-fallback-message]").textContent = "The garden can’t be drawn in this browser. The portfolio and links still work.";
     $("#scene").removeAttribute("role");
     $("#scene").removeAttribute("aria-label");
     $(".widget-garden").hidden = true;
+    sky?.setMotion(true);
   });
+  return gardenLoading;
+}
 
-if (import.meta.hot) import.meta.hot.dispose(() => garden?.dispose());
+// Commit enhancement only after the controllers have initialized.
+initEvidence();
+root.classList.add("enhanced");
+readingContact.replace(() => mountNote($("[data-contact-read]")));
+syncPresentation();
+navigation.go(navigation.section, false, false);
+measure();
+if (!reading || requestedView === "garden") { previewEnabled = reading; syncPresentation(); void loadGarden(); }
+document.fonts?.ready.then(schedule);
+
+if (import.meta.hot) import.meta.hot.dispose(() => { garden?.dispose(); sky?.dispose(); transfer.dispose(); noteWidget.dispose(); readingContact.dispose(); illustration.dispose(); });

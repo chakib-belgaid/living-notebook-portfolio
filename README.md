@@ -1,64 +1,64 @@
 # A living notebook
 
-A standalone portfolio for Chakib Belgaid. Scroll turns the same 3D garden from faint pencil outlines into an engineering drawing, then a planted, animated world.
+A portfolio for Chakib Belgaid, retaining the procedural garden, blueprint paper, Newsreader typography, and verified project content.
+
+Desktop opens the garden journey. **Read portfolio** switches to introduction → Whisperbook → Wattch Core → current work and background → contact. Below 900 px wide or 600 px high, the portfolio uses normal document flow. **Explore garden** adds an interactive preview in a bounded frame.
 
 ## Run locally
 
-Requires Node.js 20.19+ or 22.12+ and npm.
+Vite requires Node.js 20.19+ or 22.12+. Use Node.js 24+ for the regression suite, which uses native TypeScript loading.
 
 ```sh
 npm ci
 npm run dev -- --port 5198 --strictPort
-```
-
-Open http://127.0.0.1:5198.
-
-```sh
 npm run build
 npm run preview -- --port 5199 --strictPort
 ```
 
-The production website is generated in `dist/`. Serve it over HTTP, not by opening `index.html` from the filesystem. Public deployment has not been performed.
+Development: http://127.0.0.1:5198. Production preview: http://127.0.0.1:5199. Serve the generated `dist/` over HTTP. If a development server was running before `vite.config.ts` was added, restart it to register the HTML transform.
 
-## The experience
+## Navigation and reading
 
-The garden fills the screen. Scrolling (or dragging the ruler at the bottom) builds it: pencil (Sketch), blue engineering drawing (Blueprint), built stone (Build), then the planted, animated world (Bloom). On load the pencil lines draw themselves in.
+Both projects are linked on entry. Stable fragments are `#work`, `#whisperbook`, `#wattch`, `#about`, and `#contact`. Explicit navigation adds a history entry and focuses the destination heading. Passive scrolling replaces the current fragment without moving focus. Refresh and Back/Forward restore the section; resizing preserves it.
 
-The story pauses at each stage. The garden only grows in the stretch of scroll between two stages, and the old note leaves as it starts. Within a stage it holds still while several notes follow one another:
+Explicit view choices use `?view=read` or `?view=garden`. Compact windows always retain flowing content. The header wraps; the garden ruler provides four evenly spaced stage buttons and a separate progress slider. Optional weather, planting, and transfer information sit under **Garden controls**.
 
-- *Sketch*: the name.
-- *Blueprint*: an intro (the question first, then the structure, and following an idea from sketch to use), then the career, oldest first, one role per note (Funecs, the Ph.D. at the University of Lille and Inria, Qarnot Computing and Inria, MCQ Scan). Each role lights its level of the tower, and Qarnot lights the observatory.
-- *Build*: the buildings stand in stone but nothing is planted yet. An intro, then each project in full, three notes each: what it is (lede, intro, field, stack, source link, and *Try it* with its widget), what I built, and the decision that shaped it with its screenshot. The camera visits the reading pavilion for Whisperbook's notes and the observatory for Wattch Core's.
-- *Bloom*: the garden comes alive and the widgets come out (Sky and Garden). The note is the contact section: "Write to me", the email address, *Leave a note*, and GitHub and LinkedIn.
+Each reading project groups its purpose, contribution, decision, screenshot, and source repository. **View full screenshot** works as an ordinary image link and gains a native dialog when JavaScript is available: caption, source link, fit/actual size, Escape dismissal, and restored focus. Wattch's screenshot remains explicitly synthetic workflow evidence. Browser illustrations remain separately labeled: local browser speech for Whisperbook, and this page's CPU rendering cost for Wattch.
 
-The ruler has a dot for each note and a label for each stage. "Pause motion" sits at its right end, so it can be reached at every stage.
+## The garden
 
-A **carbon card** stays on the side the whole way, from Sketch on: this page's carbon footprint so far ("0.42 g CO₂e"), with its source line ("2.8 MB loaded · Sustainable Web Design model, world grid. Estimated, not measured."). It is the bytes the page has loaded over the network, from the browser's resource timing (cached files count as nothing), times the Sustainable Web Design model v4 (0.3 kWh/GB, operational plus embodied) at the global average grid of 494 gCO₂e/kWh. Without resource timing it reads "—" and says so. On narrow screens the widgets sit in a row along the bottom and only come out in Bloom, the carbon card first.
+Scrolling carries one garden through Sketch, Blueprint, Build, and Bloom. Only the opening headline uses letter-by-letter animation. Inactive chapters are inert and hidden from assistive navigation.
 
-Each note is one card, never taller than the screen below the masthead, so it never scrolls on its own. On narrow screens the garden sits at the top in a frame of one size per stage, from the masthead down to that stage's tallest note, so no note covers it; the camera eases from one frame to the next as the stage changes.
+The original terraces, canal, waterfall, drones, reading pavilion, water-wheel observatory, atelier tower, greenhouse, seasonal foliage, birds, ducks, rabbits, cat, planting, and rotation remain. The sky follows time of day, moon phase, and weather from [Open-Meteo](https://open-meteo.com). The timezone supplies an approximate place; **Use my exact location** requests device location. Unavailable weather has an explicit fallback. Weather and seasons can be previewed from the controls.
 
-Text sits on small paper notes over the garden. Headlines are set in Newsreader, a variable serif, and their weight and ink follow the garden's growth: hairline graphite while sketched, full-weight ink in bloom. Each new headline's letters are set in one after another.
+One pause state stops CSS effects, mist, marker pulses, sky, and garden motion. Reduced motion keeps the scene still and the stage changes immediate. The motion button reports its current action and honors the system preference.
 
-- **Water.** A rill crosses the atelier terrace to a spout, and the waterfall drops on the canal's centre line into its head. The canal runs in a stone bed with curbs to the front edge, with a branch (and stepping stones) that stops short of the observatory steps. Planters, trees, and grass take their height from the level they stand on, and stay off the water and the floors.
-- **Buildings are the navigation.** In bloom, callouts mark Whisperbook (reading pavilion), Wattch Core (water-wheel observatory), About me (atelier roof) and Write to me (greenhouse). There are no panels: selecting a callout, or a masthead link (Work, About, Contact), scrolls the story to its note (Whisperbook's or Wattch Core's first note in Build, the Blueprint intro for About, Bloom for Contact), and focus moves to the note's heading.
-- **Sky and weather.** A sky sits behind the garden: sun, moon (in today's real phase), drifting clouds, and twinkling stars. Rain, snow, fog, and lightning fall in front of it. Like the garden, the sky is drawn in pencil at Sketch, in blueprint ink at Blueprint, and filled with colour once built. It follows the **current weather** at the visitor's place, from [Open-Meteo](https://open-meteo.com) (free, no key, CC BY 4.0). With no permission prompt, the place is approximated from the browser's time zone ("Europe/Paris" → Paris). "Use my exact location" asks for the device position instead (rounded to about 1 km); if that permission was already granted, it is used directly. Weather refreshes every 15 minutes. Cloud and rain also dim the garden's sunlight and soften its shadows.
-- **Fog** hides the far side of the garden in paper-coloured mist (Three.js fog), sends mist banks across the screen, and lays a drifting veil over the notes, ruler, and widgets, which turn frosted while callouts recede. The veil is capped so text stays readable. Rain, snow, and storms add a lighter haze.
-- **Seasons.** The garden follows the season at the weather location: the date, with the hemisphere from its latitude (northern if unknown). Spring has fresh greens, pink blossom, and drifting petals; summer has deep greens, full flowers, and butterflies; autumn has orange, gold, and rust canopies, falling leaves, and leaves on the terraces; winter has frosted canopies, dark evergreens, no flowers, and snow patches. Planted trees follow the season too. The Garden widget shows the season ("Autumn in Paris.") with preview buttons; "Now" returns to the real one.
-- **Bushes and animals.** Once the garden comes to life, about 45 bushes sit on the ground terraces (placed by ray casting, kept off the water and out from under roofs). They take the season's colours and carry flowers, autumn berries, or frost. A flock of birds circles overhead (not at night or in rain; fewer in winter). Ducks paddle the canal and rest at night. Rabbits hop between spots on the same terrace, turn white in winter, and shelter at night and in rain. A ginger cat sleeps on the bench. Everything stops with "Pause motion" or reduced motion.
-- **Sky widget** (in Bloom): shows the live report ("Overcast, 18°C in Paris."), a time-of-day slider (starts at the visitor's clock; lanterns and fireflies come out after dusk), and preview buttons for Clear, Clouds, Rain, Snow, Storm, and Fog. "Live" returns to the real weather. If the weather can't be fetched, the sky falls back to a few clouds and says so.
-- **Garden widget** (in bloom): plant up to 24 trees by clicking a terrace, or with "Plant one" from the keyboard. "Turn" rotates the garden; you can also drag it.
-- **Rooms.** Each building shows what it stands for. The Whisperbook and Wattch widgets sit under "Try it" in the project's first note in Build, and *Leave a note* sits in Bloom. One widget is mounted at a time, in the note that is showing; scrolling on stops it (and the narration).
-  - *Whisperbook's reading room*: the pavilion roof is a book lying open, its pages lined with text and an ochre ribbon hanging over the edge; a walkway from the atelier terrace leads out onto it. The side wall facing the garden is a bookcase, the back wall a shelf of spines, and a phone stands on the reading table between two small speakers, the two narrators. The widget is a mini player that reads two lines of *Alice's Adventures in Wonderland* (Lewis Carroll, 1865, public domain), narrator and Alice, with the browser's **on-device** speech voices only (`localService`); network voices are never used. Without a local voice the button is disabled and says so. While it reads, rings of sound spread over the table and a reading light comes on.
-  - *Wattch Core's measuring station*: the water wheel dips into a stone race of water and turns a generator, and a cable runs through a daemon box with two client screens to a meter post. The dial's needle and a trace wall inside the ring follow the page's own render cost. The widget is the **Cost to draw meter**: a live sparkline of the CPU time each frame takes to submit, plus triangle and draw-call counts from the renderer. These are real numbers from the visitor's browser (not GPU time, and not energy). The page's carbon estimate is on the carbon card, not here.
-  - *The atelier tower, read from the ground up*: a game table in the ground arch (the serious-games startup), a chalkboard and desk on the terrace (the research), a drafting table on the roof (the atelier), whose sheet is a small drawing of the garden in pencil, blue, or ink with the stage. The career notes in Blueprint light each level in turn; the energy-measurement note lights the observatory.
-  - *The greenhouse as a post office for seeds*: a potting bench with seed trays, a watering can and seed packets, and a postbox outside. "Leave a note" in Bloom only builds a `mailto:` link for the visitor's own mail app; nothing is sent or stored by the page. The postbox flag rises while a note is written, and a letter drops in on send.
-- White paper or blueprint paper, saved locally; otherwise it follows the system setting.
-- Reduced motion snaps the garden and headlines to each stage and turns off animations. "Pause motion" (on the ruler) stops ambient movement.
-- If WebGL is unavailable, a short note replaces the drawing. The notes, their widgets and the carbon card still work, the Wattch widget says rendering is off, and the masthead links still scroll the story.
+Contact builds an email-app handoff only. The draft, character count, and button state survive navigation, resizing, view changes, and the handoff. The draft lives in page memory and clears on reload. The page neither sends email nor persists a draft. Clipboard rejection and missing local speech voices have readable fallback states.
 
-## Implementation
+## Architecture and performance
 
-Vite + TypeScript + Three.js, with no framework or backend. `src/scene.ts` holds the garden. Added for this version: the line-drawing intro (`setDrawRange` on the merged outlines), the time-of-day lighting with lanterns and fireflies, raycast planting, drag rotation, camera focus, and render stats. `src/sky.ts` paints the sky on two 2D canvases (behind and in front of the WebGL canvas). `src/weather.ts` handles Open-Meteo, the time-zone and device location, WMO weather codes, and the moon phase. `src/main.ts` holds the content, scroll-to-growth mapping, notes and widgets. `src/style.css` holds the overlays. Newsreader (OFL, `public/fonts/`) is the only typeface.
+Vite + TypeScript + Three.js, without a framework or backend:
+
+- `src/content.ts` is the shared content and journey data; `src/render.ts` renders the semantic portfolio.
+- `vite.config.ts` injects that HTML in development and production. Base CSS loads independently of JavaScript. Enhancement activates after controller initialization; blocked scripts or a failed controller leave the reading content available.
+- `src/navigation.ts`, `src/contact.ts`, `src/widgets.ts`, `src/evidence.ts`, and `src/transfer.ts` own navigation, memory-only drafts, lifecycle, screenshot dialogs, and transfer accounting.
+- `src/main.ts` coordinates presentation and interactions. `src/scene.ts` draws the garden; `src/sky.ts` draws its two sky layers; `src/weather.ts` handles weather and location.
+
+The semantic page paints before scene loading. Reading mode creates no scene until requested; project images load near use. Scene construction yields between batches, including raycasts for animals and fallen leaves. Instrumentation records construction phases, shader warm-up and first use, first render, and stage changes. Shader error checks remain enabled.
+
+Desktop retains the full settings (pixel ratio capped at 1.6, 2048 px shadows). Compact previews use a 1.25 cap and 1024 px shadows after visual comparison. A captured garden image covers loading, unavailable WebGL, and context loss. Print exposes the complete reading portfolio and removes fixed controls.
+
+## Transfer estimate and deployment metadata
+
+The display is **Estimated impact of reported data transfer**. **Details** explains the existing SWDM v4 coefficient: reported bytes × 0.3 kWh/decimal GB × 494 g CO₂e/kWh. It does not measure or accumulate rendering energy. Positive transfer sizes, confirmed cached resources, and unknown sizes are counted separately; hidden cross-origin timings cannot imply zero transfer. See the [methodology](https://sustainablewebdesign.org/estimating-digital-emissions/) and [Resource Timing distinctions](https://developer.mozilla.org/en-US/docs/Web/API/PerformanceResourceTiming/transferSize).
+
+The page has a descriptive title, description, social metadata, and the captured preview image. To generate canonical and absolute social URLs, supply the actual deployment origin when building:
+
+```sh
+SITE_ORIGIN=https://your-domain.example npm run build
+```
+
+That example is a placeholder. Without a configured origin, unknown canonical and absolute social URLs are omitted. Public hosting and deployed previews have not been checked.
 
 ## Content provenance
 
@@ -68,6 +68,15 @@ The screenshots are copied from that portfolio's `public/assets/projects/whisper
 
 The supplied concept is retained as `design-reference.png` inside the source archive. It guides the pencil / blueprint / garden direction; its small descriptions are not factual sources. The 3D garden and drones are original procedural geometry.
 
+
 ## Validation
 
-`VALIDATION.md` records checks on the previous presentation. The rewrite was checked with a type check, a production build, and Chrome screenshots at 1440 × 900, 1280 × 800 (blueprint paper), and 390 × 844, with no console errors or horizontal overflow.
+[VALIDATION.md](VALIDATION.md) records the October 1 implementation, 19 focused checks, five cold loads and journeys in each motion mode, mobile emulation, native Chrome zoom, screenshots, traces, and remaining limits.
+
+```sh
+PLAYWRIGHT_CHANNEL=chrome npm test
+PLAYWRIGHT_CHANNEL=chrome npm run test:performance
+PLAYWRIGHT_CHANNEL=chrome node tests/visuals.mjs
+```
+
+The scripts target port 5199 by default. Override `TEST_URL` and `QA_OUTPUT` as needed. The Browser plugin was unavailable, so validation used Playwright with installed Chrome and native Mac UI checks. Physical phones, Safari/Firefox, deployed previews, and VoiceOver acceptance remain unverified. Historical presentation documentation is retained in `docs/garden-presentation-before-quality-review.md` and `docs/validation-2026-09-08.md`.

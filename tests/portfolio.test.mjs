@@ -1,0 +1,362 @@
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import { chromium } from 'playwright';
+
+const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
+const output = process.env.QA_OUTPUT || '/private/tmp/notebook-qa';
+let browser;
+before(async () => {
+  await mkdir(output, { recursive: true });
+  browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
+});
+after(async () => browser?.close());
+async function page(options = {}) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...options });
+  const p = await context.newPage();
+  p.errors = [];
+  p.on('pageerror', e => p.errors.push(e.message));
+  await p.route('**/*open-meteo.com/**', route => route.abort());
+  return p;
+}
+async function ready(p, path = '') {
+  await p.goto(base + '/' + path);
+  await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
+}
+async function go(p, id) {
+  await p.locator(`.masthead a[href="#${id}"]`).click();
+  await p.waitForTimeout(1500);
+  if (id === 'contact' && await p.locator('html').getAttribute('data-view') === 'garden') await p.locator('.chapter.active textarea').waitFor({state:'visible',timeout:5000});
+}
+function healthy(p) { assert.deepEqual(p.errors, []); }
+
+test('desktop entry, project links, wheel chaining and clean landmarks', async () => {
+  const p = await page();
+  try {
+    await ready(p);
+    assert.match(await p.title(), /Chakib Belgaid.*Product engineer/);
+    assert.equal(await p.locator('html').getAttribute('data-view'), 'garden');
+    await p.locator('.chapter.active a[href="#whisperbook"]').click();
+    await p.waitForTimeout(1500);
+    assert.match(p.url(), /#whisperbook$/);
+    assert.equal(await p.locator('.chapter:not(.active):not([inert])').count(), 0);
+    assert.equal(await p.locator('.chapter.active h2').innerText(), 'Whisperbook');
+    const before = await p.evaluate(() => scrollY);
+    await p.locator('.chapter.active .note').hover();
+    await p.mouse.wheel(0, 800);
+    await p.waitForTimeout(500);
+    assert.ok(await p.evaluate(() => scrollY) > before, 'wheel over a note advances the document');
+    await p.screenshot({ path: output + '/desktop-story.png' });
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('draft survives navigation, view changes, resize and email handoff', async () => {
+  const p = await page();
+  try {
+    await ready(p);
+    await go(p, 'contact');
+    await p.locator('.chapter.active textarea').fill('Hello & a draft with accents: café.');
+    await go(p, 'about');
+    await go(p, 'contact');
+    assert.equal(await p.locator('.chapter.active textarea').inputValue(), 'Hello & a draft with accents: café.');
+    await p.setViewportSize({width:320,height:568});
+    await p.waitForTimeout(300);
+    assert.equal(await p.locator('#contact textarea').inputValue(), 'Hello & a draft with accents: café.');
+    assert.equal(await p.locator('#contact .note-count span').innerText(), String('Hello & a draft with accents: café.'.length));
+    assert.equal(await p.locator('#contact [data-send]').isEnabled(), true);
+    const mail = await p.locator('#contact [data-send]').evaluate(button => {
+      let href;
+      const original = HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click = function () { href = this.href; };
+      button.click();
+      HTMLAnchorElement.prototype.click = original;
+      return href;
+    });
+    assert.match(mail, /^mailto:chakib\.belgaid@gmail\.com\?subject=/);
+    assert.equal(new URLSearchParams(mail.split('?')[1]).get('body'), 'Hello & a draft with accents: café.');
+    assert.equal(await p.locator('#contact textarea').inputValue(), 'Hello & a draft with accents: café.');
+    await p.setViewportSize({width:1440,height:900});
+    await p.waitForTimeout(500);
+    assert.equal(await p.locator('.chapter.active textarea').inputValue(), 'Hello & a draft with accents: café.');
+    await p.reload();
+    await p.locator('.chapter.active textarea').waitFor({state:'visible'});
+    assert.equal(await p.locator('.chapter.active textarea').inputValue(), '');
+    assert.equal(await p.locator('.chapter.active [data-send]').isDisabled(), true);
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('wheel chains from the bottom of an overflowing garden note into the document', async () => {
+  const p = await page({viewport:{width:1440,height:600}});
+  try {
+    await ready(p, '#whisperbook');
+    await p.getByRole('button',{name:'Pause motion',exact:true}).click();
+    await p.locator('[data-chapter="10"]').evaluate(e => scrollTo({top:e.offsetTop,behavior:'instant'}));
+    await p.locator('[data-chapter="10"] .note').waitFor({state:'visible'});
+    const note = p.locator('[data-chapter="10"] .note');
+    assert.ok(await note.evaluate(e=>e.scrollHeight>e.clientHeight), 'fixture uses a genuinely overflowing note');
+    await note.evaluate(e=>e.scrollTop=e.scrollHeight);
+    const before = await p.evaluate(()=>scrollY);
+    await note.hover();await p.mouse.wheel(0,400);await p.waitForTimeout(200);
+    assert.ok(await p.evaluate(()=>scrollY)>before, 'wheel continues beyond the note');
+    healthy(p);
+  } finally {await p.context().close();}
+});
+
+test('a contact field usable during scene loading keeps its draft and focus when the scene arrives', async () => {
+  const p = await page();
+  try {
+    const delay = async route => { await new Promise(resolve=>setTimeout(resolve,1000));await route.continue(); };
+    await p.route('**/assets/scene-*.js', delay);
+    await p.route('**/src/scene.ts*', delay);
+    await ready(p, '#contact');
+    const field=p.locator('.chapter.active textarea');
+    await field.fill('A draft written while the garden loads.');
+    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
+    assert.equal(await field.inputValue(), 'A draft written while the garden loads.');
+    assert.equal(await field.evaluate(e=>e===document.activeElement), true);
+    healthy(p);
+  } finally {await p.context().close();}
+});
+
+test('stable fragments, refresh and Back/Forward restore the section', async () => {
+  const p = await page();
+  try {
+    await ready(p, '?view=read#whisperbook');
+    assert.equal(await p.locator('#whisperbook').isVisible(), true);
+    await p.locator('#whisperbook').getByRole('heading', {name:'Whisperbook',exact:true}).scrollIntoViewIfNeeded();
+    await p.locator('.project-shortcuts a[href="#wattch"]').first().click();
+    await p.waitForTimeout(1600);
+    assert.match(p.url(), /#wattch$/);
+    assert.equal(await p.evaluate(()=>document.activeElement.id), 'wattch-title');
+    await p.reload();
+    await p.waitForTimeout(500);
+    assert.match(p.url(), /#wattch$/);
+    assert.ok(await p.locator('#wattch').evaluate(e=>Math.abs(e.getBoundingClientRect().top)<250));
+    await p.goBack();
+    await p.waitForTimeout(500);
+    assert.match(p.url(), /#whisperbook$/);
+    await p.goForward();
+    await p.waitForTimeout(500);
+    assert.match(p.url(), /#wattch$/);
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('screenshot dialog supports keyboard, actual size, Escape and focus restoration', async () => {
+  const p = await page();
+  try {
+    await ready(p, '?view=read#wattch');
+    const opener = p.locator('#wattch figcaption a');
+    await opener.focus();
+    await opener.press('Enter');
+    const dialog = p.getByRole('dialog');
+    assert.equal(await dialog.isVisible(), true);
+    assert.match(await dialog.innerText(), /synthetic values/);
+    await dialog.getByRole('button',{name:'Actual size',exact:true}).click();
+    assert.equal(await dialog.locator('img').evaluate(e=>getComputedStyle(e).maxHeight), 'none');
+    await p.screenshot({path:output+'/evidence-dialog.png'});
+    await dialog.press('Escape');
+    assert.equal(await dialog.isVisible(), false);
+    assert.equal(await opener.evaluate(e=>e===document.activeElement), true);
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('resizing and zoom reflow preserve the selected section without moving focus', async () => {
+  const p = await page();
+  try {
+    await ready(p, '?view=read#wattch');
+    await p.waitForTimeout(1800);
+    await p.locator('.owner').focus();
+    const history = await p.evaluate(() => window.history.length);
+    for (const [width, height] of [[1100,700],[390,844],[360,225],[1440,900]]) {
+      await p.setViewportSize({width,height});
+      await p.waitForTimeout(250);
+      assert.match(p.url(), /#wattch$/);
+      assert.equal(await p.locator('.owner').evaluate(e => e === document.activeElement), true);
+      assert.ok(await p.locator('#wattch').evaluate(e => Math.abs(e.getBoundingClientRect().top) < 250));
+    }
+    assert.equal(await p.evaluate(() => window.history.length), history);
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('Fog and every CSS/canvas layer stop when paused; stage actions are keyboard accessible', async () => {
+  const p = await page();
+  try {
+    await ready(p, '#contact');
+    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
+    await p.locator('.dock > summary').click();
+    await p.getByRole('button',{name:'Fog',exact:true}).click();
+    await p.getByRole('button',{name:'Pause motion',exact:true}).click();
+    await p.waitForTimeout(1200);
+    const before = await p.locator('#scene').getAttribute('data-animation-time');
+    const skyBefore = await p.locator('.sky').evaluateAll(es=>es.map(e=>e.toDataURL()));
+    await p.waitForTimeout(400);
+    assert.equal(await p.locator('#scene').getAttribute('data-animation-time'), before);
+    assert.deepEqual(await p.locator('.sky').evaluateAll(es=>es.map(e=>e.toDataURL())), skyBefore, 'both sky layers remain still');
+    assert.equal(await p.getByRole('button',{name:'Resume motion',exact:true}).getAttribute('aria-pressed'), 'true');
+    assert.deepEqual(await p.evaluate(()=>document.getAnimations().filter(a=>a.playState==='running').map(a=>a.animationName)), []);
+    await p.getByRole('button',{name:'Go to Blueprint',exact:true}).focus();
+    await p.getByRole('button',{name:'Go to Blueprint',exact:true}).press('Enter');
+    await p.waitForTimeout(1600);
+    assert.equal(await p.getByRole('button',{name:'Go to Blueprint',exact:true}).getAttribute('aria-current'),'step');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+for (const [width,height] of [[390,844],[375,667],[320,568],[844,390]]) {
+  test(`normal-flow reading exposes required content at ${width}×${height}`, async () => {
+    const p = await page({viewport:{width,height}});
+    try {
+      await ready(p);
+      assert.equal(await p.locator('html').getAttribute('data-view'), 'read');
+      assert.equal(await p.locator('#scene canvas').count(), 0, 'reading does not initialize WebGL');
+      assert.equal(await p.locator('#portfolio').isVisible(), true);
+      assert.equal(await p.evaluate(()=>scrollY), 0, 'the introduction starts above the fold');
+      assert.ok(await p.locator('#intro-title').evaluate(e=>e.getBoundingClientRect().top>=document.querySelector('.masthead').getBoundingClientRect().bottom),'the header does not obscure the introduction');
+      const clipped = await p.locator('.masthead a').evaluateAll(es=>es.filter(e=>{const r=e.getBoundingClientRect();return r.left<0||r.right>innerWidth+1;}).map(e=>e.textContent));
+      assert.deepEqual(clipped, []);
+      assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      await p.screenshot({path:output+`/reading-${width}x${height}.png`});
+      await go(p,'contact');
+      await p.locator('#contact textarea').fill('A visible mobile draft.');
+      assert.equal(await p.locator('#contact textarea').evaluate(e=>getComputedStyle(e).position),'static');
+      await p.screenshot({path:output+`/contact-${width}x${height}.png`});
+      healthy(p);
+    } finally { await p.context().close(); }
+  });
+}
+
+test('no JavaScript, blocked entry module, and print still expose the portfolio', async () => {
+  for (const javaScriptEnabled of [false,true]) {
+    const p = await page({javaScriptEnabled});
+    try {
+      if(javaScriptEnabled) {
+        await p.route('**/assets/index-*.js',route=>route.abort());
+        await p.route('**/src/main.ts*',route=>route.abort());
+      }
+      await p.goto(base);
+      assert.equal(await p.locator('#portfolio').isVisible(),true);
+      assert.equal(await p.locator('#contact a[href^="mailto:"]').isVisible(),true);
+      assert.match(await p.locator('#work').innerText(),/Whisperbook/);
+      if(!javaScriptEnabled) await p.screenshot({path:output+'/no-javascript.png'});
+    } finally { await p.context().close(); }
+  }
+  const interrupted = await page();
+  try {
+    await interrupted.addInitScript(() => { window.ResizeObserver = class { constructor() {throw new Error('Simulated controller initialization failure');} }; });
+    await interrupted.goto(base);
+    assert.equal(await interrupted.locator('html').evaluate(e=>e.classList.contains('enhanced')), false);
+    assert.equal(await interrupted.locator('#portfolio').isVisible(), true);
+    assert.equal(await interrupted.locator('#experience').isVisible(), false);
+    assert.equal(await interrupted.locator('#contact a[href^="mailto:"]').isVisible(), true);
+    assert.match(interrupted.errors[0], /Simulated controller initialization failure/);
+  } finally {await interrupted.context().close();}
+  const p = await page();
+  try {
+    await ready(p);
+    await p.emulateMedia({media:'print'});
+    assert.equal(await p.locator('#portfolio').isVisible(),true);
+    assert.equal(await p.locator('.chapters').isVisible(),false);
+    await p.pdf({path:output+'/portfolio-print.pdf',format:'A4',printBackground:true});
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('compact garden preview, view history and keyboard stage controls stay in document flow', async () => {
+  const p=await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await p.locator('.view-switch').click();
+    await p.waitForFunction(()=>!!document.querySelector('#scene canvas'));
+    assert.equal(await p.locator('#stage').evaluate(e=>getComputedStyle(e).position),'absolute');
+    const bounds=await p.locator('#stage').boundingBox();
+    assert.ok(bounds.height<400 && bounds.height>150);
+    await p.getByRole('button',{name:'Go to Sketch',exact:true}).click();
+    assert.equal(await p.locator('#scrub').inputValue(),'0');
+    await p.locator('.view-switch').click();
+    assert.equal(await p.locator('#stage').isVisible(),false);
+    await p.goBack();
+    await p.waitForTimeout(200);
+    assert.equal(await p.locator('#stage').isVisible(),true);
+    await p.goBack();
+    await p.waitForTimeout(200);
+    assert.equal(await p.locator('#stage').isVisible(),false);
+    healthy(p);
+  } finally {await p.context().close();}
+});
+
+test('WebGL unavailable, context loss/restoration and offline weather preserve navigation', async () => {
+  const failed=await page();
+  try {
+    await failed.addInitScript(()=>{
+      const original=HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext=function(type,...args) {return type.startsWith('webgl')?null:original.call(this,type,...args);};
+    });
+    await ready(failed);
+    await failed.waitForFunction(()=>document.querySelector('[data-fallback-message]').textContent.includes('can’t be drawn'));
+    await go(failed,'contact');
+    assert.equal(await failed.locator('.chapter.active textarea').isVisible(),true);
+    healthy(failed);
+  } finally {await failed.context().close();}
+  const p=await page();
+  try {
+    await ready(p,'#contact');
+    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
+    await p.locator('.dock > summary').click();
+    await p.waitForFunction(()=>document.querySelector('#sky-report').textContent.includes('isn’t available'));
+    await p.locator('#scene canvas').evaluate(canvas=>{window.lostContext=canvas.getContext('webgl2').getExtension('WEBGL_lose_context');window.lostContext.loseContext();});
+    await p.waitForFunction(()=>!document.querySelector('.scene-fallback').hidden);
+    await go(p,'about');
+    assert.match(await p.locator('.chapter.active h2').innerText(),/question/);
+    await p.evaluate(()=>window.lostContext.restoreContext());
+    await p.waitForFunction(()=>document.querySelector('.scene-fallback').hidden);
+    healthy(p);
+  } finally {await p.context().close();}
+});
+
+test('missing local speech voices and clipboard rejection have useful fallback states', async () => {
+  const p=await page();
+  try {
+    await p.addInitScript(()=>{
+      speechSynthesis.getVoices=()=>[];
+      Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw new Error('Denied');}}});
+    });
+    await ready(p,'?view=read#whisperbook');
+    await p.locator('#whisperbook details summary').click();
+    await p.waitForTimeout(1600);
+    assert.equal(await p.locator('#whisperbook .play').isDisabled(),true);
+    assert.match(await p.locator('#whisperbook .player-voice').innerText(),/no on-device voice/);
+    await go(p,'contact');
+    await p.locator('#contact [data-copy]').click();
+    assert.match(await p.locator('#contact [data-copy-status]').innerText(),/Copy isn’t available/);
+    healthy(p);
+  } finally {await p.context().close();}
+});
+
+test('200% text enlargement and 400% reflow expose links and fields', async () => {
+  const p=await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await p.addStyleTag({content:':root {font-size:200%;}'});
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'200% text does not overflow');
+    const clipped=await p.locator('.masthead a').evaluateAll(es=>es.filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>e.textContent));
+    assert.deepEqual(clipped,[]);
+    await p.screenshot({path:output+'/text-200.png'});
+    await go(p,'contact');
+    await p.locator('#contact textarea').fill('Enlarged text remains readable.');
+    healthy(p);
+  } finally {await p.context().close();}
+  const zoom=await page({viewport:{width:360,height:225}});
+  try {
+    await ready(zoom);
+    assert.ok(await zoom.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'400% equivalent reflow does not overflow');
+    await go(zoom,'contact');
+    assert.equal(await zoom.locator('#contact textarea').isVisible(),true);
+    await zoom.screenshot({path:output+'/reflow-400.png'});
+    healthy(zoom);
+  } finally {await zoom.context().close();}
+});

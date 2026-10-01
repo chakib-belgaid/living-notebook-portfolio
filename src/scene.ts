@@ -1,5 +1,6 @@
 import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { phase, yieldTask } from "./performance";
 
 export type Season = "spring" | "summer" | "autumn" | "winter";
 
@@ -53,10 +54,18 @@ function random() {
   return (seed - 1) / 2147483646;
 }
 
-export function createGarden(
+export async function createGarden(
   container: HTMLElement,
   hotspots: HTMLElement[],
-): Garden {
+  quality: "full" | "low" = "full",
+): Promise<Garden> {
+  const constructionDone = phase("scene-construction");
+  let batchDone = phase("construction:renderer");
+  const checkpoint = async (name: string) => {
+    batchDone();
+    await yieldTask();
+    batchDone = phase(`construction:${name}`);
+  };
   seed = 73;
   const scene = new T.Scene();
   const renderer = new T.WebGLRenderer({
@@ -64,7 +73,9 @@ export function createGarden(
     antialias: true,
     powerPreference: "low-power",
   });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
+  renderer.debug.checkShaderErrors = true;
+  renderer.setPixelRatio(Math.min(devicePixelRatio, quality === "low" ? 1.25 : 1.6));
+  container.dataset.quality = quality;
   renderer.setClearColor(0xfafbf8, 0);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = T.PCFSoftShadowMap;
@@ -80,7 +91,7 @@ export function createGarden(
   const sun = new T.DirectionalLight(0xffefd4, 3.3);
   sun.position.set(-6, 15, 8);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(quality === "low" ? 1024 : 2048, quality === "low" ? 1024 : 2048);
   sun.shadow.camera.left = -12;
   sun.shadow.camera.right = 12;
   sun.shadow.camera.top = 12;
@@ -359,6 +370,7 @@ export function createGarden(
       box(x, y + i * 0.13, z - i * 0.22 * dir, w, 0.14, 0.26, "light");
   }
 
+  await checkpoint("terraces");
   // Individual notebook plots become connected stone terraces.
   box(0, -0.03, 0, 10.8, 0.38, 8.7, "stone");
   box(-3.85, 0.23, 0.2, 3.2, 0.28, 5.3, "light");
@@ -478,6 +490,7 @@ export function createGarden(
   planter(-1.19, 3.15, -1.65, 0.42, 1.7);
   planter(1.26, 3.15, -2.25, 0.4, 0.5);
   planter(1.3, 3.15, -0.85, 0.32, 0.5);
+  await checkpoint("observatory");
   // Pavilion 02: circular energy observatory with a moving water wheel.
   const ringX = -3.55,
     ringZ = 0.2;
@@ -604,6 +617,7 @@ export function createGarden(
   tree(-4.4, groundAt(-4.4, -1.9), -1.9, 0.8);
   planter(-5.0, groundAt(-5.0, 1.7), 1.7, 0.55, 1.1);
   steps(-3.55, 0.3, 2.24, 1.3, 4);
+  await checkpoint("reading-room");
   // Pavilion 01: Whisperbook's reading room. The roof is a book lying open,
   // its pages lined with text and a ribbon left in; the side wall is a
   // bookcase, and the back wall a shelf of spines.
@@ -785,6 +799,7 @@ export function createGarden(
     add(new T.SphereGeometry(0.075, 14, 10).scale(1, 0.85, 1), x, 1.5, 0.02, c, [0, 0, 0], false);
   }
   steps(3.35, 0.34, 1.6, 1.8, 4);
+  await checkpoint("greenhouse");
   // Bridges connect the plots; slatted surfaces catch moving light. A footbridge
   // runs from the observatory's plinth to the atelier's arcade, on two posts.
   box(-1.9, 0.65, -0.3, 0.8, 0.14, 0.6, "wood");
@@ -860,6 +875,7 @@ export function createGarden(
     [-Math.PI / 2, 0, 0.643],
     false,
   );
+  await checkpoint("planting");
   // Banks, pocket gardens, stone paths, and warm little flowers.
   // Each planter sits wholly on one level, clear of the water and the buildings.
   const trees: [number, number, number][] = [
@@ -928,6 +944,7 @@ export function createGarden(
   cylinder(4.36, 1.4, 0.75, 0.027, 1.6, "dark");
   cylinder(4.36, 2.21, 0.75, 0.13, 0.19, "flower");
 
+  await checkpoint("geometry-batches");
   const solidMeshes: T.Mesh[] = [];
   const materials: {
     material: T.MeshStandardMaterial;
@@ -956,6 +973,7 @@ export function createGarden(
           "#include <begin_vertex>\ntransformed.x += sin(position.y*2.1 + position.z + uTime*.85)*.022*uLife; transformed.z += cos(position.x*1.6 + uTime*.7)*.018*uLife;",
         );
       };
+    await checkpoint(`merge-${color}`);
     const geometry = mergeGeometries(geometries)!;
     geometries.forEach((g) => g.dispose());
     const mesh = new T.Mesh(geometry, material);
@@ -1117,6 +1135,7 @@ export function createGarden(
       "uniform float uOpacity;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(.9,.99,.95,(1.-d*2.)*uOpacity*.8);}",
   });
   world.add(new T.Points(sprayGeometry, sprayMaterial));
+  await checkpoint("drones");
   // Three quiet survey drones. Shared geometry keeps the flight detail inexpensive.
   const droneBodyGeometries: T.BufferGeometry[] = [],
     droneTrimGeometries: T.BufferGeometry[] = [],
@@ -1250,6 +1269,7 @@ export function createGarden(
     paddle.rotation.z = -a;
     wheel.add(paddle);
   }
+  await checkpoint("room-details");
   /* The rooms' moving parts. Like the wheel, they fade in with the build. */
   // Whisperbook: rings of sound spread over the table while the widget reads.
   const ringGeometry = new T.TorusGeometry(1, 0.045, 3, 48);
@@ -1638,6 +1658,7 @@ export function createGarden(
     world.add(butterfly);
     butterflies.push(butterfly);
   }
+  await checkpoint("lighting");
   // After dusk: warm lanterns in the buildings and a few fireflies.
   const lanternSpots: [number, number, number][] = [
     [4.36, 2.21, 0.75],
@@ -1746,6 +1767,7 @@ export function createGarden(
   const pointer = new T.Vector2();
   const MAX_TREES = 24;
 
+  await checkpoint("seasons");
   /* Seasons. Foliage colours per batch, how many flowers are out, what lies
      on the terraces, and what drifts down through the garden. */
   const seasonColors: Record<
@@ -1810,7 +1832,7 @@ export function createGarden(
     side: T.DoubleSide,
   });
   // Scatter fallen leaves (or petals, or snow) on the flat tops of the terraces.
-  function buildLitter() {
+  async function buildLitter() {
     const saved = { s: world.scale.clone(), r: world.rotation.y };
     world.scale.set(1, 1, 1);
     world.rotation.y = 0;
@@ -1818,6 +1840,7 @@ export function createGarden(
     const down = new T.Vector3(0, -1, 0);
     const spots: T.Vector3[] = [];
     for (let i = 0; i < 260 && spots.length < 170; i++) {
+      if (i && i % 8 === 0) await yieldTask();
       raycaster.set(
         new T.Vector3((random() - 0.5) * 10.4, 12, (random() - 0.5) * 8.4),
         down,
@@ -1890,8 +1913,9 @@ export function createGarden(
   });
   world.add(new T.Points(fallGeometry, fallMaterial));
 
+  await checkpoint("animals");
   /* Life on the terraces: bushes, and a few animals going about their day. */
-  function surfaceSpots(count: number, accept: (p: T.Vector3) => boolean) {
+  async function surfaceSpots(count: number, accept: (p: T.Vector3) => boolean) {
     const saved = { s: world.scale.clone(), r: world.rotation.y };
     world.scale.set(1, 1, 1);
     world.rotation.y = 0;
@@ -1899,6 +1923,7 @@ export function createGarden(
     const down = new T.Vector3(0, -1, 0);
     const spots: T.Vector3[] = [];
     for (let i = 0; i < count * 8 && spots.length < count; i++) {
+      if (i && i % 8 === 0) await yieldTask();
       raycaster.set(
         new T.Vector3((random() - 0.5) * 10.4, 12, (random() - 0.5) * 8.4),
         down,
@@ -1975,7 +2000,7 @@ export function createGarden(
       [0.12, 0.07, -0.12],
     ].map(([x, y, z]) => shape(new T.IcosahedronGeometry(0.03, 0), x, y, z)),
   )!;
-  const bushSpots = surfaceSpots(48, onGround);
+  const bushSpots = await surfaceSpots(48, onGround);
   const bushMeshes = bushMaterials.map(
     (m) => new T.InstancedMesh(bushGeometry, m, bushSpots.length),
   );
@@ -2063,7 +2088,7 @@ export function createGarden(
   // Rabbits hop between spots on the same terrace, then sit for a while.
   const rabbitFur = mat(0x9c7a5a),
     rabbitTail = mat(0xf4f1ea);
-  const groundSpots = surfaceSpots(70, onGround);
+  const groundSpots = await surfaceSpots(70, onGround);
   const rabbits = Array.from({ length: 3 }, () => {
     const rabbit = new T.Group();
     const body = new T.Mesh(
@@ -2219,11 +2244,12 @@ export function createGarden(
     bushMaterials[1].color.setHex(palette.leafDark!);
     berryMaterial.color.setHex(season === "autumn" ? 0xb8302a : palette.flower!);
     rabbitFur.color.setHex(rabbitColors[season]);
-    if (!litter) buildLitter();
+    // Litter positions are prepared in yielding batches before the renderer starts.
     paintLitter();
     fallColor.value.setHex(season === "spring" ? 0xf4c3d5 : 0xd2812f);
     dirty = true;
   }
+  await checkpoint("renderer-state");
   let targetProgress = 0,
     progress = 0,
     paused = false,
@@ -2314,22 +2340,19 @@ export function createGarden(
   applyLight();
   const onLost = (event: Event) => {
     event.preventDefault();
-    container.parentElement!.querySelector<HTMLElement>(
-      ".scene-fallback",
-    )!.hidden = false;
+    container.dispatchEvent(new Event("garden-context-lost"));
     hotspots.forEach((h) => {
       h.style.visibility = "hidden";
       h.tabIndex = -1;
     });
   };
   const onRestored = () => {
-    container.parentElement!.querySelector<HTMLElement>(
-      ".scene-fallback",
-    )!.hidden = true;
+    container.dispatchEvent(new Event("garden-context-restored"));
     hotspots.forEach((h) => (h.style.visibility = ""));
   };
   renderer.domElement.addEventListener("webglcontextlost", onLost);
   renderer.domElement.addEventListener("webglcontextrestored", onRestored);
+  let firstRender = true;
   function render(now: number) {
     if (disposed) return;
     frame = requestAnimationFrame(render);
@@ -2340,7 +2363,7 @@ export function createGarden(
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     if (drawIn < 1) {
-      drawIn = reduced ? 1 : Math.min(1, drawIn + dt / 3.2);
+      drawIn = reduced || paused ? 1 : Math.min(1, drawIn + dt / 3.2);
       dirty = true;
     }
     const growing = planted.some((p) => p.age < 1);
@@ -2509,6 +2532,7 @@ export function createGarden(
     }
     const before = performance.now();
     renderer.render(scene, camera);
+    if (firstRender) { firstRender = false; performance.mark("notebook:first-render"); performance.measure("notebook:scene-to-first-render", "notebook:scene-construction:start", "notebook:first-render"); }
     renderMs = lerp(renderMs || 1, performance.now() - before, 0.1);
     container.dataset.progress = progress.toFixed(3);
     container.dataset.drawCalls = String(renderer.info.render.calls);
@@ -2523,6 +2547,10 @@ export function createGarden(
     container.dataset.postbox = postbox;
     container.dataset.flag = flagLift.toFixed(2);
   }
+  await checkpoint("ground-litter");
+  await buildLitter();
+  batchDone();
+  constructionDone();
   frame = requestAnimationFrame(render);
   /* Most of the garden's materials are first drawn at Build and Bloom, and
      three compiles a shader program on first draw, blocking the page while
@@ -2531,7 +2559,10 @@ export function createGarden(
      the built terraces switch to, and the shadow pass. */
   async function warmShaders() {
     if (disposed) return;
+    const done = phase("shader-warmup");
     const pending = [renderer.compileAsync(scene, camera)];
+    await yieldTask();
+    if (disposed) return;
     const flipping = materials
       .map(({ material }) => material)
       .filter((m) => m.transparent && !m.side);
@@ -2541,6 +2572,15 @@ export function createGarden(
       m.transparent = true;
       m.needsUpdate = true;
     });
+    await yieldTask();
+    if (disposed) return;
+    // Prepare the fog variant too, without changing the visible weather.
+    const visibleFog = scene.fog;
+    scene.fog = mist;
+    pending.push(renderer.compileAsync(scene, camera));
+    scene.fog = visibleFog;
+    await yieldTask();
+    if (disposed) return;
     // The shadow pass draws casters with one shared depth material, back
     // faces, no fog, into a render target (so without tone mapping).
     const depth = new T.MeshDepthMaterial({
@@ -2558,6 +2598,7 @@ export function createGarden(
     renderer.setRenderTarget(null);
     scene.fog = fog;
     await Promise.all(pending);
+    done();
     target.dispose();
     box.dispose();
     // The probe's depth material is kept: disposing it would release the
@@ -2568,15 +2609,18 @@ export function createGarden(
     const programs = [...(renderer.info.programs ?? [])];
     const next = () => {
       const program = programs.pop();
-      if (!program || disposed) return;
+      if (disposed) return;
+      if (!program) { performance.mark("notebook:shader-first-use-complete"); return; }
+      const checked = phase("shader-first-use");
       program.getUniforms();
+      checked();
       idle(next, { timeout: 1000 });
     };
     next();
   }
   const idle = window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 200));
   // Compiling runs in parallel in the driver, so start right after the first frame.
-  requestAnimationFrame(() => warmShaders().catch(() => {}));
+  requestAnimationFrame(() => warmShaders().catch(error => console.warn("Garden shader warm-up failed.", error)));
   return {
     setNarrating(on) {
       narrating = on;

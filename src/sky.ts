@@ -297,11 +297,15 @@ export function createSky(
         }
       }
 
-    /* Sun and moon travel on an arc across the upper sky. */
+    /* On portrait phones the garden and its labels occupy the centre of the
+       upper frame. Keep the celestial arc in the open sky to its right. */
     const R = clamp(W * 0.022, 20, 40);
+    const portraitPhone = W <= 760 && H > 520;
     const arcPos = (a: number): [number, number] => [
-      W * (0.1 + 0.8 * a),
-      H * (0.46 - 0.36 * Math.sin(a * Math.PI)),
+      W * (portraitPhone ? 0.84 + 0.03 * a : 0.1 + 0.8 * a),
+      H * (portraitPhone
+        ? 0.225 - 0.085 * Math.sin(a * Math.PI)
+        : 0.46 - 0.36 * Math.sin(a * Math.PI)),
     ];
     const sunArc = clamp((hour - 6) / 14);
     const sunA = (1 - night) * (1 - now.cloud * 0.8) * (1 - now.fog * 0.75);
