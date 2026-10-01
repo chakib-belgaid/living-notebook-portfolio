@@ -24,6 +24,8 @@ export interface Garden {
   setWeather: (cloud: number, precip: number) => void;
   /** Glide the camera to a named spot, or back to the whole garden. Shift moves the garden on screen as a fraction of the view. */
   focus: (spot: string | null, shiftX?: number, shiftY?: number) => void;
+  /** The band of the view the garden is framed in, top and bottom as fractions of the container's height (0–1). The camera eases to a new frame. */
+  frame: (top: number, bottom: number) => void;
   stats: () => { triangles: number; calls: number; ms: number };
   /** Recolours foliage, flowers, fallen leaves, and drifting petals for the season. */
   setSeason: (season: Season) => void;
@@ -34,6 +36,17 @@ export interface Garden {
 const smooth = (a: number, b: number, v: number) =>
   T.MathUtils.smoothstep(v, a, b);
 const lerp = T.MathUtils.lerp;
+// Fades a material in or out, only paying for transparency while it is partial.
+function fade(material: T.Material, opacity: number) {
+  material.opacity = opacity;
+  const transparent = opacity < 0.995;
+  if (material.transparent !== transparent) {
+    material.transparent = transparent;
+    material.needsUpdate = true;
+  }
+  material.depthWrite = opacity > 0.92;
+  material.visible = opacity > 0.003;
+}
 let seed = 73;
 function random() {
   seed = (seed * 16807) % 2147483647;
@@ -1365,17 +1378,14 @@ export function createGarden(
     const c = sheetContext,
       w = sheetCanvas.width,
       h = sheetCanvas.height;
-    const ink = ["#8b8f93", "#2f6db5", "#24313b"][step];
+    // While drawn, the sheet has no paper of its own: just lines in the
+    // scene's pencil and blueprint ink. It only becomes paper once built.
+    const ink = ["#8fbcda", "#c0eaff", "#24313b"][step];
     const wash = step === 2 ? "rgba(118, 166, 92, 0.3)" : null;
-    c.fillStyle = "#f7f3e8";
-    c.fillRect(0, 0, w, h);
-    if (step === 1) {
-      c.strokeStyle = "rgba(47, 109, 181, 0.12)";
-      c.lineWidth = 1;
-      c.beginPath();
-      for (let x = 16; x < w; x += 16) c.moveTo(x, 0), c.lineTo(x, h);
-      for (let y = 16; y < h; y += 16) c.moveTo(0, y), c.lineTo(w, y);
-      c.stroke();
+    c.clearRect(0, 0, w, h);
+    if (step === 2) {
+      c.fillStyle = "#f7f3e8";
+      c.fillRect(0, 0, w, h);
     }
     const s = 24;
     const p = (x: number, y: number, z: number): [number, number] => [
@@ -1688,8 +1698,24 @@ export function createGarden(
   );
   const trunkGeometry = new T.CylinderGeometry(0.025, 0.035, 0.45, 6);
   const leafGeometry = new T.IcosahedronGeometry(0.19, 1);
+  // Until the garden is built, a planted tree is only drawn: a bare stick
+  // with a few forked branches, in the same ink as the rest of the drawing.
+  const stickMaterial = new T.LineBasicMaterial({
+    transparent: true,
+    depthWrite: false,
+  });
+  const stickGeometry = new T.BufferGeometry().setFromPoints(
+    [
+      [0, 0, 0], [0, 0.62, 0],
+      [0, 0.3, 0], [-0.14, 0.5, 0.03],
+      [0, 0.36, 0], [0.15, 0.56, -0.04],
+      [0, 0.44, 0], [0.04, 0.6, 0.13],
+      [0, 0.48, 0], [-0.05, 0.62, -0.12],
+    ].map(([x, y, z]) => new T.Vector3(x, y, z)),
+  );
   function makeTree(local: T.Vector3) {
     const g = new T.Group();
+    g.add(new T.LineSegments(stickGeometry, stickMaterial));
     const trunk = new T.Mesh(trunkGeometry, plantMaterial);
     trunk.position.y = 0.23;
     trunk.castShadow = true;
@@ -2220,6 +2246,9 @@ export function createGarden(
     focusGoal = 0,
     shift = new T.Vector2(),
     shiftGoal = new T.Vector2();
+  // The band the garden is framed in: top and bottom, as fractions.
+  const view = new T.Vector2(0, 1),
+    viewGoal = new T.Vector2(0, 1);
   let renderMs = 0;
   let shadowStrength = 1;
   let fogAmount = 0,
@@ -2321,6 +2350,7 @@ export function createGarden(
       Math.abs(focusGoal - focusAmount) > 0.0005 ||
       Math.abs(fogTarget - fogAmount) > 0.002 ||
       shift.distanceTo(shiftGoal) > 0.0005 ||
+      view.distanceTo(viewGoal) > 0.0005 ||
       roomsSettling() ||
       growing;
     if ((paused || progress < 0.5) && !changed && !dirty) return;
@@ -2339,6 +2369,7 @@ export function createGarden(
     const ease = reduced ? 1 : Math.min(dt * 3.2, 1);
     focusAmount = lerp(focusAmount, focusGoal, ease);
     shift.lerp(shiftGoal, ease);
+    view.lerp(viewGoal, ease);
     focusPoint.lerp(focusTarget, ease);
     const drawn = drawIn * drawIn * (3 - 2 * drawIn);
     const count = outlines.geometry.attributes.position.count;
@@ -2356,15 +2387,10 @@ export function createGarden(
     materials.forEach(({ material, flora, glass, key }) => {
       const bloom =
         key === "flower" || key === "coral" ? flowerAmount[season] : 1;
-      material.opacity = flora ? life * bloom : solid * (glass ? 0.38 : 1);
-      const transparent = material.opacity < 0.995;
-      if (material.transparent !== transparent) {
-        material.transparent = transparent;
-        material.needsUpdate = true;
-      }
-      material.depthWrite = material.opacity > 0.92;
-      material.visible = material.opacity > 0.003;
+      fade(material, flora ? life * bloom : solid * (glass ? 0.38 : 1));
     });
+    fade(plantMaterial, solid);
+    plantLeaves.forEach((m) => fade(m, life));
     lineMaterial.color
       .copy(pencilColor)
       .lerp(blueColor, blueprint)
@@ -2372,6 +2398,9 @@ export function createGarden(
     lineMaterial.opacity =
       lerp(darkTheme ? 0.38 : 0.21, darkTheme ? 0.85 : 0.6, blueprint) *
       (1 - solid * 0.92);
+    stickMaterial.color.copy(lineMaterial.color);
+    stickMaterial.opacity = lineMaterial.opacity * (1 - solid);
+    stickMaterial.visible = stickMaterial.opacity > 0.003;
     ghostMaterial.opacity = 0.055 * (1 - blueprint);
     guideMaterial.opacity =
       smooth(0.06, 0.3, progress) * (1 - smooth(0.45, 0.62, progress)) * 0.38;
@@ -2440,7 +2469,10 @@ export function createGarden(
         back = 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);
       p.group.scale.setScalar(Math.max(0.001, back * p.group.userData.size));
     });
-    const aspect = width / height;
+    // The garden is fitted to its frame, as if the frame were the whole
+    // view; the rest of the view shows more of the same scene around it.
+    const band = Math.max(0.05, view.y - view.x);
+    const aspect = width / (height * band);
     const stackedMobile = innerWidth <= 760 && innerHeight > 520;
     const span = stackedMobile
       ? Math.max(12.8, 15.2 / aspect)
@@ -2448,12 +2480,13 @@ export function createGarden(
         ? 15.3 / aspect
         : 15.6;
     const half = span / 2 / (1 + focusAmount * 0.4);
+    const full = half / band;
     camera.left = -half * aspect - shift.x * half * aspect * 2;
     camera.right = half * aspect - shift.x * half * aspect * 2;
-    camera.top = half - shift.y * half * 2;
-    camera.bottom = -half - shift.y * half * 2;
+    camera.top = (view.x + view.y) * full - shift.y * half * 2;
+    camera.bottom = camera.top - 2 * full;
     // Leaves and petals keep the same size relative to the garden.
-    fallSize.value = (height / (2 * half)) * 0.2 * renderer.getPixelRatio();
+    fallSize.value = (height / (2 * full)) * 0.2 * renderer.getPixelRatio();
     const angle =
       lerp(0.69, 0.78, smooth(0.3, 1, progress)) - (1 - drawn) * 0.45;
     const look = lookDefault.clone().lerp(focusPoint, focusAmount);
@@ -2617,6 +2650,10 @@ export function createGarden(
     setHour(value) {
       hour = value;
       applyLight();
+    },
+    frame(top, bottom) {
+      viewGoal.set(top, bottom);
+      dirty = true;
     },
     focus(spot, shiftX = 0, shiftY = 0) {
       if (spot && points[spot]) {

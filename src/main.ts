@@ -63,20 +63,63 @@ const spotNames: Record<Spot, string> = {
 
 /* The story is a run of beats. The garden holds still through a stage's beats
    and only grows between stages. Blueprint walks the career up the tower;
-   Build visits each project's building. */
+   Build walks through each project, a few notes per building; Bloom is where
+   to write. */
 const stages = ["Sketch", "Blueprint", "Build", "Bloom"];
 const stageProgress = [0, 0.33, 0.66, 1];
+type WidgetSpot = Exclude<Spot, "about">;
 type Beat = {
   stage: number;
   title: string;
   copy: string;
   label?: string;
+  lede?: string;
   hint?: string;
+  /** More of the note, after the copy (HTML). */
+  body?: string;
   /** Lights a level of the tower (see highlightPath). */
   path?: number;
-  /** The camera visits this building, and the note links to its notes. */
+  /** The camera visits this building. */
   spot?: Spot;
+  /** This building's widget mounts in the note's [data-widget] slot. */
+  widget?: WidgetSpot;
 };
+
+/* A project as three notes: what it is (and a try of it), what I built, and
+   the decision that shaped it, with its screenshot. */
+function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
+  const p = projects[spot];
+  return [
+    {
+      stage: 2,
+      label: p.place,
+      title: p.title,
+      lede: p.lede,
+      copy: p.intro,
+      body: `<dl class="note-facts">
+          <div><dt>Field</dt><dd>${p.field}</dd></div>
+          <div><dt>Built with</dt><dd>${p.tech.join(", ")}</dd></div>
+          <div><dt>Source</dt><dd><a href="${p.url}" target="_blank" rel="noopener noreferrer">Read it on GitHub</a></dd></div>
+        </dl>
+        <section class="note-widget try"><h3>Try it</h3><div data-widget></div></section>`,
+      spot,
+      widget: spot,
+    },
+    { stage: 2, label: p.title, title: "What I built", copy: p.built, spot },
+    {
+      stage: 2,
+      label: p.title,
+      title: "The decision that shaped it",
+      copy: p.decision,
+      body: `<figure class="proof proof-${spot}">
+          <img src="${p.image}" alt="${p.alt}" width="${p.size[0]}" height="${p.size[1]}" decoding="async" />
+          <figcaption>${p.caption}</figcaption>
+        </figure>`,
+      spot,
+    },
+  ];
+}
+const email = "chakib.belgaid@gmail.com";
 const beats: Beat[] = [
   {
     stage: 0,
@@ -87,7 +130,7 @@ const beats: Beat[] = [
   {
     stage: 1,
     title: "A question first, then a structure",
-    copy: "Can a phone narrate a whole book without sending a page to a server? How much energy does a test suite use? I write the question down, then draw the system that could answer it.",
+    copy: "Can a phone narrate a whole book without sending a page to a server? How much energy does a test suite use? I write the question down, then draw the system that could answer it. I like following an idea all the way from a rough sketch to something people can use, and checking what is actually true along the way.",
     hint: "The tower holds the path so far, from the ground up.",
   },
   {
@@ -123,29 +166,28 @@ const beats: Beat[] = [
     title: "Constraints decided early",
     copy: "Whisperbook has no network permission at all. Wattch keeps raw traces replayable and labels synthetic data as synthetic. Most of the work is in decisions people never see.",
   },
-  {
-    stage: 2,
-    label: projects.whisperbook.place,
-    title: projects.whisperbook.title,
-    copy: projects.whisperbook.intro,
-    spot: "whisperbook",
-  },
-  {
-    stage: 2,
-    label: projects.wattch.place,
-    title: projects.wattch.title,
-    copy: projects.wattch.intro,
-    spot: "wattch",
-  },
+  ...projectBeats("whisperbook"),
+  ...projectBeats("wattch"),
   {
     stage: 3,
-    title: "The garden is open",
-    copy: "Whisperbook lives in the reading pavilion, Wattch Core in the water-wheel observatory. Select a building to read about it, or plant something of your own.",
-    hint: "Try the light. The garden follows your clock.",
+    label: "The greenhouse",
+    title: "Write to me",
+    copy: "For product engineering, applied AI, or energy-aware software.",
+    body: `<p class="note-email"><a href="mailto:${email}">${email}</a></p>
+      <section class="note-widget" data-widget></section>
+      <p class="note-links"><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> and <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a></p>`,
+    widget: "contact",
   },
 ];
 // The first beat of each stage, where the ruler's stage ticks point.
 const stageStart = stages.map((_, s) => beats.findIndex((b) => b.stage === s));
+// Where the masthead links and the building labels lead.
+const spotBeat: Record<Spot, number> = {
+  whisperbook: beats.findIndex((b) => b.spot === "whisperbook"),
+  wattch: beats.findIndex((b) => b.spot === "wattch"),
+  about: stageStart[1],
+  contact: stageStart[3],
+};
 
 /* Headline letters are wrapped so they can be set in one after another. */
 function lettered(text: string) {
@@ -169,7 +211,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     <div id="scene" role="img" aria-label="A garden of stone terraces, pavilions, and water. It is drawn first as pencil lines, then as a blue engineering drawing, then built and planted."></div>
     <p class="scene-fallback" hidden>The garden can’t be drawn in this browser. Everything else on the page still works.</p>
     <canvas class="sky sky-front" aria-hidden="true"></canvas>
-    ${spotOrder.map((s) => `<div class="hotspot" data-spot="${s}"><button type="button" class="hotspot-title" data-open="${s}" tabindex="-1">${spotNames[s]}</button><div class="hotspot-widget"></div></div>`).join("")}
+    ${spotOrder.map((s) => `<div class="hotspot" data-spot="${s}"><button type="button" class="hotspot-title" data-open="${s}" tabindex="-1">${spotNames[s]}</button></div>`).join("")}
   </div>
 
   <header class="masthead">
@@ -178,7 +220,6 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <button type="button" class="link" data-open="whisperbook">Work</button>
       <button type="button" class="link" data-open="about">About</button>
       <button type="button" class="link" data-open="contact">Contact</button>
-      <button type="button" class="link quiet" id="theme-toggle" aria-pressed="false" aria-label="Blueprint paper"><span class="wide-only">Blueprint paper</span><svg class="narrow-only" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg></button>
     </nav>
   </header>
 
@@ -190,9 +231,11 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <section class="chapter" data-chapter="${i}" aria-labelledby="chapter-${i}">
         <div class="note">
           <p class="note-stage">${stages[b.stage]}${b.label ? ` · ${b.label}` : ""}</p>
-          ${i === 0 ? `<h1 id="chapter-${i}">${lettered(b.title)}</h1>` : `<h2 id="chapter-${i}">${lettered(b.title)}</h2>`}
+          ${i === 0 ? `<h1 id="chapter-${i}" tabindex="-1">${lettered(b.title)}</h1>` : `<h2 id="chapter-${i}" tabindex="-1">${lettered(b.title)}</h2>`}
+          ${b.lede ? `<p class="note-lede">${b.lede}</p>` : ""}
           <p class="note-copy">${b.copy}</p>
-          ${b.spot ? `<p class="note-hint"><button type="button" class="link" data-open="${b.spot}">Read the notes <span aria-hidden="true">›</span></button></p>` : b.hint ? `<p class="note-hint">${b.hint}</p>` : ""}
+          ${b.body ? `<div class="note-body">${b.body}</div>` : ""}
+          ${b.hint ? `<p class="note-hint">${b.hint}</p>` : ""}
         </div>
       </section>`,
       )
@@ -211,6 +254,12 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </div>
 
   <aside class="dock" aria-label="Garden controls">
+    <section class="widget widget-carbon" data-from="0" aria-labelledby="carbon-label">
+      <p class="carbon-figure" aria-live="off" data-carbon-figure>—</p>
+      <p class="carbon-label" id="carbon-label">This page’s carbon footprint so far</p>
+      <p class="widget-fine carbon-source" data-carbon-source></p>
+    </section>
+
     <section class="widget widget-sky" data-from="3" aria-labelledby="sky-title">
       <div class="widget-head">
         <h3 id="sky-title">Sky</h3>
@@ -248,9 +297,6 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     </section>
   </aside>
 
-  <article class="panel" id="panel" aria-labelledby="panel-title" hidden>
-    <div class="panel-inner" id="panel-content"></div>
-  </article>
   <div class="mist" aria-hidden="true"></div>
   <p id="announce" class="sr-only" role="status"></p>
 `;
@@ -266,43 +312,12 @@ let fog = 0;
 const sky = createSky($(".sky-back"), $(".sky-front"));
 const announce = (text: string) => ($("#announce").textContent = text);
 
-/* Theme: white paper or blueprint paper. */
-const themeQuery = matchMedia("(prefers-color-scheme: dark)");
-let savedTheme: string | null = null;
-try {
-  savedTheme = localStorage.getItem("notebook-theme");
-} catch {
-  /* Storage may be unavailable. */
-}
-let dark = savedTheme ? savedTheme === "dark" : themeQuery.matches;
-const themeButton = $<HTMLButtonElement>("#theme-toggle");
+/* The notebook is always drawn on blueprint paper. */
 function syncTheme() {
-  root.dataset.theme = dark ? "dark" : "light";
-  themeButton.setAttribute("aria-pressed", String(dark));
-  $("meta[name=theme-color]").setAttribute(
-    "content",
-    dark ? "#0e2b48" : "#f1f2ee",
-  );
-  garden?.setTheme(dark);
-  sky.refresh(dark);
+  garden?.setTheme(true);
+  sky.refresh(true);
   applyFog();
 }
-themeButton.addEventListener("click", () => {
-  dark = !dark;
-  savedTheme = dark ? "dark" : "light";
-  try {
-    localStorage.setItem("notebook-theme", savedTheme);
-  } catch {
-    /* The switch still works without storage. */
-  }
-  syncTheme();
-});
-themeQuery.addEventListener("change", (e) => {
-  if (!savedTheme) {
-    dark = e.matches;
-    syncTheme();
-  }
-});
 syncTheme();
 
 /* Motion. */
@@ -380,14 +395,91 @@ function layoutRuler() {
 }
 
 /* The camera follows the story: a lit level of the tower in Blueprint, a
-   building in Build. An open panel takes over until it closes. */
+   building in Build. */
+const narrow = matchMedia("(max-width: 899px)");
 function syncStory() {
-  if (openSpot) return;
   const b = beats[beat];
   garden?.highlightPath(b?.path ?? null);
   if (b?.spot)
-    garden?.focus(b.spot, narrow.matches ? 0 : 0.16, narrow.matches ? -0.1 : 0.04);
+    garden?.focus(b.spot, narrow.matches ? 0 : 0.16, narrow.matches ? 0 : 0.04);
   else garden?.focus(null);
+}
+
+/* The dock's widgets come out with the stage. On narrow screens the dock is a
+   row along the bottom and, before Bloom, that space belongs to the note, so
+   every widget (the carbon card too) waits for Bloom. */
+function syncWidgets() {
+  widgets.forEach((w) => {
+    const from = narrow.matches ? 3 : Number(w.dataset.from);
+    const show = stage >= from;
+    w.classList.toggle("shown", show);
+    w.inert = !show;
+  });
+}
+
+/* On narrow screens the garden sits at the top, in a frame of one size per
+   stage: from below the masthead down to the top of that stage's tallest
+   note, so no note of the stage covers it. The camera eases from one frame
+   to the next as the stage changes. */
+let frames: [number, number][] = [];
+// A note's widget is only mounted while it shows, so each slot keeps the
+// height its widget takes, measured once per width by mounting it briefly.
+let slotsFor = 0;
+function sizeSlots() {
+  if (innerWidth === slotsFor) return;
+  slotsFor = innerWidth;
+  chapterEls.forEach((c, i) => {
+    const b = beats[i];
+    const slot = c.querySelector<HTMLElement>("[data-widget]");
+    if (!b.widget || !slot) return;
+    slot.style.minHeight = "";
+    const cleanup = i === beat ? null : mountProjectWidget(b.widget, slot);
+    slot.style.minHeight = `${slot.offsetHeight}px`;
+    cleanup?.();
+  });
+}
+function measureFrames() {
+  if (!narrow.matches) return frameGarden();
+  sizeSlots();
+  const h = $("#scene").clientHeight || innerHeight;
+  const top = $(".masthead").offsetHeight;
+  frames = stages.map((_, s) => {
+    let bottom = h;
+    chapterEls.forEach((c, i) => {
+      if (beats[i].stage !== s) return;
+      const note = c.querySelector<HTMLElement>(".note")!;
+      const noteTop = h - parseFloat(getComputedStyle(note).bottom) - note.offsetHeight;
+      bottom = Math.min(bottom, noteTop - 16);
+    });
+    return [top / h, Math.max(bottom, top + 0.15 * h) / h];
+  });
+  frameGarden();
+}
+function frameGarden() {
+  const f = narrow.matches ? frames[stage] : undefined;
+  garden?.frame(f?.[0] ?? 0, f?.[1] ?? 1);
+}
+
+/* One widget is mounted at a time, in the active note. */
+let widgetCleanup: (() => void) | null = null;
+function mountNoteWidget() {
+  widgetCleanup?.();
+  widgetCleanup = null;
+  const b = beats[beat];
+  const slot = chapterEls[beat]?.querySelector<HTMLElement>("[data-widget]");
+  if (b?.widget && slot) widgetCleanup = mountProjectWidget(b.widget, slot);
+}
+
+/* Links scroll the story to a beat; once there, focus moves to its heading. */
+let focusTo = -1;
+function focusHeading(i: number) {
+  chapterEls[i].querySelector<HTMLElement>("h1, h2")!.focus({ preventScroll: true });
+}
+function goTo(i: number) {
+  setPlanting(false);
+  scrollTo({ top: holdAt(i), behavior: reduced ? "instant" : "smooth" });
+  if (beat === i) focusHeading(i);
+  else focusTo = i;
 }
 
 function measure() {
@@ -407,15 +499,12 @@ function measure() {
   if (s !== stage) {
     stage = s;
     root.dataset.stage = String(s);
-    sky.refresh(dark);
+    sky.refresh(true);
     $$<HTMLButtonElement>("[data-go]").forEach((b, i) =>
       b.classList.toggle("current", i === s),
     );
-    widgets.forEach((w) => {
-      const show = s >= Number(w.dataset.from);
-      w.classList.toggle("shown", show);
-      w.inert = !show;
-    });
+    syncWidgets();
+    frameGarden();
   }
   if (now.beat !== beat) {
     beat = now.beat;
@@ -427,7 +516,12 @@ function measure() {
     $$<HTMLElement>("[data-dot]").forEach((d, i) =>
       d.classList.toggle("current", i === beat),
     );
+    mountNoteWidget();
     syncStory();
+    if (beat >= 0 && beat === focusTo) {
+      focusTo = -1;
+      focusHeading(beat);
+    }
   }
   const live = growth > 0.86 && !!garden;
   hotspots.forEach((h) => {
@@ -435,7 +529,6 @@ function measure() {
     h.querySelector("button")!.tabIndex = live ? 0 : -1;
     h.inert = !live;
   });
-  syncCards();
   garden?.setProgress(growth, reduced);
   sky.setGrowth(growth);
 }
@@ -450,7 +543,16 @@ function schedule() {
   });
 }
 addEventListener("scroll", schedule, { passive: true });
-addEventListener("resize", schedule);
+addEventListener("resize", () => {
+  schedule();
+  measureFrames();
+});
+// A link's scroll that ends short of its beat (the visitor took over) drops
+// the focus it would have moved.
+addEventListener("scrollend", () => {
+  measure();
+  focusTo = -1;
+});
 
 scrub.addEventListener("input", () =>
   scrollTo({ top: (Number(scrub.value) / 1000) * maxScroll(), behavior: "instant" }),
@@ -465,7 +567,6 @@ $$<HTMLButtonElement>("[data-go]").forEach((b) =>
 );
 $("[data-home]").addEventListener("click", (e) => {
   e.preventDefault();
-  closePanel();
   scrollTo({ top: 0, behavior: reduced ? "instant" : "smooth" });
 });
 
@@ -487,6 +588,25 @@ const smoothstep = (a: number, b: number, v: number) => {
   return t * t * (3 - 2 * t);
 };
 let isNight: boolean | null = null;
+// Blueprint paper: a lighter blue by day, the deep blue at night. The day
+// blue is as light as it can be while the muted text keeps 4.5:1 contrast.
+const dayPaper = [0x1c, 0x4b, 0x7c],
+  nightPaper = [0x0e, 0x2b, 0x48];
+function setPaper(night: number) {
+  const paper =
+    "#" +
+    dayPaper
+      .map((d, i) =>
+        Math.round(d + (nightPaper[i] - d) * night)
+          .toString(16)
+          .padStart(2, "0"),
+      )
+      .join("");
+  root.style.setProperty("--paper", paper);
+  $("meta[name=theme-color]").setAttribute("content", paper);
+  sky.refresh(true);
+  applyFog();
+}
 function setHour(h: number) {
   hourInput.value = String(h);
   $("#hour-readout").textContent = formatHour(h);
@@ -496,6 +616,7 @@ function setHour(h: number) {
     smoothstep(19.2, 21.5, h) + (1 - smoothstep(5, 6.6, h)),
   );
   root.style.setProperty("--night", night.toFixed(3));
+  setPaper(night);
   root.style.setProperty(
     "--arc",
     Math.min(Math.max((h - 5) / 18, 0), 1).toFixed(3),
@@ -701,43 +822,52 @@ stageEl.addEventListener("pointercancel", () => {
   root.classList.remove("turning");
 });
 
-/* Each building has a small widget. Whisperbook and Wattch live on cards in
-   the garden on wide screens and in their panels on narrow ones; The path and
-   Leave a note live in the About and Contact panels. */
-
-/* Wattch: the cost to draw this page, a sparkline of the CPU time each frame
-   takes to submit. It draws into every mounted meter. */
-const meters = new Set<{ canvas: HTMLCanvasElement; readout: HTMLElement }>();
-
-/* Its carbon footprint is an estimate, not a measurement: the bytes this page
-   has loaded over the network (the browser's own resource timing; cached files
-   count as nothing), times the Sustainable Web Design model v4. That is 0.194
-   kWh/GB operational plus 0.106 kWh/GB embodied, at the global average grid
-   of 494 gCO2e/kWh. */
+/* The page's carbon footprint, on the side the whole way. It is an estimate,
+   not a measurement: the bytes this page has loaded over the network (the
+   browser's own resource timing; cached files count as nothing), times the
+   Sustainable Web Design model v4. That is 0.194 kWh/GB operational plus
+   0.106 kWh/GB embodied, at the global average grid of 494 gCO2e/kWh. */
 const gramsPerByte = ((0.055 + 0.059 + 0.08 + 0.012 + 0.013 + 0.081) * 494) / 1e9;
 let bytesLoaded = 0;
+let timing = false;
 try {
   const counter = new PerformanceObserver((list) => {
     for (const e of list.getEntries()) bytesLoaded += (e as PerformanceResourceTiming).transferSize ?? 0;
   });
   counter.observe({ type: "navigation", buffered: true });
   counter.observe({ type: "resource", buffered: true });
+  timing = PerformanceObserver.supportedEntryTypes?.includes("resource") ?? false;
 } catch {
-  // No resource timing: the estimate stays at nothing loaded and says so.
+  // No resource timing: the card says so.
 }
-const carbons = new Set<HTMLElement>();
+const carbons = new Set<{ figure: HTMLElement; source: HTMLElement }>();
+carbons.add({
+  figure: $("[data-carbon-figure]"),
+  source: $("[data-carbon-source]"),
+});
 function drawCarbon() {
-  if (!carbons.size) return;
-  let text = "This browser does not report what the page has loaded.";
-  if (bytesLoaded) {
+  let figure = "—";
+  let source = "This browser does not report what the page has loaded.";
+  if (timing) {
     const grams = bytesLoaded * gramsPerByte;
     const size =
-      bytesLoaded >= 1e6 ? `${(bytesLoaded / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(bytesLoaded / 1e3))} kB`;
-    text = `${grams < 0.01 ? "Under 0.01" : `About ${grams.toFixed(grams < 1 ? 2 : 1)}`} g CO₂e so far, for ${size} loaded.`;
+      bytesLoaded >= 1e6 ? `${(bytesLoaded / 1e6).toFixed(1)} MB` : `${Math.round(bytesLoaded / 1e3)} kB`;
+    figure = grams < 0.01 ? "Under 0.01 g CO₂e" : `${grams.toFixed(grams < 1 ? 2 : 1)} g CO₂e`;
+    source = `${size} loaded · Sustainable Web Design model, world grid. Estimated, not measured.`;
   }
-  for (const el of carbons) el.textContent = text;
+  for (const c of carbons) {
+    if (c.figure.textContent !== figure) c.figure.textContent = figure;
+    if (c.source.textContent !== source) c.source.textContent = source;
+  }
 }
-const carbonFine = "Estimated from data loaded (Sustainable Web Design model, world grid). Not measured.";
+drawCarbon();
+
+/* Each building has a small widget, shown in its first note: the
+   Whisperbook player and the Wattch meter. Bloom has Leave a note. */
+
+/* Wattch: the cost to draw this page, a sparkline of the CPU time each frame
+   takes to submit. It draws into every mounted meter. */
+const meters = new Set<{ canvas: HTMLCanvasElement; readout: HTMLElement }>();
 const samples: number[] = [];
 function drawMeter() {
   if (!garden || !meters.size) return;
@@ -773,29 +903,20 @@ setInterval(() => {
   drawCarbon();
 }, 300);
 function mountMeter(el: HTMLElement) {
-  const carbon = `<p class="meter-readout meter-carbon"></p>
-    <p class="widget-fine">${carbonFine}</p>`;
   if (!garden) {
-    el.innerHTML = `<p class="meter-readout">Rendering is off in this browser, so there is nothing to measure.</p>${carbon}`;
-  } else {
-    el.innerHTML = `<canvas class="spark" width="480" height="80" aria-hidden="true"></canvas>
-    <p class="meter-readout">Measuring</p>
-    <p class="widget-fine">Measured live in your browser, like the dial in the observatory.</p>${carbon}`;
+    el.innerHTML = `<p class="meter-readout">Rendering is off in this browser, so there is nothing to measure.</p>`;
+    return () => {};
   }
-  const carbonEl = el.querySelector<HTMLElement>(".meter-carbon")!;
-  carbons.add(carbonEl);
-  drawCarbon();
-  if (!garden) return () => carbons.delete(carbonEl);
+  el.innerHTML = `<canvas class="spark" width="480" height="80" aria-hidden="true"></canvas>
+    <p class="meter-readout">Measuring</p>
+    <p class="widget-fine">Measured live in your browser, like the dial in the observatory.</p>`;
   const meter = {
     canvas: el.querySelector("canvas")!,
     readout: el.querySelector<HTMLElement>(".meter-readout")!,
   };
   meters.add(meter);
   drawMeter();
-  return () => {
-    meters.delete(meter);
-    carbons.delete(carbonEl);
-  };
+  return () => meters.delete(meter);
 }
 
 /* Whisperbook: two lines of Alice read aloud by the visitor's own device.
@@ -910,55 +1031,7 @@ function mountPlayer(el: HTMLElement) {
   };
 }
 
-/* About: the path, read up the tower. Each step lights its level; the third
-   lights the observatory, so the camera steps back to show it. */
-const pathSteps = [
-  "Co-founded a serious-games startup",
-  "Doctoral research, University of Lille and Inria",
-  "Energy-measurement infrastructure",
-  "Production AI workflows, from sketch to use",
-];
-function mountPath(el: HTMLElement) {
-  el.innerHTML = `<h3>The path</h3>
-    <ol class="path">${pathSteps.map((s, i) => `<li><button type="button" class="path-step" data-step="${i}">${s}</button></li>`).join("")}</ol>`;
-  const list = el.querySelector("ol")!;
-  const buttons = [...list.querySelectorAll<HTMLButtonElement>("button")];
-  let current: number | null = null;
-  let pointer = "";
-  const set = (i: number | null) => {
-    if (i === current) return;
-    const fromObservatory = current === 2;
-    current = i;
-    garden?.highlightPath(i);
-    buttons.forEach((b, k) => b.classList.toggle("lit", k === i));
-    if (i === 2) garden?.focus(null);
-    else if (fromObservatory && openSpot === "about") focusOn("about");
-  };
-  list.addEventListener("pointerdown", (e) => (pointer = e.pointerType));
-  buttons.forEach((b, i) => {
-    b.addEventListener("pointerenter", (e) => {
-      if (e.pointerType !== "touch") set(i);
-    });
-    // A tap focuses the button too; the click below decides for taps.
-    b.addEventListener("focus", () => {
-      if (pointer !== "touch") set(i);
-    });
-    b.addEventListener("click", () => {
-      if (pointer === "touch") set(current === i ? null : i);
-      pointer = "";
-    });
-  });
-  list.addEventListener("pointerleave", (e) => {
-    if (e.pointerType !== "touch") set(null);
-  });
-  list.addEventListener("focusout", (e) => {
-    if (!list.contains(e.relatedTarget as Node | null)) set(null);
-  });
-  return () => set(null);
-}
-
 /* Contact: a note that becomes an email in the visitor's own mail app. */
-const email = "chakib.belgaid@gmail.com";
 function mountNote(el: HTMLElement) {
   el.innerHTML = `<h3>Leave a note</h3>
     <label class="note-label" for="note-text">Your note</label>
@@ -994,7 +1067,7 @@ function mountNote(el: HTMLElement) {
       copiedTimer = window.setTimeout(() => (copy.textContent = "Copy address"), 2000);
     } catch {
       // Select the address on the page so it can be copied by hand.
-      const address = panelContent.querySelector(".panel-email a");
+      const address = document.querySelector(".note-email a");
       if (address) getSelection()?.selectAllChildren(address);
     }
   });
@@ -1004,11 +1077,10 @@ function mountNote(el: HTMLElement) {
   };
 }
 
-function mountProjectWidget(spot: Spot, container: HTMLElement) {
+function mountProjectWidget(spot: WidgetSpot, container: HTMLElement) {
   const cleanup = {
     whisperbook: mountPlayer,
     wattch: mountMeter,
-    about: mountPath,
     contact: mountNote,
   }[spot](container);
   return () => {
@@ -1017,199 +1089,38 @@ function mountProjectWidget(spot: Spot, container: HTMLElement) {
   };
 }
 
-/* On wide screens in bloom, the Whisperbook and Wattch callouts open into
-   cards over their buildings, kept inside the viewport. */
-const cardSpots: Spot[] = ["whisperbook", "wattch"];
-const cards = new Map<HTMLElement, () => void>();
-let cardFrame = 0;
-function syncCards() {
-  const on = !narrow.matches && !!garden && stage === 3;
-  const was = cards.size > 0;
-  for (const h of hotspots) {
-    if (!cardSpots.includes(h.dataset.spot as Spot)) continue;
-    if (on && !cards.has(h)) {
-      h.classList.add("card");
-      cards.set(
-        h,
-        mountProjectWidget(h.dataset.spot as Spot, h.querySelector(".hotspot-widget")!),
-      );
-    } else if (!on && cards.has(h)) {
-      cards.get(h)!();
-      cards.delete(h);
-      h.classList.remove("card");
-      for (const v of ["--dx", "--dy", "--lx"]) h.style.removeProperty(v);
-    }
-  }
-  if (cards.size && !cardFrame) cardFrame = requestAnimationFrame(placeCards);
-  // An open project panel hands its widget to the card, or takes it back.
-  if (was !== cards.size > 0 && openSpot) mountPanelWidget();
-}
-function placeCards() {
-  cardFrame = 0;
-  if (!cards.size) return;
-  const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
-  for (const h of cards.keys()) {
-    const x = parseFloat(h.style.left),
-      y = parseFloat(h.style.top);
-    if (Number.isNaN(x) || Number.isNaN(y)) continue;
-    const w = h.offsetWidth,
-      height = h.offsetHeight,
-      lead = 40;
-    const left = x - w / 2,
-      top = y - lead - height;
-    const dx = clamp(left, 16, innerWidth - 16 - w) - left;
-    const dy = clamp(top, 72, innerHeight - 16 - height) - top;
-    h.style.setProperty("--dx", `${dx.toFixed(1)}px`);
-    h.style.setProperty("--dy", `${dy.toFixed(1)}px`);
-    h.style.setProperty("--lx", `${clamp(w / 2 - dx, 12, w - 12).toFixed(1)}px`);
-  }
-  cardFrame = requestAnimationFrame(placeCards);
-}
-
-/* Panels: a building's notes. The camera glides to the building. */
-const panel = $("#panel");
-const panelContent = $("#panel-content");
-let openSpot: Spot | null = null;
-let panelOpener: HTMLElement | null = null;
-let hideTimer = 0;
-const narrow = matchMedia("(max-width: 899px)");
-
-function panelHtml(spot: Spot) {
-  const i = spotOrder.indexOf(spot);
-  const prev = spotOrder[(i + spotOrder.length - 1) % spotOrder.length];
-  const next = spotOrder[(i + 1) % spotOrder.length];
-  const nav = `<nav class="panel-nav" aria-label="Other buildings">
-      <button type="button" class="link small" data-open="${prev}"><span aria-hidden="true">‹</span> ${spotNames[prev]}</button>
-      <button type="button" class="link small" data-open="${next}">${spotNames[next]} <span aria-hidden="true">›</span></button>
-    </nav>`;
-  const close = `<button type="button" class="panel-close link small" data-close>Back to the garden</button>`;
-  if (spot === "about")
-    return `${close}<p class="panel-place">The atelier roof</p>
-      <h2 id="panel-title" tabindex="-1">A researcher who ships</h2>
-      <p class="panel-lede">I’m Chakib Belgaid, Ph.D., a full-stack product engineer working across applied AI, developer tools, and energy-aware software.</p>
-      <section class="panel-widget" data-widget></section>
-      <p>My path ran from co-founding a serious-games startup, through doctoral research at the University of Lille and Inria, to energy-measurement infrastructure and production AI workflows.</p>
-      <p>I like following an idea all the way from a rough sketch to something people can use, and checking what is actually true along the way.</p>
-      ${nav}`;
-  if (spot === "contact")
-    return `${close}<p class="panel-place">The greenhouse</p>
-      <h2 id="panel-title" tabindex="-1">Write to me</h2>
-      <p class="panel-lede">For product engineering, applied AI, or energy-aware software.</p>
-      <p class="panel-email"><a href="mailto:chakib.belgaid@gmail.com">chakib.belgaid@gmail.com</a></p>
-      <section class="panel-widget" data-widget></section>
-      <p><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> and <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a></p>
-      ${nav}`;
-  const p = projects[spot];
-  return `${close}<p class="panel-place">${p.place}</p>
-    <h2 id="panel-title" tabindex="-1">${p.title}</h2>
-    <p class="panel-lede">${p.lede}</p>
-    <section class="panel-widget try" hidden><h3>Try it</h3><div class="try-body" data-widget></div></section>
-    <p>${p.intro}</p>
-    <dl class="panel-facts">
-      <div><dt>Field</dt><dd>${p.field}</dd></div>
-      <div><dt>Built with</dt><dd>${p.tech.join(", ")}</dd></div>
-      <div><dt>Source</dt><dd><a href="${p.url}" target="_blank" rel="noopener noreferrer">Read it on GitHub</a></dd></div>
-    </dl>
-    <h3>What I built</h3>
-    <p>${p.built}</p>
-    <h3>The decision that shaped it</h3>
-    <p>${p.decision}</p>
-    <figure class="proof proof-${spot}">
-      <img src="${p.image}" alt="${p.alt}" width="${p.size[0]}" height="${p.size[1]}" decoding="async" />
-      <figcaption>${p.caption}</figcaption>
-    </figure>
-    ${nav}`;
-}
-
-let panelCleanup: (() => void) | null = null;
-function focusOn(spot: Spot) {
-  garden?.focus(spot, narrow.matches ? 0 : 0.2, narrow.matches ? 0.3 : 0);
-}
-/* The panel's widget. Whisperbook and Wattch only show theirs here when they
-   have no card in the garden (narrow screens, or no WebGL). */
-function mountPanelWidget() {
-  panelCleanup?.();
-  panelCleanup = null;
-  const slot = panelContent.querySelector<HTMLElement>("[data-widget]");
-  if (!openSpot || !slot) return;
-  const here = !cardSpots.includes(openSpot) || !cards.size;
-  const section = slot.closest<HTMLElement>(".try");
-  if (section) section.hidden = !here;
-  if (here) panelCleanup = mountProjectWidget(openSpot, slot);
-}
-
-function openPanel(spot: Spot, opener?: HTMLElement) {
-  if (!openSpot) panelOpener = opener ?? null;
-  panelCleanup?.();
-  panelCleanup = null;
-  openSpot = spot;
-  clearTimeout(hideTimer);
-  setPlanting(false);
-  // Opening a building from a drawing grows the garden first. From Build on,
-  // the buildings already stand, so the story stays where it is.
-  if (stage < 2)
-    scrollTo({
-      top: holdAt(beats.length - 1),
-      behavior: reduced ? "instant" : "smooth",
-    });
-  panelContent.innerHTML = panelHtml(spot);
-  mountPanelWidget();
-  panel.hidden = false;
-  panel.scrollTop = 0;
-  requestAnimationFrame(() => panel.classList.add("open"));
-  root.classList.add("reading");
-  hotspots.forEach((h) =>
-    h.classList.toggle("selected", h.dataset.spot === spot),
-  );
-  focusOn(spot);
-  panelContent
-    .querySelector<HTMLElement>("#panel-title")!
-    .focus({ preventScroll: true });
-}
-function closePanel() {
-  if (!openSpot) return;
-  openSpot = null;
-  panelCleanup?.();
-  panelCleanup = null;
-  panel.classList.remove("open");
-  root.classList.remove("reading");
-  hotspots.forEach((h) => h.classList.remove("selected"));
-  syncStory();
-  hideTimer = window.setTimeout(() => (panel.hidden = true), reduced ? 0 : 450);
-  panelOpener?.focus({ preventScroll: true });
-  panelOpener = null;
-}
 document.addEventListener("click", (e) => {
-  const t = (e.target as HTMLElement).closest<HTMLElement>(
-    "[data-open], [data-close]",
-  );
-  if (!t) return;
-  if (t.hasAttribute("data-close")) closePanel();
-  else openPanel(t.dataset.open as Spot, t);
+  const t = (e.target as HTMLElement).closest<HTMLElement>("[data-open]");
+  if (t) goTo(spotBeat[t.dataset.open as Spot]);
 });
 narrow.addEventListener("change", () => {
-  syncCards();
-  if (openSpot) mountPanelWidget();
+  syncWidgets();
+  measureFrames();
   syncStory();
-});
-addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && openSpot) closePanel();
 });
 
 measure();
-document.fonts?.ready.then(schedule);
+measureFrames();
+document.fonts?.ready.then(() => {
+  schedule();
+  measureFrames();
+});
 
 import("./scene")
   .then(({ createGarden }) => {
     garden = createGarden($("#scene"), hotspots);
-    // Panels opened before the garden arrived move their widget to the card.
-    if (openSpot) mountPanelWidget();
+    // A meter mounted before the garden arrived is mounted again, so it can
+    // measure.
+    if (beats[beat]?.widget === "wattch") mountNoteWidget();
     syncTheme();
     syncMotion();
     setHour(Number(hourInput.value));
     applyWeather();
     applySeason();
     measure();
+    // The meter is taller once it can measure.
+    slotsFor = 0;
+    measureFrames();
     syncStory();
   })
   .catch((error) => {

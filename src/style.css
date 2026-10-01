@@ -5,13 +5,13 @@
    weight and ink of every headline: thin graphite while sketched, full ink in
    bloom. --night comes from the Sky widget; sky.ts paints the sky itself. */
 :root {
-  --paper: #f1f2ee;
-  --ink: #1b2333;
-  --muted: #545b63;
-  --graphite: #7c8085;
-  --blueprint: #2a5c9a;
-  --stone: #8a6f4e;
-  --leaf: #3b6b3a;
+  --paper: #0e2b48;
+  --ink: #e6f0f8;
+  --muted: #a9c2d8;
+  --graphite: #8eaac2;
+  --blueprint: #8cc8f2;
+  --stone: #d8c6a6;
+  --leaf: #a6d79b;
   --hairline: color-mix(in srgb, var(--ink) 15%, transparent);
   --slip: color-mix(in srgb, var(--paper) 86%, transparent);
   --lift: 0 18px 40px -24px color-mix(in srgb, var(--ink) 45%, transparent);
@@ -22,7 +22,7 @@
   --edge: clamp(1rem, 2.4vw, 2rem);
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
 
-  color-scheme: light;
+  color-scheme: dark;
   font-family: "Newsreader", Georgia, serif;
   font-optical-sizing: auto;
   line-height: 1.55;
@@ -38,16 +38,6 @@
 }
 :root[data-stage="3"] {
   --stage: var(--leaf);
-}
-:root[data-theme="dark"] {
-  --paper: #0e2b48;
-  --ink: #e6f0f8;
-  --muted: #a9c2d8;
-  --graphite: #8eaac2;
-  --blueprint: #8cc8f2;
-  --stone: #d8c6a6;
-  --leaf: #a6d79b;
-  color-scheme: dark;
 }
 
 *,
@@ -275,64 +265,9 @@ button {
   font-style: inherit;
   cursor: pointer;
 }
-.hotspot:not(.card) .hotspot-widget {
-  display: none;
-}
-.hotspot:not(.card):hover,
-.hotspot:not(.card).selected {
+.hotspot:hover {
   background: var(--ink);
   color: var(--paper);
-}
-/* In bloom on wide screens, Whisperbook and Wattch open into small cards.
-   main.ts keeps them in the viewport with --dx and --dy, and --lx keeps the
-   leader line over the building. */
-.hotspot.card {
-  --lead: 40px;
-  width: 14.5rem;
-  padding: 0.55rem 0.85rem 0.65rem;
-  border-radius: 14px;
-  box-shadow: var(--lift);
-  backdrop-filter: blur(12px);
-  font-style: normal;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  white-space: normal;
-  cursor: default;
-  transition: opacity 0.5s ease;
-}
-.hotspot.card,
-.hotspot.card.visible {
-  transform: translate(
-    calc(-50% + var(--dx, 0px)),
-    calc(-100% - var(--lead) + var(--dy, 0px))
-  );
-}
-.hotspot.card::after {
-  left: var(--lx, 50%);
-  height: max(0px, calc(var(--lead) - var(--dy, 0px)));
-}
-.hotspot.card::before {
-  left: calc(50% - var(--dx, 0px) - 4px);
-  top: calc(100% + var(--lead) - var(--dy, 0px) - 4px);
-}
-.hotspot.card.selected {
-  border-color: var(--ink);
-}
-.hotspot.card .hotspot-title {
-  padding: 0;
-  margin-bottom: 0.35rem;
-  font-size: 1rem;
-  font-weight: 600;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  text-underline-offset: 0.2em;
-}
-.hotspot.card .hotspot-title::after {
-  content: " ›";
-  color: var(--muted);
-}
-.hotspot.card .hotspot-title:hover {
-  text-decoration-color: var(--stage);
 }
 @keyframes ping {
   0% {
@@ -378,9 +313,6 @@ button {
   gap: 1.25rem;
   align-items: baseline;
 }
-#theme-toggle {
-  margin-left: 0.5rem;
-}
 
 /* Beats provide the scroll length; only the current note is shown. Each
    beat is a hold, and a move between stages is where the garden grows. */
@@ -407,6 +339,11 @@ button {
   left: var(--edge);
   bottom: 6.5rem;
   width: min(27rem, calc(100vw - 2 * var(--edge)));
+  /* One card, below the masthead: the content is sized so it never needs
+     to scroll; the overflow is only a safeguard. */
+  max-height: calc(100svh - 11rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.4rem 1.5rem 1.1rem;
   background: var(--slip);
   backdrop-filter: blur(12px);
@@ -430,15 +367,6 @@ button {
     opacity 0.45s 0.1s ease,
     transform 0.7s 0.1s var(--ease),
     visibility 0s;
-}
-.reading .ruler {
-  opacity: 0;
-  pointer-events: none;
-}
-.reading .chapter.active .note {
-  opacity: 0;
-  transform: translateY(1.25rem);
-  pointer-events: none;
 }
 .note-stage {
   margin-bottom: 0.4rem;
@@ -488,9 +416,162 @@ button {
   font-size: 1.0625rem;
   line-height: 1.55;
 }
+.chapter.active .note-lede,
 .chapter.active .note-copy,
+.chapter.active .note-body,
 .chapter.active .note-hint {
   animation: fade-up 0.7s 0.45s var(--ease) both;
+}
+.chapter.active .note-body {
+  animation-delay: 0.55s;
+}
+.note-lede {
+  margin-bottom: 0.5rem;
+  font-size: 1.3125rem;
+  line-height: 1.3;
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* The rest of a note: a project's facts, its widget, its screenshot, and in
+   Bloom the address and Leave a note. */
+.note-body > :last-child {
+  margin-bottom: 0.3rem;
+}
+.note-body h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+  font-weight: 650;
+}
+.note-facts {
+  margin: 0 0 0.9rem;
+  padding: 0.2rem 0;
+  border-block: 1px solid var(--hairline);
+}
+.note-facts div {
+  display: grid;
+  grid-template-columns: 5.75rem 1fr;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+.note-facts dt {
+  font-style: italic;
+  color: var(--muted);
+}
+.note-facts dd {
+  margin: 0;
+}
+.note-widget {
+  padding: 0.7rem 0.9rem 0.8rem;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+.widget-fine {
+  margin: 0.4rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  font-style: italic;
+  color: var(--muted);
+}
+.proof {
+  margin: 0;
+}
+.proof img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 14rem;
+  object-fit: contain;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+.proof-whisperbook img {
+  border-radius: 1.1rem;
+}
+.proof figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--muted);
+}
+.player {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+.play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.play:disabled {
+  opacity: 0.4;
+  background: transparent;
+  color: var(--ink);
+  cursor: default;
+}
+.player .player-line {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-style: italic;
+  line-height: 1.35;
+}
+/* Holds a line for the note that arrives with the voices. */
+.player-note {
+  min-height: 1lh;
+}
+.player .player-voice {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.note-email {
+  margin-bottom: 0.9rem;
+  font-size: clamp(1.25rem, 1rem + 0.8vw, 1.5rem);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.note-widget .note-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.note-widget textarea {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--paper) 85%, var(--ink) 4%);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  resize: none;
+}
+.note-widget textarea:focus-visible {
+  outline-offset: 1px;
+}
+.note-count {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.note-links {
+  margin: 0.8rem 0 0;
+  font-size: 0.9375rem;
 }
 .note-hint {
   margin: 0;
@@ -790,15 +871,28 @@ button {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.meter-carbon {
-  margin-top: 0.5rem;
-  padding-top: 0.4rem;
-  border-top: 1px solid var(--hairline);
-}
 .spark {
   display: block;
   width: 100%;
   height: 2.4rem;
+}
+
+/* The carbon card: the page's footprint so far, on the side the whole way. */
+.carbon-figure {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.carbon-label {
+  margin: 0.2rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.3;
+}
+.carbon-source {
+  font-size: 0.75rem;
 }
 
 /* Mist: drifting veils over the notes, ruler, and widgets when it is foggy
@@ -849,7 +943,7 @@ button {
   box-shadow: 0 0 40px -6px color-mix(in srgb, var(--paper) 90%, transparent);
   border-color: color-mix(in srgb, var(--ink) 9%, transparent);
 }
-:root[data-weather="fog"] .hotspot.visible:not(:hover, .selected) {
+:root[data-weather="fog"] .hotspot.visible:not(:hover) {
   opacity: 0.72;
 }
 .season-report {
@@ -857,281 +951,6 @@ button {
   font-size: 0.875rem;
   font-style: italic;
   color: var(--muted);
-}
-
-/* A building's notes. */
-.panel {
-  position: fixed;
-  z-index: 15;
-  top: 4.25rem;
-  left: var(--edge);
-  bottom: 1.25rem;
-  width: min(31rem, calc(100vw - 2 * var(--edge)));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  background: var(--paper);
-  border: 1px solid var(--hairline);
-  border-radius: 18px;
-  box-shadow: var(--lift);
-  opacity: 0;
-  transform: translateX(-2rem);
-  transition:
-    opacity 0.3s ease,
-    transform 0.55s var(--ease);
-}
-.panel.open {
-  opacity: 1;
-  transform: none;
-}
-.panel[hidden] {
-  display: none;
-}
-.panel-inner {
-  padding: 1.25rem 1.75rem 1.5rem;
-}
-.panel-inner > * {
-  animation: fade-up 0.6s var(--ease) both;
-}
-.panel-inner > :nth-child(2) {
-  animation-delay: 0.05s;
-}
-.panel-inner > :nth-child(3) {
-  animation-delay: 0.1s;
-}
-.panel-inner > :nth-child(n + 4) {
-  animation-delay: 0.16s;
-}
-.panel-close {
-  margin-bottom: 1.25rem;
-}
-.panel-close::before {
-  content: "‹ ";
-}
-.panel-place {
-  margin-bottom: 0.25rem;
-  font-style: italic;
-  color: var(--leaf);
-}
-.panel h2 {
-  font-size: clamp(2.25rem, 1.8rem + 1.6vw, 3rem);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1;
-  margin-bottom: 0.6rem;
-}
-.panel h3 {
-  margin: 1.5rem 0 0.25rem;
-  font-size: 1.0625rem;
-  font-weight: 650;
-}
-.panel p {
-  font-size: 1.0625rem;
-}
-.panel .panel-lede {
-  font-size: 1.375rem;
-  line-height: 1.35;
-  font-style: italic;
-  color: var(--muted);
-}
-.panel-email {
-  font-size: 1.375rem;
-}
-.panel-facts {
-  margin: 1.25rem 0 0;
-  padding: 0.25rem 0;
-  border-block: 1px solid var(--hairline);
-}
-.panel-facts div {
-  display: grid;
-  grid-template-columns: 6.5rem 1fr;
-  gap: 1rem;
-  padding: 0.35rem 0;
-}
-.panel-facts dt {
-  font-style: italic;
-  color: var(--muted);
-}
-.panel-facts dd {
-  margin: 0;
-}
-.proof {
-  margin: 1.75rem 0 0;
-}
-.proof img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-}
-.proof-whisperbook img {
-  width: min(14rem, 70%);
-  border-radius: 1.4rem;
-}
-.proof figcaption {
-  margin-top: 0.6rem;
-  font-size: 0.875rem;
-  font-style: italic;
-  color: var(--muted);
-}
-.panel-nav {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--hairline);
-}
-
-/* The buildings' widgets, on a card or in a panel. */
-:is(.hotspot, .panel) .widget-fine {
-  margin: 0.4rem 0 0;
-  font-size: 0.75rem;
-  line-height: 1.35;
-  font-style: italic;
-  color: var(--muted);
-}
-.panel .widget-fine {
-  font-size: 0.875rem;
-}
-.panel-widget {
-  margin: 1.1rem 0 1.25rem;
-  padding: 0.8rem 1rem 0.9rem;
-  border: 1px solid var(--hairline);
-  border-radius: 12px;
-}
-.panel-widget[hidden] {
-  display: none;
-}
-.panel .panel-widget h3 {
-  margin: 0 0 0.5rem;
-}
-.player {
-  display: flex;
-  gap: 0.6rem;
-  align-items: flex-start;
-}
-.play {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 1px solid var(--ink);
-  border-radius: 50%;
-  background: var(--ink);
-  color: var(--paper);
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-.play:disabled {
-  opacity: 0.4;
-  background: transparent;
-  color: var(--ink);
-  cursor: default;
-}
-.player .player-line {
-  margin: 0;
-  font-size: 0.875rem;
-  font-style: italic;
-  line-height: 1.35;
-}
-.hotspot .player-line {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.panel .player .player-line {
-  font-size: 1rem;
-}
-.player .player-voice {
-  margin: 0.15rem 0 0;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-.panel .player .player-voice {
-  font-size: 0.875rem;
-}
-.hotspot .meter-readout {
-  font-size: 0.75rem;
-}
-.panel .meter-readout {
-  font-size: 0.9375rem;
-}
-.path {
-  list-style: none;
-  counter-reset: step;
-  margin: 0;
-  padding: 0;
-  border-left: 1px solid var(--hairline);
-}
-.path li {
-  counter-increment: step;
-}
-.path-step {
-  position: relative;
-  display: flex;
-  gap: 0.65rem;
-  width: 100%;
-  padding: 0.4rem 0.5rem 0.4rem 0.85rem;
-  border: 0;
-  border-radius: 0 8px 8px 0;
-  background: none;
-  font-size: 1rem;
-  line-height: 1.35;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-.path-step::before {
-  content: counter(step);
-  font-style: italic;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
-.path-step:hover,
-.path-step.lit {
-  background: color-mix(in srgb, var(--stage) 13%, transparent);
-}
-.path-step.lit::after {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 0.3rem;
-  bottom: 0.3rem;
-  width: 2px;
-  background: var(--stage);
-}
-.note-label {
-  display: block;
-  margin-bottom: 0.25rem;
-  font-size: 0.9375rem;
-  color: var(--muted);
-}
-.panel-widget textarea {
-  display: block;
-  width: 100%;
-  min-height: 6rem;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--hairline);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--paper) 85%, var(--ink) 4%);
-  color: var(--ink);
-  font: inherit;
-  font-size: 1rem;
-  resize: vertical;
-}
-.panel-widget textarea:focus-visible {
-  outline-offset: 1px;
-}
-.panel .note-count {
-  margin: 0.25rem 0 0.6rem;
-  font-size: 0.8125rem;
-  color: var(--muted);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 /* Phones and narrow windows: the garden takes the upper part of the screen. */
@@ -1150,20 +969,8 @@ button {
   .masthead nav {
     padding: 0.25rem 0.75rem;
   }
-  .wide-only {
-    display: none;
-  }
-  #theme-toggle {
-    margin-left: 0;
-  }
-  /* Room for the widget row in Bloom; before that, the garden reaches down
-     to the note. */
-  #scene {
-    inset: 3rem 0 17rem;
-  }
-  :root[data-stage="3"] #scene {
-    inset: 3rem 0 27.5rem;
-  }
+  /* The garden fills the screen; main.ts frames it at the top, above the
+     notes (see measureFrames). */
   .note {
     left: 0.75rem;
     right: 0.75rem;
@@ -1179,6 +986,12 @@ button {
   }
   .note-copy {
     font-size: 1rem;
+  }
+  .note-lede {
+    font-size: 1.125rem;
+  }
+  .proof img {
+    max-height: 10rem;
   }
   .ruler {
     bottom: 0.75rem;
@@ -1228,35 +1041,79 @@ button {
   .chip {
     white-space: nowrap;
   }
-  /* In Bloom, the note sits above the widget row. */
-  :root[data-stage="3"] .note,
-  :root[data-stage="3"] .chapter.active .note {
+  /* In Bloom, the note sits above the widget row, and is kept compact so
+     the garden still shows above it. */
+  .chapter:last-child .note {
     bottom: 14.5rem;
+    max-height: calc(100svh - 18rem);
+  }
+  .note-email {
+    margin-bottom: 0.6rem;
+    font-size: 1.1875rem;
+  }
+  .note-widget {
+    padding: 0.55rem 0.8rem 0.6rem;
+  }
+  /* Leave a note, unboxed, with the count beside the buttons. */
+  .chapter:last-child .note h2 {
+    margin-bottom: 0.6rem;
+  }
+  .note-widget[data-widget] {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 0;
+    border: 0;
+  }
+  .note-widget[data-widget] > * {
+    grid-column: 1 / -1;
+  }
+  .note-widget[data-widget] h3 {
+    grid-column: 1;
+    margin-bottom: 0.3rem;
+  }
+  .note-widget[data-widget] .note-count {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0 0 0.3rem;
+  }
+  .note-widget[data-widget] .widget-actions {
+    margin-top: 0.45rem;
+  }
+  .note-widget .note-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .note-widget textarea {
+    height: 3.6rem;
+  }
+  .note-links {
+    margin-top: 0.6rem;
   }
   .widget-sky .widget-head {
     display: none;
   }
-  .narrow-only {
+  /* The carbon card, first in the row: figure and label on one line. */
+  .widget-carbon {
+    width: 21.5rem;
+  }
+  .carbon-figure,
+  .carbon-label {
     display: inline;
-    vertical-align: -0.2em;
   }
-  .reading .dock {
-    opacity: 0;
-    pointer-events: none;
+  .carbon-figure {
+    font-size: 1.125rem;
   }
-  .panel {
-    top: auto;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: auto;
-    height: 64svh;
-    border-radius: 18px 18px 0 0;
-    border-bottom: 0;
-    transform: translateY(2.5rem);
+  .carbon-label {
+    font-size: 0.8125rem;
+    color: var(--muted);
   }
-  .panel-inner {
-    padding: 1rem 1.15rem 1.5rem;
+  .carbon-figure::after {
+    content: " ";
   }
   .hotspot {
     --lead: 1.6rem;
@@ -1267,23 +1124,11 @@ button {
   }
 }
 @media (max-width: 899px) and (max-height: 700px) {
-  #scene {
-    inset: 3rem 0 14rem;
-  }
-  :root[data-stage="3"] #scene {
-    inset: 3rem 0 25rem;
-  }
   .note-hint {
     display: none;
   }
   .note-copy {
     font-size: 0.9375rem;
-  }
-}
-
-@media (min-width: 900px) {
-  .narrow-only {
-    display: none;
   }
 }
 
