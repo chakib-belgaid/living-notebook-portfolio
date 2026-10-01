@@ -790,6 +790,11 @@ button {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+.meter-carbon {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--hairline);
+}
 .spark {
   display: block;
   width: 100%;

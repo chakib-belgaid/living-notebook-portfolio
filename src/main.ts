@@ -708,6 +708,36 @@ stageEl.addEventListener("pointercancel", () => {
 /* Wattch: the cost to draw this page, a sparkline of the CPU time each frame
    takes to submit. It draws into every mounted meter. */
 const meters = new Set<{ canvas: HTMLCanvasElement; readout: HTMLElement }>();
+
+/* Its carbon footprint is an estimate, not a measurement: the bytes this page
+   has loaded over the network (the browser's own resource timing; cached files
+   count as nothing), times the Sustainable Web Design model v4. That is 0.194
+   kWh/GB operational plus 0.106 kWh/GB embodied, at the global average grid
+   of 494 gCO2e/kWh. */
+const gramsPerByte = ((0.055 + 0.059 + 0.08 + 0.012 + 0.013 + 0.081) * 494) / 1e9;
+let bytesLoaded = 0;
+try {
+  const counter = new PerformanceObserver((list) => {
+    for (const e of list.getEntries()) bytesLoaded += (e as PerformanceResourceTiming).transferSize ?? 0;
+  });
+  counter.observe({ type: "navigation", buffered: true });
+  counter.observe({ type: "resource", buffered: true });
+} catch {
+  // No resource timing: the estimate stays at nothing loaded and says so.
+}
+const carbons = new Set<HTMLElement>();
+function drawCarbon() {
+  if (!carbons.size) return;
+  let text = "This browser does not report what the page has loaded.";
+  if (bytesLoaded) {
+    const grams = bytesLoaded * gramsPerByte;
+    const size =
+      bytesLoaded >= 1e6 ? `${(bytesLoaded / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(bytesLoaded / 1e3))} kB`;
+    text = `${grams < 0.01 ? "Under 0.01" : `About ${grams.toFixed(grams < 1 ? 2 : 1)}`} g CO₂e so far, for ${size} loaded.`;
+  }
+  for (const el of carbons) el.textContent = text;
+}
+const carbonFine = "Estimated from data loaded (Sustainable Web Design model, world grid). Not measured.";
 const samples: number[] = [];
 function drawMeter() {
   if (!garden || !meters.size) return;
@@ -738,23 +768,34 @@ function drawMeter() {
   }
 }
 setInterval(() => {
-  if (!document.hidden) drawMeter();
+  if (document.hidden) return;
+  drawMeter();
+  drawCarbon();
 }, 300);
 function mountMeter(el: HTMLElement) {
+  const carbon = `<p class="meter-readout meter-carbon"></p>
+    <p class="widget-fine">${carbonFine}</p>`;
   if (!garden) {
-    el.innerHTML = `<p class="meter-readout">Rendering is off in this browser, so there is nothing to measure.</p>`;
-    return () => {};
-  }
-  el.innerHTML = `<canvas class="spark" width="480" height="80" aria-hidden="true"></canvas>
+    el.innerHTML = `<p class="meter-readout">Rendering is off in this browser, so there is nothing to measure.</p>${carbon}`;
+  } else {
+    el.innerHTML = `<canvas class="spark" width="480" height="80" aria-hidden="true"></canvas>
     <p class="meter-readout">Measuring</p>
-    <p class="widget-fine">Measured live in your browser, like the dial in the observatory.</p>`;
+    <p class="widget-fine">Measured live in your browser, like the dial in the observatory.</p>${carbon}`;
+  }
+  const carbonEl = el.querySelector<HTMLElement>(".meter-carbon")!;
+  carbons.add(carbonEl);
+  drawCarbon();
+  if (!garden) return () => carbons.delete(carbonEl);
   const meter = {
     canvas: el.querySelector("canvas")!,
     readout: el.querySelector<HTMLElement>(".meter-readout")!,
   };
   meters.add(meter);
   drawMeter();
-  return () => meters.delete(meter);
+  return () => {
+    meters.delete(meter);
+    carbons.delete(carbonEl);
+  };
 }
 
 /* Whisperbook: two lines of Alice read aloud by the visitor's own device.
