@@ -456,32 +456,191 @@ export async function createGarden(
   cylinder(0.02, 3.66, -2.5, 0.05, 0.02, "dark");
   beam(new T.Vector3(0.02, 3.66, -2.5), new T.Vector3(0.06, 3.92, -2.45), 0.012, "dark");
   cylinder(0.08, 3.9, -2.42, 0.1, 0.09, "ochre", 0.04);
-  // Roof, the atelier: the planter keeps the back half; a drafting corner takes the front.
-  planter(0.08, 5.19, -2.4, 2.1, 0.95);
-  tree(0.02, 5.47, -2.38, 1.42);
-  add(new T.BoxGeometry(0.82, 0.03, 0.58), 0.2, 5.95, -1.2, "wood", [0.5, 0, 0]);
-  for (const x of [-0.12, 0.52])
-    beam(new T.Vector3(x, 5.16, -1.2), new T.Vector3(x, 5.93, -1.2), 0.03, "dark");
-  cylinder(0.24, 5.54, -0.8, 0.11, 0.04, "wood");
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI * 2;
-    beam(
-      new T.Vector3(0.24 + Math.cos(a) * 0.1, 5.16, -0.8 + Math.sin(a) * 0.1),
-      new T.Vector3(0.24 + Math.cos(a) * 0.06, 5.52, -0.8 + Math.sin(a) * 0.06),
-      0.016,
-      "dark",
+  // Roof, the atelier: a Mediterranean pergola. Slim stone posts with old
+  // vines twisting up them carry a leafy roof over the back half, shading a
+  // wicker sofa; the front is open, with an armchair, a low table, terracotta
+  // pots, and the gardener's clothesline on the right.
+  const pergolaTop = 6.02;
+  const postXs = [-1.15, 0.05, 1.25],
+    postZs = [-3.1, -1.62];
+  planter(0.06, 5.19, -2.86, 2.4, 0.34);
+  for (const x of postXs)
+    for (const z of postZs) {
+      cylinder(x, (5.16 + pergolaTop) / 2, z, 0.042, pergolaTop - 5.16, "stone", 0.036);
+      // Two old vine trunks wind round each other up the post...
+      for (let k = 0; k < 2; k++) {
+        let from = new T.Vector3(x + 0.05, 5.17, z);
+        for (let i = 1; i <= 14; i++) {
+          const a = i * 0.62 + k * Math.PI + x * 2 + z,
+            r = 0.05 + Math.sin(i * 1.3 + k) * 0.012;
+          const to = new T.Vector3(
+            x + Math.cos(a) * r,
+            5.17 + (i / 14) * (pergolaTop - 5.1),
+            z + Math.sin(a) * r,
+          );
+          beam(from, to, 0.021 - i * 0.0007, "wood", false);
+          from = to;
+        }
+      }
+      // ...and branch out over the rafters at the top.
+      for (let j = 0; j < 3; j++) {
+        const a = j * 2.1 + x + z * 1.7;
+        beam(
+          new T.Vector3(x, pergolaTop + 0.1, z),
+          new T.Vector3(
+            T.MathUtils.clamp(x + Math.cos(a) * 0.4, -1.2, 1.3),
+            pergolaTop + 0.17,
+            T.MathUtils.clamp(z + Math.sin(a) * 0.4, -3.15, -1.62),
+          ),
+          0.013,
+          "wood",
+          false,
+        );
+      }
+    }
+  // Weathered beams along the posts, close rafters across, a purlin on top.
+  for (const z of postZs) box(0.05, pergolaTop + 0.04, z, 2.68, 0.07, 0.06, "trim");
+  for (let i = 0; i < 13; i++)
+    box(-1.2 + i * 0.205, pergolaTop + 0.1, -2.36, 0.035, 0.05, 1.86, "trim");
+  for (const z of [-2.85, -2.36, -1.87])
+    box(0.05, pergolaTop + 0.14, z, 2.7, 0.025, 0.03, "trim", false);
+  // The leafy roof: flat clumps, mostly fresh green, with gaps for the sun to
+  // fall through in patches. Leaves spill over the front and right edges.
+  for (let i = 0; i < 230; i++) {
+    const x = -1.28 + vary(i, 1) * 2.68,
+      z = -3.22 + vary(i, 2) * 1.62;
+    add(
+      new T.IcosahedronGeometry(0.07 + vary(i, 3) * 0.07, 0).scale(1, 0.5, 1),
+      x,
+      pergolaTop + 0.17 + vary(i, 4) * 0.05,
+      z,
+      (["leafLight", "leaf", "leafLight", "leafDark"] as const)[i % 4],
+      [0, vary(i, 6) * 3, (vary(i, 5) - 0.5) * 0.4],
+      false,
     );
   }
-  cylinder(0.88, 5.3, -1.05, 0.12, 0.28, "trim", 0.13);
-  for (let i = 0; i < 4; i++) {
-    const a = i * 1.7 + 0.4;
-    beam(
-      new T.Vector3(0.88 + Math.cos(a) * 0.04, 5.2, -1.05 + Math.sin(a) * 0.04),
-      new T.Vector3(0.88 + Math.cos(a) * 0.15, 5.68 + vary(i, 4) * 0.08, -1.05 + Math.sin(a) * 0.15),
-      0.024,
-      "light",
+  for (let i = 0; i < 22; i++) {
+    const front = i < 14;
+    const x = front ? -1.2 + i * 0.185 + (vary(i, 11) - 0.5) * 0.1 : 1.33,
+      z = front ? -1.6 : -3.0 + (i - 14) * 0.2,
+      n = 1 + Math.floor(vary(i, 12) * 4);
+    for (let k = 0; k < n; k++)
+      add(
+        new T.IcosahedronGeometry(0.05 - k * 0.006, 0).scale(1, 0.8, 1),
+        x + Math.sin(k * 1.7 + i) * 0.02,
+        pergolaTop + 0.05 - k * 0.075,
+        z + Math.cos(k + i) * 0.02,
+        k % 2 ? "leaf" : "leafLight",
+        [k, i, 0],
+        false,
+      );
+  }
+  // A few clusters of bloom hang through the rafters.
+  for (let i = 0; i < 10; i++) {
+    const length = 0.12 + vary(i, 9) * 0.08;
+    add(
+      new T.ConeGeometry(0.03, length, 5).rotateX(Math.PI),
+      -1.0 + vary(i, 7) * 2.1,
+      pergolaTop + 0.07 - length / 2,
+      -3.0 + vary(i, 8) * 1.3,
+      i % 3 ? "coral" : "flower",
+      [0, vary(i, 10) * 3, 0],
+      false,
     );
   }
+  // Wicker furniture with cream cushions. Parts are placed in the piece's
+  // own frame, turned by its yaw.
+  function wicker(
+    cx: number,
+    cz: number,
+    yaw: number,
+    parts: [number, number, number, number, number, number, ColorName][],
+  ) {
+    const c = Math.cos(yaw),
+      s = Math.sin(yaw);
+    for (const [w, h, d, lx, ly, lz, color] of parts)
+      add(
+        new T.BoxGeometry(w, h, d),
+        cx + lx * c + lz * s,
+        5.16 + ly,
+        cz - lx * s + lz * c,
+        color,
+        [0, yaw, 0],
+        color === "wood",
+      );
+  }
+  const sofa = { x: -0.45, z: -2.05 },
+    chair = { x: 0.45, z: -1.0, yaw: -0.6 };
+  wicker(sofa.x, sofa.z, 0, [
+    [0.92, 0.14, 0.34, 0, 0.1, 0, "wood"],
+    [0.42, 0.06, 0.28, -0.215, 0.2, 0.02, "light"],
+    [0.42, 0.06, 0.28, 0.215, 0.2, 0.02, "light"],
+    [0.92, 0.26, 0.06, 0, 0.28, -0.15, "wood"],
+    [0.4, 0.17, 0.06, -0.215, 0.31, -0.105, "light"],
+    [0.4, 0.17, 0.06, 0.215, 0.31, -0.105, "light"],
+    [0.06, 0.12, 0.34, -0.46, 0.24, 0, "wood"],
+    [0.06, 0.12, 0.34, 0.46, 0.24, 0, "wood"],
+  ]);
+  wicker(chair.x, chair.z, chair.yaw, [
+    [0.36, 0.14, 0.34, 0, 0.1, 0, "wood"],
+    [0.28, 0.06, 0.28, 0, 0.2, 0.02, "light"],
+    [0.36, 0.26, 0.06, 0, 0.28, -0.15, "wood"],
+    [0.28, 0.17, 0.06, 0, 0.31, -0.105, "light"],
+    [0.05, 0.12, 0.34, -0.155, 0.24, 0, "wood"],
+    [0.05, 0.12, 0.34, 0.155, 0.24, 0, "wood"],
+  ]);
+  // A rustic low table with a pot of flowers.
+  const table = { x: -0.3, z: -0.88 };
+  box(table.x, 5.32, table.z, 0.42, 0.035, 0.27, "wood");
+  for (const dx of [-0.17, 0.17])
+    for (const dz of [-0.1, 0.1]) box(table.x + dx, 5.235, table.z + dz, 0.035, 0.15, 0.035, "wood");
+  // Terracotta pots of flowers.
+  function pot(x: number, z: number, r: number) {
+    const h = r * 1.3;
+    cylinder(x, 5.16 + h / 2, z, r * 0.75, h, "terracotta", r);
+    for (let i = 0; i < 6; i++) {
+      const a = i * 2.4 + x * 5;
+      add(
+        new T.IcosahedronGeometry(r * (0.5 + vary(i, x + z) * 0.25), 0),
+        x + Math.cos(a) * r * 0.45,
+        5.16 + h + r * 0.35 + vary(i, z) * r * 0.3,
+        z + Math.sin(a) * r * 0.45,
+        i % 2 ? "leaf" : "leafLight",
+        [a, i, 0],
+        false,
+      );
+      add(
+        new T.IcosahedronGeometry(r * 0.28, 0),
+        x + Math.cos(a + 1) * r * 0.6,
+        5.16 + h + r * 0.75 + vary(i, x) * r * 0.25,
+        z + Math.sin(a + 1) * r * 0.6,
+        i % 3 ? "coral" : "flower",
+        [0, 0, 0],
+        false,
+      );
+    }
+  }
+  const pots = [
+    [-0.95, -1.45, 0.09],
+    [0.25, -1.45, 0.08],
+    [1.05, -1.48, 0.085],
+  ];
+  pots.forEach(([x, z, r]) => pot(x, z, r));
+  pot(-1.12, -0.78, 0.11);
+  pot(1.2, -2.6, 0.1);
+  pot(table.x + 0.08, table.z, 0.045);
+  for (const z of [-1.6, -0.66]) {
+    beam(new T.Vector3(1.32, 5.16, z), new T.Vector3(1.32, 5.82, z), 0.022, "dark");
+    box(1.32, 5.8, z, 0.03, 0.03, 0.16, "wood");
+  }
+  beam(new T.Vector3(1.32, 5.79, -1.6), new T.Vector3(1.32, 5.79, -0.66), 0.006, "light", false);
+  // A wicker basket below the line, and a lantern hung over the sofa.
+  cylinder(1.0, 5.22, -0.72, 0.13, 0.12, "wood", 0.15);
+  cylinder(1.0, 5.285, -0.72, 0.12, 0.012, "light", 0.12, false);
+  beam(new T.Vector3(sofa.x, pergolaTop, -1.62), new T.Vector3(sofa.x, 5.8, -1.62), 0.005, "dark", false);
+  cylinder(sofa.x, 5.795, -1.62, 0.012, 0.03, "dark", 0.045);
+  cylinder(sofa.x, 5.72, -1.62, 0.032, 0.12, "glass", 0.032);
+  cylinder(sofa.x, 5.65, -1.62, 0.045, 0.02, "dark");
   // A rill crosses the terrace from a small basin to the spout over the canal.
   // The rail opens around the spout; the right planter opens for the bridge.
   rail(-0.91, 3.12, -0.46, 0.58);
@@ -1174,14 +1333,19 @@ export async function createGarden(
     ...droneTrimGeometries,
     ...droneRotorGeometries,
   ].forEach((g) => g.dispose());
+  // Moonlight is weak, so the shell carries a faint cool emissive after dusk.
   const droneBodyMaterial = new T.MeshStandardMaterial({
     color: 0xf2e9d3,
+    emissive: 0x9fb4d8,
+    emissiveIntensity: 0,
     roughness: 0.7,
     transparent: true,
     opacity: 0,
   });
   const droneTrimMaterial = new T.MeshStandardMaterial({
     color: 0x496c67,
+    emissive: 0x6f8fa8,
+    emissiveIntensity: 0,
     roughness: 0.55,
     transparent: true,
     opacity: 0,
@@ -1199,6 +1363,32 @@ export async function createGarden(
     opacity: 0,
   });
   const droneEdges = new T.EdgesGeometry(bodyGeo, 28);
+  // Navigation lights, so the drones still read against the night sky: red
+  // port, green starboard, and two white strobes at the tail.
+  const navGeometry = new T.BufferGeometry();
+  navGeometry.setAttribute(
+    "position",
+    new T.Float32BufferAttribute(
+      [-0.42, 0.03, 0.39, 0.42, 0.03, 0.39, -0.42, 0.03, -0.39, 0.42, 0.03, -0.39],
+      3,
+    ),
+  );
+  navGeometry.setAttribute(
+    "aColor",
+    new T.Float32BufferAttribute([1, 0.25, 0.2, 0.3, 1, 0.45, 1, 1, 1, 1, 1, 1], 3),
+  );
+  navGeometry.setAttribute("aBlink", new T.Float32BufferAttribute([0, 0, 1, 1], 1));
+  const navOpacity = { value: 0 };
+  const navMaterial = new T.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: T.AdditiveBlending,
+    uniforms: { uTime: timeUniform, uOpacity: navOpacity, uScale: { value: renderer.getPixelRatio() } },
+    // Each drone strobes on its own beat, keyed off where it is.
+    vertexShader: `uniform float uTime;uniform float uScale;attribute vec3 aColor;attribute float aBlink;varying vec3 vColor;varying float vOn;void main(){vColor=aColor;float k=fract(uTime*.8+modelMatrix[3][0]*.31);vOn=aBlink>.5?step(.86,k):.75+.25*sin(uTime*2.);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);gl_PointSize=(aBlink>.5?13.:11.)*uScale;}`,
+    fragmentShader:
+      "uniform float uOpacity;varying vec3 vColor;varying float vOn;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float a=pow(1.-d*2.,1.6);gl_FragColor=vec4(mix(vColor,vec3(1.),smoothstep(.22,0.,d)*.7),a*vOn*uOpacity);}",
+  });
   const drones: T.Group[] = [];
   for (let i = 0; i < 3; i++) {
     const drone = new T.Group();
@@ -1207,6 +1397,7 @@ export async function createGarden(
       new T.Mesh(trimGeo, droneTrimMaterial),
       new T.Mesh(rotorGeo, rotorMaterial),
       new T.LineSegments(droneEdges, droneLineMaterial),
+      new T.Points(navGeometry, navMaterial),
     );
     world.add(drone);
     drones.push(drone);
@@ -1348,104 +1539,6 @@ export async function createGarden(
     paperTexture.needsUpdate = true;
   }
   drawPaper();
-  // About: the drafting board carries a small drawing of the garden itself.
-  const sheetCanvas = document.createElement("canvas");
-  sheetCanvas.width = 512;
-  sheetCanvas.height = 352;
-  const sheetContext = sheetCanvas.getContext("2d")!;
-  const sheetTexture = new T.CanvasTexture(sheetCanvas);
-  sheetTexture.colorSpace = T.SRGBColorSpace;
-  sheetTexture.anisotropy = 4;
-  const sheetMaterial = new T.MeshBasicMaterial({
-    map: sheetTexture,
-    transparent: true,
-    opacity: 0,
-    toneMapped: false,
-  });
-  const sheet = new T.Mesh(new T.PlaneGeometry(0.74, 0.5), sheetMaterial);
-  sheet.rotation.x = -Math.PI / 2 + 0.5;
-  sheet.position.set(0.2, 5.95 + 0.02 * Math.cos(0.5), -1.2 + 0.02 * Math.sin(0.5));
-  world.add(sheet);
-  let sheetStage = -1;
-  // Grey pencil at Sketch, blue at Blueprint, ink with a green wash once built.
-  function drawSheet(step: number) {
-    sheetStage = step;
-    const c = sheetContext,
-      w = sheetCanvas.width,
-      h = sheetCanvas.height;
-    // While drawn, the sheet has no paper of its own: just lines in the
-    // scene's pencil and blueprint ink. It only becomes paper once built.
-    const ink = ["#8fbcda", "#c0eaff", "#24313b"][step];
-    const wash = step === 2 ? "rgba(118, 166, 92, 0.3)" : null;
-    c.clearRect(0, 0, w, h);
-    if (step === 2) {
-      c.fillStyle = "#f7f3e8";
-      c.fillRect(0, 0, w, h);
-    }
-    const s = 24;
-    const p = (x: number, y: number, z: number): [number, number] => [
-      256 + (x - z) * 0.866 * s,
-      188 + (x + z) * 0.5 * s - y * s,
-    ];
-    c.strokeStyle = ink;
-    c.lineJoin = "round";
-    c.lineWidth = step === 0 ? 1.4 : 1.8;
-    const poly = (pts: [number, number][], fill: string | null) => {
-      c.beginPath();
-      pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
-      c.closePath();
-      if (fill) {
-        c.fillStyle = fill;
-        c.fill();
-      }
-      c.stroke();
-    };
-    const prism = (x0: number, x1: number, z0: number, z1: number, y0: number, y1: number) => {
-      poly([p(x0, y1, z0), p(x1, y1, z0), p(x1, y1, z1), p(x0, y1, z1)], wash);
-      poly([p(x0, y0, z1), p(x1, y0, z1), p(x1, y1, z1), p(x0, y1, z1)], wash);
-      poly([p(x1, y0, z0), p(x1, y0, z1), p(x1, y1, z1), p(x1, y1, z0)], wash);
-    };
-    const ellipse = (cx: number, cz: number, r: number, y: number) => {
-      c.beginPath();
-      for (let i = 0; i <= 40; i++) {
-        const a = (i / 40) * Math.PI * 2;
-        const [x, yy] = p(cx + Math.cos(a) * r, y, cz + Math.sin(a) * r);
-        if (i) c.lineTo(x, yy);
-        else c.moveTo(x, yy);
-      }
-      c.stroke();
-    };
-    prism(-5.4, 5.4, -4.35, 4.35, 0, 0.3);
-    c.beginPath();
-    for (const x of [-0.6, 0.62]) {
-      c.moveTo(...p(x, 0.3, 0));
-      c.lineTo(...p(x, 0.3, 3.93));
-    }
-    c.stroke();
-    // The tower, the pavilion, the ring and the greenhouse.
-    prism(-1.3, 1.3, -3.2, -0.5, 0.3, 2.9);
-    prism(-1.3, 1.3, -3.2, -0.5, 2.9, 5.1);
-    prism(2.05, 4.6, -2.5, 1.0, 0.3, 2.9);
-    ellipse(-3.55, 0.2, 1.3, 0.6);
-    ellipse(-3.55, 0.2, 1.3, 2.4);
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 10) * Math.PI * 2;
-      const x = -3.55 + Math.cos(a) * 1.3,
-        z = 0.2 + Math.sin(a) * 1.3;
-      c.beginPath();
-      c.moveTo(...p(x, 0.6, z));
-      c.lineTo(...p(x, 2.4, z));
-      c.stroke();
-    }
-    prism(1.15, 2.9, 2.2, 4.0, 0.3, 1.9);
-    poly([p(1.15, 1.9, 4.0), p(2.02, 2.5, 4.0), p(2.9, 1.9, 4.0)], wash);
-    c.beginPath();
-    c.moveTo(...p(2.02, 2.5, 4.0));
-    c.lineTo(...p(2.02, 2.5, 2.2));
-    c.lineTo(...p(2.9, 1.9, 2.2));
-    c.stroke();
-    sheetTexture.needsUpdate = true;
-  }
   // The path: one shared outline that moves to the highlighted level.
   const highlight = new T.Group();
   highlight.visible = false;
@@ -1589,9 +1682,6 @@ export async function createGarden(
       drawPaper();
     }
     const step = progress >= 0.6 ? 2 : progress >= 0.28 ? 1 : 0;
-    if (step !== sheetStage) drawSheet(step);
-    sheetMaterial.opacity = drawn;
-    sheetMaterial.visible = drawn > 0.01;
     pathGlow = approach(pathGlow, pathStep === null ? 0 : 1, reduced ? 1 : dt / 0.25);
     // Lit from the blue drawing on, so Blueprint can walk up the tower.
     const lit = Math.max(solid, blue) * drawn;
@@ -2147,6 +2237,324 @@ export async function createGarden(
   cat.rotation.y = -Math.PI / 2 + 0.3;
   world.add(cat);
 
+  /* The gardener on the roof keeps a day: watering the pots in the cool of
+     the morning and evening, hanging the washing out when it's sunny,
+     reading in the armchair in between (on the sofa, under the leaves, when
+     it rains), and asleep on the sofa after dark. */
+  type Chore = "read" | "shelter" | "water" | "hang" | "sleep";
+  const skin = mat(0xd9a97f, 0.8),
+    shirt = mat(0xc4704f, 0.85),
+    trousers = mat(0x3f5560, 0.9),
+    hair = mat(0x3b2a21, 0.9),
+    cover = mat(0x4c6861, 0.8),
+    pages = mat(0xe9dfc8, 0.95),
+    tin = mat(0x7d9a8f, 0.5);
+  const limb = (r: number, length: number, material: T.Material) => {
+    const m = new T.Mesh(
+      new T.CapsuleGeometry(r, length, 2, 7).translate(0, -length / 2 - r * 0.4, 0),
+      material,
+    );
+    m.castShadow = true;
+    return m;
+  };
+  // Every joint is a group; the figure faces +z with its feet at the origin.
+  const gardener = new T.Group();
+  const hips = new T.Group();
+  hips.position.y = 0.3;
+  const spine = new T.Group();
+  const torso = new T.Mesh(
+    new T.CapsuleGeometry(0.07, 0.12, 2, 8).scale(1.15, 1, 0.8).translate(0, 0.13, 0),
+    shirt,
+  );
+  torso.castShadow = true;
+  const neck = new T.Group();
+  neck.position.y = 0.27;
+  const head = new T.Mesh(new T.SphereGeometry(0.06, 10, 8).translate(0, 0.06, 0), skin);
+  const crown = new T.Mesh(
+    new T.SphereGeometry(0.064, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55)
+      .rotateX(-0.35)
+      .translate(0, 0.07, -0.006),
+    hair,
+  );
+  head.castShadow = true;
+  neck.add(head, crown);
+  const arms = [-1, 1].map((side) => {
+    const shoulder = new T.Group();
+    shoulder.position.set(side * 0.09, 0.22, 0);
+    const elbow = new T.Group();
+    elbow.position.y = -0.12;
+    const hand = new T.Group();
+    hand.position.y = -0.11;
+    const fist = new T.Mesh(new T.SphereGeometry(0.024, 7, 5), skin);
+    hand.add(fist);
+    elbow.add(limb(0.022, 0.08, skin), hand);
+    shoulder.add(limb(0.026, 0.08, shirt), elbow);
+    spine.add(shoulder);
+    return { shoulder, elbow, hand };
+  });
+  const legs = [-1, 1].map((side) => {
+    const hip = new T.Group();
+    hip.position.x = side * 0.043;
+    const knee = new T.Group();
+    knee.position.y = -0.15;
+    const shoe = new T.Mesh(new T.BoxGeometry(0.05, 0.035, 0.09).translate(0, -0.14, 0.02), hair);
+    knee.add(limb(0.028, 0.1, trousers), shoe);
+    hip.add(limb(0.033, 0.1, trousers), knee);
+    hips.add(hip);
+    return { hip, knee };
+  });
+  spine.add(torso, neck);
+  hips.add(spine);
+  gardener.add(hips);
+  gardener.scale.setScalar(1.2);
+  // The book: a cover and a block of pages, opened or shut by its two halves.
+  const book = new T.Group();
+  const bookHalves = [-1, 1].map((side) => {
+    const half = new T.Group();
+    half.add(
+      new T.Mesh(new T.BoxGeometry(0.075, 0.006, 0.1).translate(side * 0.0375, 0, 0), cover),
+      new T.Mesh(new T.BoxGeometry(0.068, 0.012, 0.09).translate(side * 0.036, 0.009, 0), pages),
+    );
+    book.add(half);
+    return half;
+  });
+  // The watering can rests by the planter until it is wanted.
+  const can = new T.Group();
+  const canSpout = new T.Object3D();
+  canSpout.position.set(0, 0.11, 0.17);
+  can.add(
+    new T.Mesh(new T.CylinderGeometry(0.05, 0.055, 0.1, 10).translate(0, 0.05, 0), tin),
+    new T.Mesh(
+      new T.CylinderGeometry(0.008, 0.013, 0.15, 6).rotateX(1.0).translate(0, 0.08, 0.1),
+      tin,
+    ),
+    new T.Mesh(new T.TorusGeometry(0.04, 0.007, 4, 10, Math.PI).translate(0, 0.1, 0).rotateY(Math.PI / 2), tin),
+    canSpout,
+  );
+  can.traverse((o) => (o.castShadow = true));
+  const drops = new T.Points(
+    new T.BufferGeometry().setAttribute(
+      "position",
+      new T.Float32BufferAttribute(new Array(24).fill(0), 3),
+    ),
+    alive(new T.PointsMaterial({ color: 0xb9e2ec, size: 3, sizeAttenuation: false })),
+  );
+  drops.frustumCulled = false;
+  // Washing on the line: one instanced cloth, a colour for each piece.
+  const cloth = new T.InstancedMesh(
+    new T.PlaneGeometry(0.16, 0.2, 1, 2).translate(0, -0.1, 0).rotateY(Math.PI / 2),
+    alive(new T.MeshStandardMaterial({ roughness: 0.95, side: T.DoubleSide })),
+    4,
+  );
+  [0xf1e9d7, 0x7fa3c0, 0xe7b763, 0xce8265].forEach((c, i) =>
+    cloth.setColorAt(i, new T.Color(c)),
+  );
+  cloth.castShadow = true;
+  const roofY = 5.16;
+  const lanternGlow = new T.Mesh(new T.SphereGeometry(0.05, 8, 6), glowMaterial);
+  lanternGlow.position.set(sofa.x, 5.72, -1.62);
+  world.add(gardener, book, can, drops, cloth, lanternGlow);
+  // Facing the pot from here keeps the can's side of the body to the camera.
+  const potFacing = Math.PI - 0.5;
+  const waterSpots = pots.map(([x, z]): [number, number, number] => [
+    x - Math.sin(potFacing) * 0.27,
+    z - Math.cos(potFacing) * 0.27,
+    potFacing,
+  ]);
+  // Where each chore is done, and which way the gardener faces there.
+  const choreSpots: Record<Chore, [number, number, number]> = {
+    read: [chair.x - Math.sin(chair.yaw) * 0.03, chair.z - Math.cos(chair.yaw) * 0.03, chair.yaw],
+    // Rain sends the book to the sofa, under the leaves.
+    shelter: [sofa.x + 0.2, sofa.z - 0.02, 0],
+    // Lying along the sofa, head to the left; the feet are the figure's origin.
+    sleep: [sofa.x + 0.38, sofa.z + 0.02, Math.PI / 2],
+    water: waterSpots[0],
+    hang: [1.06, -1.1, Math.PI / 2],
+  };
+
+  // Joint angles per pose: spine, neck, shoulders, elbows, hips, knees, the
+  // hips' height, the whole body's pitch, and its lift off the roof.
+  type Pose = number[];
+  const poses: Record<"stand" | "sit" | "lie" | "water" | "hang", Pose> = {
+    //      spine  neck  lSh   rSh   lEl   rEl   lHip  rHip  lKn  rKn  hipsY pitch lift
+    stand: [0, 0, 0.05, 0.05, -0.1, -0.1, 0, 0, 0, 0, 0.3, 0, 0],
+    sit: [-0.18, 0.32, -0.75, -0.75, -1.25, -1.25, -1.57, -1.57, 1.35, 1.35, 0.225, 0, 0],
+    lie: [0, 0.1, -0.45, -0.55, -1.5, -1.4, 0.03, -0.05, 0.08, 0.15, 0.3, -Math.PI / 2, 0.29],
+    water: [0.22, 0.3, -0.95, 0.1, -0.25, -0.15, 0, 0, 0, 0, 0.29, 0, 0],
+    hang: [-0.05, -0.35, -2.7, -2.5, -0.35, -0.5, 0, 0, 0, 0, 0.3, 0, 0],
+  };
+  gardener.rotation.order = "YXZ";
+  const pose = poses.stand.slice();
+  const goalPose: Pose = poses.stand.slice();
+  let chore: Chore = "read",
+    choreTime = 0,
+    walking = 0;
+  const choreFor = (): Chore => {
+    if (night > 0.5) return "sleep";
+    if (weatherPrecip > 0.15) return "shelter";
+    if (hour < 9.5 || (hour >= 17 && hour < 19)) return "water";
+    if (hour < 11.5 && weatherCloud < 0.45) return "hang";
+    return "read";
+  };
+  const sunnyLine = () =>
+    weatherCloud < 0.45 && weatherPrecip < 0.05 && hour >= 9.5 && hour < 18.5;
+  const spot = new T.Vector3(),
+    handPoint = new T.Vector3(),
+    spoutPoint = new T.Vector3();
+  const lineZ = [-1.44, -1.21, -0.98, -0.75];
+  gardener.position.set(choreSpots.read[0], roofY, choreSpots.read[1]);
+  function updateGardener(dt: number, still: boolean) {
+    const next = choreFor();
+    if (next !== chore) {
+      chore = next;
+      choreTime = 0;
+    }
+    choreTime += dt;
+    const t = elapsed;
+    // Pours a while at each pot, then moves on to the next.
+    if (chore === "water")
+      choreSpots.water = waterSpots[still ? 0 : Math.floor(choreTime / 6) % waterSpots.length];
+    const [sx, sz, facing] = choreSpots[chore];
+    spot.set(sx, gardener.position.y, sz);
+    const away = gardener.position.distanceTo(spot);
+    // Walk over before starting a chore; snap there when motion is off.
+    if (still || away < 0.02) {
+      gardener.position.copy(spot);
+      walking = 0;
+    } else {
+      const stepLength = Math.min(away, dt * 0.38);
+      const heading = Math.atan2(spot.x - gardener.position.x, spot.z - gardener.position.z);
+      gardener.position.x += Math.sin(heading) * stepLength;
+      gardener.position.z += Math.cos(heading) * stepLength;
+      gardener.rotation.y = turnToward(gardener.rotation.y, heading, dt * 6);
+      walking = 1;
+    }
+    if (!walking) gardener.rotation.y = still ? facing : turnToward(gardener.rotation.y, facing, dt * 4);
+    const seated = !walking && (chore === "read" || chore === "shelter" || chore === "sleep");
+    const reading = seated && chore !== "sleep";
+    const base = walking
+      ? poses.stand
+      : chore === "sleep"
+        ? poses.lie
+        : reading
+          ? poses.sit
+          : poses[chore as "water" | "hang"];
+    for (let i = 0; i < base.length; i++) goalPose[i] = base[i];
+    // A little life on top of each pose.
+    if (walking) {
+      const swing = Math.sin(t * 9) * 0.55;
+      goalPose[6] = swing;
+      goalPose[7] = -swing;
+      goalPose[8] = Math.max(0, -swing) * 0.8;
+      goalPose[9] = Math.max(0, swing) * 0.8;
+      goalPose[2] = -swing * 0.6;
+      goalPose[3] = swing * 0.6;
+      goalPose[10] = 0.3 + Math.abs(Math.cos(t * 9)) * 0.012;
+    } else if (reading) {
+      // Eyes down the page, and now and then a page turned.
+      goalPose[1] += Math.sin(t * 0.6) * 0.05;
+      goalPose[4] -= Math.max(0, Math.sin(t * 0.45) - 0.92) * 6;
+    } else if (chore === "water") {
+      goalPose[2] += Math.sin(t * 1.4) * 0.12;
+    } else if (chore === "hang") {
+      const reach = Math.sin(t * 2.2);
+      goalPose[2] += reach * 0.2;
+      goalPose[3] -= reach * 0.2;
+    }
+    const ease = still ? 1 : Math.min(1, dt * 5);
+    for (let i = 0; i < pose.length; i++) pose[i] = lerp(pose[i], goalPose[i], ease);
+    const breath = chore === "sleep" && !walking ? Math.sin(t * 1.3) * 0.03 : Math.sin(t * 2) * 0.01;
+    spine.rotation.x = pose[0];
+    spine.scale.set(1, 1 + breath, 1 + breath);
+    neck.rotation.set(pose[1], 0, chore === "sleep" && !walking ? 0.3 : 0);
+    arms[0].shoulder.rotation.set(pose[2], 0, -0.08);
+    arms[1].shoulder.rotation.set(pose[3], 0, 0.08);
+    arms[0].elbow.rotation.x = pose[4];
+    arms[1].elbow.rotation.x = pose[5];
+    legs[0].hip.rotation.set(pose[6], 0, 0.04);
+    legs[1].hip.rotation.set(pose[7], 0, -0.04);
+    legs[0].knee.rotation.x = pose[8];
+    legs[1].knee.rotation.x = pose[9];
+    hips.position.y = pose[10];
+    gardener.rotation.x = pose[11];
+    gardener.position.y = roofY + pose[12];
+    gardener.updateMatrixWorld(true);
+    // The book is held open to read, shut on the chest asleep, and otherwise
+    // left on the table.
+    if (seated) {
+      arms[0].hand.getWorldPosition(handPoint);
+      arms[1].hand.getWorldPosition(spoutPoint);
+      world.worldToLocal(handPoint.add(spoutPoint).multiplyScalar(0.5));
+      book.position.copy(handPoint);
+      book.position.y += chore === "sleep" ? 0.01 : 0.03;
+      book.rotation.set(chore === "sleep" ? 0 : -0.95, gardener.rotation.y, 0, "YXZ");
+    } else {
+      book.position.set(table.x - 0.08, 5.34, table.z);
+      book.rotation.set(0, 0.4, 0);
+    }
+    // Open in a shallow V to read; otherwise the right half folds shut over the left.
+    bookHalves[0].rotation.z = reading ? -0.3 : 0;
+    bookHalves[1].rotation.z = reading ? 0.3 : Math.PI - 0.06;
+    // The can: in hand while watering, by the planter otherwise.
+    const pouring = chore === "water" && !walking;
+    if (pouring) {
+      arms[0].hand.getWorldPosition(handPoint);
+      world.worldToLocal(handPoint);
+      can.position.set(handPoint.x, handPoint.y - 0.13, handPoint.z);
+      can.rotation.set(0.55 + Math.sin(t * 1.4) * 0.12, gardener.rotation.y, 0, "YXZ");
+    } else if (chore === "water") {
+      arms[0].hand.getWorldPosition(handPoint);
+      world.worldToLocal(handPoint);
+      can.position.set(handPoint.x, handPoint.y - 0.13, handPoint.z);
+      can.rotation.set(0, gardener.rotation.y, 0, "YXZ");
+    } else {
+      can.position.set(-0.72, roofY, -1.5);
+      can.rotation.set(0, -0.6, 0);
+    }
+    can.updateMatrixWorld(true);
+    // Water falls from the spout in a short arc.
+    const water = drops.geometry.attributes.position as T.BufferAttribute;
+    canSpout.getWorldPosition(spoutPoint);
+    world.worldToLocal(spoutPoint);
+    const forward = gardener.rotation.y;
+    for (let i = 0; i < 8; i++) {
+      const k = (t * 1.6 + i / 8) % 1;
+      water.setXYZ(
+        i,
+        spoutPoint.x + Math.sin(forward) * k * 0.06,
+        spoutPoint.y - k * k * 0.32,
+        spoutPoint.z + Math.cos(forward) * k * 0.06,
+      );
+    }
+    water.needsUpdate = true;
+    drops.visible = pouring && !still;
+    // Washing appears piece by piece while it's hung, and stays out while sunny.
+    const pieces = !sunnyLine()
+      ? 0
+      : chore === "hang"
+        ? still
+          ? 4
+          : walking
+            ? 0
+            : Math.min(4, Math.floor(choreTime / 2.5) + 1)
+        : 4;
+    cloth.count = pieces;
+    for (let i = 0; i < pieces; i++) {
+      temp.position.set(1.32, 5.785, lineZ[i]);
+      temp.rotation.set(0, 0, Math.sin(t * 1.3 + i) * 0.12 * (1 - weatherCloud));
+      temp.scale.setScalar(1);
+      temp.updateMatrix();
+      cloth.setMatrixAt(i, temp.matrix);
+    }
+    cloth.instanceMatrix.needsUpdate = true;
+    cloth.visible = pieces > 0;
+  }
+  function turnToward(from: number, to: number, step: number) {
+    let d = ((to - from + Math.PI) % (Math.PI * 2)) - Math.PI;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return Math.abs(d) <= step ? to : from + Math.sign(d) * step;
+  }
+
   const rabbitColors: Record<Season, number> = {
     spring: 0x9c7a5a,
     summer: 0xa07c58,
@@ -2321,7 +2729,7 @@ export async function createGarden(
   const points: Record<string, T.Vector3> = {
     wattch: new T.Vector3(-3.65, 2.65, 0.2),
     whisperbook: new T.Vector3(3.35, 3.55, -0.65),
-    about: new T.Vector3(0.15, 6.2, -1.15),
+    about: new T.Vector3(0.1, 6.4, -1.62),
     contact: new T.Vector3(2.02, 2.5, 3.11),
   };
   const lookDefault = new T.Vector3(0, 2.4, 0);
@@ -2469,8 +2877,12 @@ export async function createGarden(
     droneBodyMaterial.opacity = life;
     droneTrimMaterial.opacity = life;
     rotorMaterial.opacity = life * 0.21;
+    droneBodyMaterial.emissiveIntensity = night * 0.5;
+    droneTrimMaterial.emissiveIntensity = night * 0.35;
+    navOpacity.value = life * (0.3 + 0.7 * night);
+    // The blueprint outline, and at night a pale rim around the shell.
     droneLineMaterial.opacity =
-      smooth(0.15, 0.3, progress) * (1 - life) * 0.46;
+      smooth(0.15, 0.3, progress) * (1 - life) * 0.46 + life * night * 0.55;
     drones.forEach((drone, i) => {
       const phase = elapsed * 0.105 * life + i * 2.08;
       drone.position.set(
@@ -2486,6 +2898,7 @@ export async function createGarden(
     });
     updateRooms(dt, solid, drawn, blueprint);
     updateLife(paused || reduced ? 0 : dt, life);
+    updateGardener(paused || reduced ? 0 : dt, paused || reduced);
     butterflies.forEach((b, i) => {
       b.position.set(
         Math.cos(elapsed * 0.2 + i * 1.9) * (2 + i * 0.25),
@@ -2783,7 +3196,6 @@ export async function createGarden(
       geometries.forEach((g) => g.dispose());
       mats.forEach((m) => m.dispose());
       paperTexture.dispose();
-      sheetTexture.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     },
