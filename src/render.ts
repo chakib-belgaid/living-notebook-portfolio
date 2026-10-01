@@ -37,7 +37,7 @@ export function renderPortfolio() {
               <p class="reading-lede">${e(p.lede)}</p><p>${e(p.intro)}</p>
               <h4>What I built</h4><p>${e(p.built)}</p><h4>The decision that shaped it</h4><p>${e(p.decision)}</p>
               <p class="project-tech">${e(p.tech.join(" · "))}</p><a class="source-link" href="${p.url}" target="_blank" rel="noopener noreferrer">Read ${e(p.title)} on GitHub ↗</a>
-              <details class="reading-illustration script-only" data-illustration="${id}"><summary>A small browser illustration</summary><p>${e(id === "whisperbook" ? "Hear an excerpt in your browser’s local voice. Whisperbook uses its own on-device narration on Android." : "Watch this page’s rendering cost. This is CPU work, not hardware energy use. Enable the garden preview to measure it.")}</p><div data-reading-widget="${id}"></div></details>
+              <details class="reading-illustration script-only" data-illustration="${id}"><summary>A small browser illustration</summary><p>${e(id === "whisperbook" ? "Hear an excerpt in your browser’s local voice. Whisperbook uses its own on-device narration on Android." : "Watch what drawing this page costs your device: CPU and GPU time, and the estimated carbon of that work. Enable the garden preview to measure it.")}</p><div data-reading-widget="${id}"></div></details>
             </div>
             <figure class="reading-proof proof-${id}"><a href="${p.image}" data-evidence="${id}" aria-label="View full screenshot of ${e(p.title)}"><img src="${p.image}" width="${p.size[0]}" height="${p.size[1]}" alt="${e(p.alt)}" loading="lazy" decoding="async" /></a>
               <figcaption>${e(p.caption)} <a href="${p.image}" data-evidence="${id}">View full screenshot</a></figcaption>

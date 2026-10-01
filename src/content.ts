@@ -96,7 +96,7 @@ function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
       title: "A small illustration",
       copy: spot === "whisperbook"
         ? "Hear an excerpt in your browser’s local voice. Whisperbook uses its own on-device narration on Android."
-        : "Watch this page’s rendering cost change in your browser. It shows CPU work, not hardware energy use.",
+        : "Watch what drawing this page costs your device: CPU and GPU time per frame, and the estimated carbon of that work. Browsers report time, not power, so the energy is an estimate.",
       body: `<section class="note-widget try"><div data-widget></div></section>`,
       spot,
       widget: spot,

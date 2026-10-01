@@ -14,7 +14,8 @@ import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBea
 import { createNavigation, type SectionId } from "./navigation";
 import { mountContact } from "./contact";
 import { widgetLifecycle } from "./widgets";
-import { createTransferEstimate } from "./transfer";
+import { createTransferEstimate, formatGrams } from "./transfer";
+import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY, estimateCompute, type ComputeWork } from "./compute";
 import { initEvidence } from "./evidence";
 
 /* Headline letters are wrapped so they can be set in one after another. */
@@ -76,8 +77,13 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
   <details class="dock"><summary>Garden controls</summary><div class="dock-body">
     <section class="widget widget-carbon" data-from="0" aria-labelledby="carbon-label">
       <p class="carbon-figure" aria-live="off" data-carbon-figure>—</p>
-      <p class="carbon-label" id="carbon-label">Estimated impact of reported data transfer</p>
-      <p class="widget-fine carbon-source" data-carbon-source></p><details class="carbon-details"><summary>Details</summary><p class="widget-fine">Reported transfer bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, using decimal GB. Sustainable Web Design Model v4 includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded. Cached resources add no reported network bytes. This does not measure device energy or accumulate the garden’s rendering cost; a cached visit still uses energy.</p><a class="widget-fine" href="https://sustainablewebdesign.org/estimating-digital-emissions/" target="_blank" rel="noopener noreferrer">Read the methodology ↗</a></details>
+      <p class="carbon-label" id="carbon-label">Estimated impact of this visit so far</p>
+      <dl class="carbon-split">
+        <div><dt>Data transfer</dt><dd data-carbon-transfer>—</dd></div>
+        <div><dt>Rendering</dt><dd data-carbon-compute>—</dd></div>
+      </dl>
+      <p class="widget-fine carbon-source" data-carbon-source></p>
+      <p class="widget-fine carbon-source" data-compute-source></p><details class="carbon-details"><summary>Details</summary><p class="widget-fine">Data transfer: reported bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, computed with co2.js using the Sustainable Web Design Model v4, which includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded, and cached resources add no reported network bytes.</p><p class="widget-fine">Rendering and animation: the main-thread time spent updating and drawing the garden and sky at an assumed ${CPU_WATTS} W, plus the GPU time of each garden frame at an assumed ${GPU_WATTS} W, × ${Math.round(GRID_INTENSITY)} g CO₂e/kWh, co2.js’s world average grid intensity. GPU time is counted only where the browser exposes GPU timers; elsewhere this part is a CPU-only lower bound. Browsers report time, not power, so the wattages are assumptions, and the model’s device share of transfer may overlap a little with this measured rendering.</p><a class="widget-fine" href="https://sustainablewebdesign.org/estimating-digital-emissions/" target="_blank" rel="noopener noreferrer">Read the transfer methodology ↗</a> <a class="widget-fine" href="https://developers.thegreenwebfoundation.org/co2js/overview/" target="_blank" rel="noopener noreferrer">About co2.js ↗</a></details>
     </section>
 
     <section class="widget widget-sky" data-from="3" aria-labelledby="sky-title">
@@ -643,10 +649,27 @@ stageEl.addEventListener("pointercancel", () => {
 });
 
 const transfer = createTransferEstimate();
+/* All the drawing done so far: the garden's frames on the CPU and GPU, and
+   the sky's canvas on the CPU. Null when neither is running. */
+function renderWork(): ComputeWork | null {
+  if (!garden && !sky) return null;
+  const g = garden?.stats();
+  const s = sky?.stats();
+  return {
+    cpuMs: (g?.cpuMs ?? 0) + (s?.cpuMs ?? 0),
+    gpuMs: g ? g.gpuMs : null,
+    frames: g?.frames ?? s?.frames ?? 0,
+  };
+}
 function drawCarbon() {
-  const { figure, source } = transfer.read();
-  $("[data-carbon-figure]").textContent = figure;
-  $("[data-carbon-source]").textContent = source;
+  const moved = transfer.read();
+  const drawn = estimateCompute(renderWork());
+  const parts = [moved.grams, drawn.grams].filter((g): g is number => g !== null);
+  $("[data-carbon-figure]").textContent = parts.length ? formatGrams(parts.reduce((a, b) => a + b, 0)) : "Unavailable";
+  $("[data-carbon-transfer]").textContent = moved.figure;
+  $("[data-carbon-compute]").textContent = drawn.figure;
+  $("[data-carbon-source]").textContent = `Transfer: ${moved.source}`;
+  $("[data-compute-source]").textContent = `Rendering: ${drawn.source}`;
 }
 drawCarbon();
 
@@ -654,35 +677,55 @@ drawCarbon();
    Whisperbook player and the Wattch meter. Bloom has Leave a note. */
 
 /* Wattch: the cost to draw this page, a sparkline of the CPU time each frame
-   takes to submit. It draws into every mounted meter. */
-const meters = new Set<{ canvas: HTMLCanvasElement; readout: HTMLElement }>();
+   takes to submit (solid) and, where the browser exposes GPU timers, the GPU
+   time to draw it (dashed), with the visit's running rendering footprint.
+   It draws into every mounted meter. */
+const meters = new Set<{ canvas: HTMLCanvasElement; readout: HTMLElement; total: HTMLElement }>();
 const samples: number[] = [];
+const gpuSamples: number[] = [];
 function drawMeter() {
   if (!garden || !meters.size) return;
   const s = garden.stats();
   samples.push(s.ms);
   if (samples.length > 48) samples.shift();
+  if (s.gpuFrameMs !== null) {
+    gpuSamples.push(s.gpuFrameMs);
+    if (gpuSamples.length > 48) gpuSamples.shift();
+  }
   const css = getComputedStyle(root);
-  const top = Math.max(2, ...samples) * 1.15;
-  for (const { canvas, readout } of meters) {
-    const c = canvas.getContext("2d")!;
-    const w = canvas.width,
-      h = canvas.height;
-    c.clearRect(0, 0, w, h);
-    c.fillStyle = css.getPropertyValue("--hairline");
-    c.fillRect(0, h - 2, w, 2);
-    c.strokeStyle = css.getPropertyValue("--stage");
-    c.lineWidth = 3;
-    c.lineJoin = "round";
+  const top = Math.max(2, ...samples, ...gpuSamples) * 1.15;
+  const drawn = estimateCompute(renderWork());
+  const line = (c: CanvasRenderingContext2D, values: number[], w: number, h: number) => {
     c.beginPath();
-    samples.forEach((v, i) => {
+    values.forEach((v, i) => {
       const x = (i / 47) * w,
         y = h - 6 - (v / top) * (h - 14);
       if (i === 0) c.moveTo(x, y);
       else c.lineTo(x, y);
     });
     c.stroke();
-    readout.textContent = `${s.ms.toFixed(1)} ms of CPU per frame. ${s.triangles.toLocaleString("en")} triangles in ${s.calls} draw calls.`;
+  };
+  for (const { canvas, readout, total } of meters) {
+    const c = canvas.getContext("2d")!;
+    const w = canvas.width,
+      h = canvas.height;
+    c.clearRect(0, 0, w, h);
+    c.fillStyle = css.getPropertyValue("--hairline");
+    c.fillRect(0, h - 2, w, 2);
+    c.lineJoin = "round";
+    if (gpuSamples.length) {
+      c.strokeStyle = css.getPropertyValue("--muted");
+      c.lineWidth = 2;
+      c.setLineDash([6, 5]);
+      line(c, gpuSamples, w, h);
+      c.setLineDash([]);
+    }
+    c.strokeStyle = css.getPropertyValue("--stage");
+    c.lineWidth = 3;
+    line(c, samples, w, h);
+    const gpu = s.gpuFrameMs === null ? "" : `, ${s.gpuFrameMs.toFixed(1)} ms of GPU`;
+    readout.textContent = `${s.ms.toFixed(1)} ms of CPU${gpu} per frame. ${s.triangles.toLocaleString("en")} triangles in ${s.calls} draw calls.`;
+    total.textContent = `Drawing the garden this visit: ${drawn.figure}. ${drawn.source}`;
   }
 }
 setInterval(() => {
@@ -697,10 +740,12 @@ function mountMeter(el: HTMLElement) {
   }
   el.innerHTML = `<canvas class="spark" width="480" height="80" aria-hidden="true"></canvas>
     <p class="meter-readout">Measuring</p>
-    <p class="widget-fine">Measured live in your browser, like the dial in the observatory.</p>`;
+    <p class="meter-readout" data-meter-total></p>
+    <p class="widget-fine">Measured live in your browser, like the dial in the observatory. Energy uses assumed CPU and GPU wattages and co2.js grid data.</p>`;
   const meter = {
     canvas: el.querySelector("canvas")!,
     readout: el.querySelector<HTMLElement>(".meter-readout")!,
+    total: el.querySelector<HTMLElement>("[data-meter-total]")!,
   };
   meters.add(meter);
   drawMeter();

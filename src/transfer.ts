@@ -1,6 +1,15 @@
+import { co2 } from "@tgwf/co2";
+
+const swdm = new co2({ model: "swd", version: 4 });
+
+export function formatGrams(grams: number) {
+  if (grams >= 0.01) return `${grams.toFixed(grams < 1 ? 2 : 1)} g CO₂e`;
+  const mg = grams * 1000;
+  return mg < 0.01 ? "Under 0.01 mg CO₂e" : `${mg.toFixed(mg < 1 ? 2 : 1)} mg CO₂e`;
+}
+
 /** Resource Timing covers reported transfer, not the running energy of the scene. */
 export function createTransferEstimate() {
-  const gramsPerByte = 0.3 * 494 / 1e9; // SWDM v4, decimal GB, operational + embodied.
   let bytes = 0, cached = 0, unknown = 0;
   let supported = false;
   let observer: PerformanceObserver | undefined;
@@ -20,9 +29,12 @@ export function createTransferEstimate() {
   } catch { supported = false; }
   return {
     read() {
-      const grams = bytes * gramsPerByte;
+      // SWDM v4 through co2.js: decimal GB, operational + embodied, global grid.
+      const available = supported && !(!bytes && unknown);
+      const grams = available ? swdm.perByte(bytes) : null;
       return {
-        figure: !supported || (!bytes && unknown) ? "Unavailable" : grams < 0.01 ? "Under 0.01 g CO₂e" : `${grams.toFixed(grams < 1 ? 2 : 1)} g CO₂e`,
+        grams,
+        figure: grams === null ? "Unavailable" : formatGrams(grams),
         source: supported ? `${(bytes / 1e6).toFixed(2)} MB reported · ${cached} cached resources · ${unknown} sizes unknown.` : "Transfer timing is unavailable in this browser.",
       };
     },

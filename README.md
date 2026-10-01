@@ -23,7 +23,7 @@ Both projects are linked on entry. Stable fragments are `#work`, `#whisperbook`,
 
 Explicit view choices use `?view=read` or `?view=garden`. Compact windows always retain flowing content. The header wraps; the garden ruler provides four evenly spaced stage buttons and a separate progress slider. Optional weather, planting, and transfer information sit under **Garden controls**.
 
-Each reading project groups its purpose, contribution, decision, screenshot, and source repository. **View full screenshot** works as an ordinary image link and gains a native dialog when JavaScript is available: caption, source link, fit/actual size, Escape dismissal, and restored focus. Wattch's screenshot remains explicitly synthetic workflow evidence. Browser illustrations remain separately labeled: local browser speech for Whisperbook, and this page's CPU rendering cost for Wattch.
+Each reading project groups its purpose, contribution, decision, screenshot, and source repository. **View full screenshot** works as an ordinary image link and gains a native dialog when JavaScript is available: caption, source link, fit/actual size, Escape dismissal, and restored focus. Wattch's screenshot remains explicitly synthetic workflow evidence. Browser illustrations remain separately labeled: local browser speech for Whisperbook, and this page's measured CPU and GPU rendering cost, with its estimated carbon, for Wattch.
 
 ## The garden
 
@@ -48,9 +48,12 @@ The semantic page paints before scene loading. Reading mode creates no scene unt
 
 Desktop retains the full settings (pixel ratio capped at 1.6, 2048 px shadows). Compact previews use a 1.25 cap and 1024 px shadows after visual comparison. A captured garden image covers loading, unavailable WebGL, and context loss. Print exposes the complete reading portfolio and removes fixed controls.
 
-## Transfer estimate and deployment metadata
+## Carbon estimate and deployment metadata
 
-The display is **Estimated impact of reported data transfer**. **Details** explains the existing SWDM v4 coefficient: reported bytes × 0.3 kWh/decimal GB × 494 g CO₂e/kWh. It does not measure or accumulate rendering energy. Positive transfer sizes, confirmed cached resources, and unknown sizes are counted separately; hidden cross-origin timings cannot imply zero transfer. See the [methodology](https://sustainablewebdesign.org/estimating-digital-emissions/) and [Resource Timing distinctions](https://developer.mozilla.org/en-US/docs/Web/API/PerformanceResourceTiming/transferSize).
+The display is **Estimated impact of this visit so far**, split into data transfer and rendering, both computed with [co2.js](https://developers.thegreenwebfoundation.org/co2js/overview/).
+
+- **Data transfer** uses co2.js's SWDM v4 model: reported bytes × 0.3 kWh/decimal GB × 494 g CO₂e/kWh. Positive transfer sizes, confirmed cached resources, and unknown sizes are counted separately; hidden cross-origin timings cannot imply zero transfer. See the [methodology](https://sustainablewebdesign.org/estimating-digital-emissions/) and [Resource Timing distinctions](https://developer.mozilla.org/en-US/docs/Web/API/PerformanceResourceTiming/transferSize).
+- **Rendering** accumulates the main-thread time of every garden and sky frame actually drawn (animation updates included) at an assumed 10 W, plus the garden's GPU time at an assumed 20 W, × co2.js's world average grid intensity. GPU time comes from `EXT_disjoint_timer_query_webgl2` where the browser exposes it (measured on a sample of frames and scaled to all frames drawn); elsewhere the figure is a CPU-only lower bound and says so. The wattages live in `src/compute.ts`.
 
 The page has a descriptive title, description, social metadata, and the captured preview image. To generate canonical and absolute social URLs, supply the actual deployment origin when building:
 

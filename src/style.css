@@ -894,6 +894,25 @@ button {
 .carbon-source {
   font-size: 0.75rem;
 }
+.carbon-split {
+  margin: 0.45rem 0 0;
+  display: grid;
+  gap: 0.1rem;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.carbon-split div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.carbon-split dt {
+  color: var(--muted);
+}
+.carbon-split dd {
+  margin: 0;
+  white-space: nowrap;
+}
 
 /* Mist: drifting veils over the notes, ruler, and widgets when it is foggy
    (lighter in rain and snow). The building pages and masthead stay clear. */

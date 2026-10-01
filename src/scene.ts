@@ -27,7 +27,8 @@ export interface Garden {
   focus: (spot: string | null, shiftX?: number, shiftY?: number) => void;
   /** The band of the view the garden is framed in, top and bottom as fractions of the container's height (0–1). The camera eases to a new frame. */
   frame: (top: number, bottom: number) => void;
-  stats: () => { triangles: number; calls: number; ms: number };
+  /** `ms` is the smoothed CPU time to submit a frame; the totals cover every frame drawn so far. `gpuMs` is null without GPU timers. */
+  stats: () => { triangles: number; calls: number; ms: number; gpuFrameMs: number | null; cpuMs: number; gpuMs: number | null; frames: number };
   /** Recolours foliage, flowers, fallen leaves, and drifting petals for the season. */
   setSeason: (season: Season) => void;
   /** 0–1 mist that hides the far side of the garden, in the page's paper colour. */
@@ -2276,6 +2277,35 @@ export async function createGarden(
   const view = new T.Vector2(0, 1),
     viewGoal = new T.Vector2(0, 1);
   let renderMs = 0;
+  /* What drawing costs the visitor's device: main-thread time for every frame
+     drawn (animation updates included) and, where the browser exposes GPU
+     timer queries, the GPU time of the render itself. Not every frame gets a
+     query, so the GPU total scales the measured mean to all frames. */
+  let workMs = 0,
+    framesDrawn = 0,
+    gpuSum = 0,
+    gpuSamples = 0,
+    gpuFrameMs = 0;
+  const gl = renderer.getContext() as WebGL2RenderingContext;
+  const gpuTimer = gl.getExtension("EXT_disjoint_timer_query_webgl2");
+  const gpuPending: WebGLQuery[] = [];
+  function readGpuTimers() {
+    if (!gpuTimer) return;
+    // A disjoint event (power state, context switch) spoils every query in flight.
+    const disjoint = gl.getParameter(gpuTimer.GPU_DISJOINT_EXT);
+    while (gpuPending.length) {
+      const query = gpuPending[0];
+      if (!disjoint && !gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE)) break;
+      gpuPending.shift();
+      if (!disjoint) {
+        const ms = gl.getQueryParameter(query, gl.QUERY_RESULT) / 1e6;
+        gpuSum += ms;
+        gpuSamples++;
+        gpuFrameMs = lerp(gpuFrameMs || ms, ms, 0.1);
+      }
+      gl.deleteQuery(query);
+    }
+  }
   let shadowStrength = 1;
   let fogAmount = 0,
     fogTarget = 0;
@@ -2340,6 +2370,8 @@ export async function createGarden(
   applyLight();
   const onLost = (event: Event) => {
     event.preventDefault();
+    // Queries die with the context.
+    gpuPending.length = 0;
     container.dispatchEvent(new Event("garden-context-lost"));
     hotspots.forEach((h) => {
       h.style.visibility = "hidden";
@@ -2378,6 +2410,7 @@ export async function createGarden(
       growing;
     if ((paused || progress < 0.5) && !changed && !dirty) return;
     dirty = false;
+    const work = performance.now();
     progress = lerp(
       progress,
       targetProgress,
@@ -2530,8 +2563,15 @@ export async function createGarden(
       h.style.left = `${(projected.x * 0.5 + 0.5) * width}px`;
       h.style.top = `${(-projected.y * 0.5 + 0.5) * height}px`;
     }
+    readGpuTimers();
+    const query = gpuTimer && gpuPending.length < 4 ? gl.createQuery() : null;
+    if (query) gl.beginQuery(gpuTimer!.TIME_ELAPSED_EXT, query);
     const before = performance.now();
     renderer.render(scene, camera);
+    if (query) {
+      gl.endQuery(gpuTimer!.TIME_ELAPSED_EXT);
+      gpuPending.push(query);
+    }
     if (firstRender) { firstRender = false; performance.mark("notebook:first-render"); performance.measure("notebook:scene-to-first-render", "notebook:scene-construction:start", "notebook:first-render"); }
     renderMs = lerp(renderMs || 1, performance.now() - before, 0.1);
     container.dataset.progress = progress.toFixed(3);
@@ -2546,6 +2586,8 @@ export async function createGarden(
     container.dataset.path = pathStep === null ? "none" : String(pathStep);
     container.dataset.postbox = postbox;
     container.dataset.flag = flagLift.toFixed(2);
+    workMs += performance.now() - work;
+    framesDrawn++;
   }
   await checkpoint("ground-litter");
   await buildLitter();
@@ -2718,6 +2760,10 @@ export async function createGarden(
         triangles: renderer.info.render.triangles,
         calls: renderer.info.render.calls,
         ms: renderMs,
+        gpuFrameMs: gpuTimer && gpuSamples ? gpuFrameMs : null,
+        cpuMs: workMs,
+        gpuMs: gpuTimer ? (gpuSamples ? (gpuSum / gpuSamples) * framesDrawn : 0) : null,
+        frames: framesDrawn,
       };
     },
     plant() {
@@ -2731,6 +2777,7 @@ export async function createGarden(
     dispose() {
       disposed = true;
       cancelAnimationFrame(frame);
+      gpuPending.forEach((q) => gl.deleteQuery(q));
       observer.disconnect();
       resizeObserver.disconnect();
       renderer.domElement.removeEventListener("webglcontextlost", onLost);

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTransferEstimate } from '../src/transfer.ts';
+import { createTransferEstimate, formatGrams } from '../src/transfer.ts';
+import { estimateCompute, GRID_INTENSITY } from '../src/compute.ts';
 
 test('reported bytes, confirmed cache hits and hidden cross-origin sizes stay distinct', () => {
   const original = globalThis.PerformanceObserver;
@@ -31,4 +32,28 @@ test('an unavailable Resource Timing API cannot present a zero estimate', () => 
     assert.match(estimate.read().source, /unavailable/);
     estimate.dispose();
   } finally {globalThis.PerformanceObserver = original;}
+});
+
+test('rendering time becomes energy at the assumed power and co2.js world grid intensity', () => {
+  // One hour of CPU and GPU is 30 Wh at 10 W + 20 W.
+  const hour = 3.6e6;
+  const estimate = estimateCompute({cpuMs: hour, gpuMs: hour, frames: 1200});
+  assert.ok(Math.abs(estimate.grams - 0.03 * GRID_INTENSITY) < 1e-9);
+  assert.match(estimate.source, /3600\.0 s CPU · 3600\.0 s GPU · 1,200 frames drawn\./);
+});
+
+test('missing GPU timers count the CPU alone and say so; no renderer is unavailable', () => {
+  const estimate = estimateCompute({cpuMs: 1000, gpuMs: null, frames: 60});
+  assert.ok(Math.abs(estimate.grams - 10 / 3.6e6 * GRID_INTENSITY) < 1e-12);
+  assert.equal(estimate.figure, '1.3 mg CO₂e');
+  assert.match(estimate.source, /GPU time not exposed/);
+  assert.equal(estimateCompute(null).figure, 'Unavailable');
+  assert.equal(estimateCompute(null).grams, null);
+});
+
+test('small footprints read in milligrams', () => {
+  assert.equal(formatGrams(0.15), '0.15 g CO₂e');
+  assert.equal(formatGrams(0.0042), '4.2 mg CO₂e');
+  assert.equal(formatGrams(0.00042), '0.42 mg CO₂e');
+  assert.equal(formatGrams(0), 'Under 0.01 mg CO₂e');
 });

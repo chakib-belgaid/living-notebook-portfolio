@@ -11,6 +11,8 @@ export interface Sky {
   setMotion: (paused: boolean) => void;
   /** Re-read colours from CSS after a theme or stage change. */
   refresh: (dark: boolean) => void;
+  /** Main-thread milliseconds spent drawing the sky, and the frames drawn. */
+  stats: () => { cpuMs: number; frames: number };
   dispose: () => void;
 }
 
@@ -575,14 +577,22 @@ export function createSky(
       clouds.forEach(
         (c) => (c.alpha = now.cloud > c.threshold * 0.95 ? 1 : 0),
       );
-      draw(0);
+      timed(0);
       return;
     }
     if (!dirty && !needsMotion() && Math.abs(target.cloud - now.cloud) < 0.002)
       return;
     dirty = false;
     time += dt;
+    timed(dt);
+  }
+  let workMs = 0,
+    framesDrawn = 0;
+  function timed(dt: number) {
+    const start = performance.now();
     draw(dt);
+    workMs += performance.now() - start;
+    framesDrawn++;
   }
   frame = requestAnimationFrame(loop);
 
@@ -610,6 +620,9 @@ export function createSky(
       graphite = hex(css.getPropertyValue("--graphite"), graphite);
       blueprint = hex(css.getPropertyValue("--blueprint"), blueprint);
       dirty = true;
+    },
+    stats() {
+      return { cpuMs: workMs, frames: framesDrawn };
     },
     dispose() {
       cancelAnimationFrame(frame);
