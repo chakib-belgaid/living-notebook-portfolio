@@ -230,7 +230,7 @@ export function createSky(
 
   function draw(dt: number) {
     const t = time;
-    const solid = smooth(0.34, 0.72, growth);
+    const solid = smooth(0.35, 0.6, growth);
     const sketch = 1 - solid;
     const ink = mix(graphite, blueprint, smooth(0.07, 0.3, growth));
     const pal = dark ? palettes.dark : palettes.light;
