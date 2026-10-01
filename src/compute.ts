@@ -13,7 +13,6 @@ export interface ComputeWork {
   cpuMs: number;
   /** GPU milliseconds, or null when the browser does not expose GPU timers. */
   gpuMs: number | null;
-  frames: number;
 }
 
 const seconds = (ms: number) => `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)} s`;
@@ -27,6 +26,6 @@ export function estimateCompute(work: ComputeWork | null) {
   return {
     grams,
     figure: formatGrams(grams),
-    source: `${seconds(work.cpuMs)} CPU · ${gpu} · ${work.frames.toLocaleString("en")} frames drawn.`,
+    source: `${seconds(work.cpuMs)} CPU · ${gpu}.`,
   };
 }

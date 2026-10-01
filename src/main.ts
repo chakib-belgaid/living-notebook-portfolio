@@ -658,7 +658,6 @@ function renderWork(): ComputeWork | null {
   return {
     cpuMs: (g?.cpuMs ?? 0) + (s?.cpuMs ?? 0),
     gpuMs: g ? g.gpuMs : null,
-    frames: g?.frames ?? s?.frames ?? 0,
   };
 }
 function drawCarbon() {
