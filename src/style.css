@@ -1,0 +1,906 @@
+@import "./fonts.css";
+
+/* The garden fills the screen; everything else is a slip of notebook paper
+   laid over it. main.ts sets --grow (0–1) from scroll, which also sets the
+   weight and ink of every headline: thin graphite while sketched, full ink in
+   bloom. --night and --golden come from the Light widget. */
+:root {
+  --paper: #f1f2ee;
+  --ink: #1b2333;
+  --muted: #545b63;
+  --graphite: #7c8085;
+  --blueprint: #2a5c9a;
+  --stone: #8a6f4e;
+  --leaf: #3b6b3a;
+  --hairline: color-mix(in srgb, var(--ink) 15%, transparent);
+  --slip: color-mix(in srgb, var(--paper) 86%, transparent);
+  --lift: 0 18px 40px -24px color-mix(in srgb, var(--ink) 45%, transparent);
+  --dusk: #2b3d66;
+  --dawn: #f2c38f;
+  --stage: var(--graphite);
+  --grow: 0;
+  --night: 0;
+  --golden: 0;
+  --arc: 0.5;
+  --edge: clamp(1rem, 2.4vw, 2rem);
+  --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
+
+  color-scheme: light;
+  font-family: "Newsreader", Georgia, serif;
+  font-optical-sizing: auto;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+:root[data-stage="1"] {
+  --stage: var(--blueprint);
+}
+:root[data-stage="2"] {
+  --stage: var(--stone);
+}
+:root[data-stage="3"] {
+  --stage: var(--leaf);
+}
+:root[data-theme="dark"] {
+  --paper: #0e2b48;
+  --ink: #e6f0f8;
+  --muted: #a9c2d8;
+  --graphite: #8eaac2;
+  --blueprint: #8cc8f2;
+  --stone: #d8c6a6;
+  --leaf: #a6d79b;
+  --dusk: #050f1d;
+  --dawn: #c9875a;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  transition: background-color 0.5s ease;
+}
+a {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--stage);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+a:hover {
+  text-decoration-thickness: 2px;
+}
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+[tabindex="-1"]:focus {
+  outline: none;
+}
+p {
+  margin: 0 0 0.85rem;
+}
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+.link {
+  background: none;
+  border: 0;
+  padding: 0.2rem 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 0.2s ease;
+}
+.link:hover,
+.link[aria-pressed="true"] {
+  text-decoration-color: var(--stage);
+}
+.link.quiet {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--muted);
+}
+.link.small {
+  font-size: 0.875rem;
+  color: var(--muted);
+  text-decoration-color: var(--hairline);
+}
+.link.small:hover {
+  color: var(--ink);
+  text-decoration-color: var(--stage);
+}
+.chip {
+  border: 1px solid var(--hairline);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+.chip:hover {
+  border-color: var(--stage);
+}
+.chip[aria-pressed="true"] {
+  background: var(--leaf);
+  border-color: var(--leaf);
+  color: var(--paper);
+}
+.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The garden. */
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.turning .stage {
+  cursor: grabbing;
+}
+.planting .stage {
+  cursor: crosshair;
+}
+/* The sky behind the garden: warm at dawn and dusk, deep at night. Only once
+   the garden has been built. */
+.stage::before,
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.stage::before {
+  background: radial-gradient(
+    ellipse 70% 65% at 55% 48%,
+    color-mix(in srgb, var(--dawn) 70%, transparent),
+    transparent 70%
+  );
+  opacity: calc(var(--golden) * clamp(0, (var(--grow) - 0.45) * 3, 1) * 0.8);
+}
+.stage::after {
+  background: radial-gradient(
+    ellipse 85% 80% at 55% 50%,
+    var(--dusk),
+    color-mix(in srgb, var(--dusk) 0%, var(--paper)) 95%
+  );
+  opacity: calc(var(--night) * clamp(0, (var(--grow) - 0.45) * 3, 1) * 0.92);
+}
+#scene {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+#scene canvas {
+  display: block;
+}
+.scene-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  font-style: italic;
+  color: var(--muted);
+}
+.scene-fallback[hidden] {
+  display: none;
+}
+
+/* Callouts: a label on a leader line, as on a drawing. */
+.hotspot {
+  --lead: 2.6rem;
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, calc(-100% - var(--lead))) translateY(0.6rem);
+  font-size: 0.9375rem;
+  font-style: italic;
+  background: var(--slip);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  transition:
+    opacity 0.5s ease,
+    transform 0.6s var(--ease),
+    background-color 0.2s ease;
+}
+.hotspot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: var(--lead);
+  background: var(--ink);
+  transform-origin: top;
+  transform: scaleY(0);
+  transition: transform 0.5s 0.15s var(--ease);
+}
+.hotspot::before {
+  content: "";
+  position: absolute;
+  left: calc(50% - 4px);
+  top: calc(100% + var(--lead) - 4px);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--ink) 40%, transparent);
+}
+.hotspot.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, calc(-100% - var(--lead)));
+}
+.hotspot.visible::after {
+  transform: scaleY(1);
+}
+.hotspot.visible::before {
+  animation: ping 2.6s ease-out infinite;
+}
+.hotspot[data-spot="wattch"].visible::before {
+  animation-delay: 0.6s;
+}
+.hotspot[data-spot="about"].visible::before {
+  animation-delay: 1.2s;
+}
+.hotspot[data-spot="contact"].visible::before {
+  animation-delay: 1.8s;
+}
+.hotspot:hover,
+.hotspot.selected {
+  background: var(--ink);
+  color: var(--paper);
+}
+@keyframes ping {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ink) 45%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 14px color-mix(in srgb, var(--ink) 0%, transparent);
+  }
+}
+
+/* Masthead. */
+.masthead {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 1.25rem var(--edge);
+  pointer-events: none;
+}
+.masthead > * {
+  pointer-events: auto;
+}
+.owner {
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.masthead nav {
+  display: flex;
+  gap: 1.25rem;
+  align-items: baseline;
+}
+#theme-toggle {
+  margin-left: 0.5rem;
+}
+
+/* Chapters provide the scroll length; only the current note is shown. */
+.chapters {
+  position: relative;
+  z-index: 5;
+  pointer-events: none;
+}
+.chapter {
+  height: 115svh;
+}
+.chapter:last-child {
+  height: 100svh;
+}
+.note {
+  position: fixed;
+  left: var(--edge);
+  bottom: 6.5rem;
+  width: min(27rem, calc(100vw - 2 * var(--edge)));
+  padding: 1.4rem 1.5rem 1.1rem;
+  background: var(--slip);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  box-shadow: var(--lift);
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(1.25rem);
+  transition:
+    opacity 0.35s ease,
+    transform 0.5s var(--ease),
+    visibility 0s 0.5s;
+}
+.chapter.active .note {
+  pointer-events: auto;
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.45s 0.1s ease,
+    transform 0.7s 0.1s var(--ease),
+    visibility 0s;
+}
+.reading .ruler {
+  opacity: 0;
+  pointer-events: none;
+}
+.reading .chapter.active .note {
+  opacity: 0;
+  transform: translateY(1.25rem);
+  pointer-events: none;
+}
+.note-stage {
+  margin-bottom: 0.4rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--stage);
+  transition: color 0.6s ease;
+}
+.note h1,
+.note h2 {
+  font-weight: calc(200 + 520 * var(--grow));
+  color: color-mix(
+    in oklab,
+    var(--ink) calc(45% + 55% * var(--grow)),
+    var(--graphite)
+  );
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 0.9rem;
+  text-wrap: balance;
+}
+.note h1 {
+  font-size: clamp(2.75rem, 1.6rem + 3.6vw, 4.5rem);
+  letter-spacing: -0.035em;
+}
+.note h2 {
+  font-size: clamp(2rem, 1.4rem + 2vw, 2.85rem);
+}
+.word {
+  display: inline-block;
+  white-space: nowrap;
+}
+.char {
+  display: inline-block;
+}
+.chapter.active .char {
+  animation: set-in 0.7s calc(0.15s + var(--i) * 28ms) var(--ease) both;
+}
+@keyframes set-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.35em) rotate(4deg);
+    filter: blur(4px);
+  }
+}
+.note-copy {
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+.chapter.active .note-copy,
+.chapter.active .note-hint {
+  animation: fade-up 0.7s 0.45s var(--ease) both;
+}
+.note-hint {
+  margin: 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--hairline);
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--muted);
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem);
+  }
+}
+
+/* The ruler: a scale from sketch to bloom. Dragging it scrolls the page. */
+.ruler {
+  position: fixed;
+  z-index: 10;
+  left: 50%;
+  bottom: 1.25rem;
+  width: min(30rem, calc(100vw - 2 * var(--edge)));
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem 0.35rem;
+  background: var(--slip);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  transition:
+    opacity 0.4s ease,
+    transform 0.5s var(--ease);
+}
+#scrub {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 1.25rem;
+  margin: 0;
+  background: transparent;
+  cursor: ew-resize;
+}
+#scrub::-webkit-slider-runnable-track {
+  height: 1.25rem;
+  background:
+    linear-gradient(var(--ink), var(--ink)) 0 50% / 100% 1px no-repeat,
+    repeating-linear-gradient(
+        90deg,
+        var(--muted) 0 1px,
+        transparent 1px 10%
+      )
+      0 30% / 100% 40% no-repeat,
+    repeating-linear-gradient(90deg, var(--hairline) 0 1px, transparent 1px 2%)
+      0 40% / 100% 20% no-repeat;
+}
+#scrub::-moz-range-track {
+  height: 1.25rem;
+  background:
+    linear-gradient(var(--ink), var(--ink)) 0 50% / 100% 1px no-repeat,
+    repeating-linear-gradient(
+        90deg,
+        var(--muted) 0 1px,
+        transparent 1px 10%
+      )
+      0 30% / 100% 40% no-repeat;
+}
+#scrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0.9rem;
+  height: 1.25rem;
+  border-radius: 3px;
+  background: var(--stage);
+  border: 2px solid var(--paper);
+  box-shadow: 0 0 0 1px var(--stage);
+  transition: background-color 0.6s ease;
+}
+#scrub::-moz-range-thumb {
+  width: 0.7rem;
+  height: 1.1rem;
+  border-radius: 3px;
+  background: var(--stage);
+  border: 2px solid var(--paper);
+}
+.ruler-ticks {
+  position: relative;
+  height: 1.3rem;
+  margin: 0 0.45rem;
+}
+.ruler-ticks button {
+  position: absolute;
+  left: calc(var(--at) * 100%);
+  transform: translateX(calc(var(--at) * -100%));
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ruler-ticks button.current {
+  color: var(--ink);
+  font-style: italic;
+}
+
+/* The dock: widgets that unfold as the garden grows. */
+.dock {
+  position: fixed;
+  z-index: 10;
+  right: var(--edge);
+  bottom: 1.25rem;
+  width: 16.5rem;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+.widget {
+  padding: 0.8rem 1rem 0.85rem;
+  background: var(--slip);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  box-shadow: var(--lift);
+  opacity: 0;
+  transform: translateX(1.5rem) scale(0.96);
+  transform-origin: right center;
+  transition:
+    opacity 0.35s ease,
+    transform 0.6s var(--ease);
+}
+.widget.shown {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.widget-garden.shown {
+  transition-delay: 0.15s;
+}
+.widget[hidden] {
+  display: none;
+}
+.widget-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.widget h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.widget output {
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.widget-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.sky-arc {
+  position: relative;
+  height: 2.4rem;
+  margin: 0.2rem 0.6rem 0.3rem;
+  border: 1px dashed var(--hairline);
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+.sky-arc::after {
+  content: "";
+  position: absolute;
+  left: -0.6rem;
+  right: -0.6rem;
+  bottom: 0;
+  height: 1px;
+  background: var(--muted);
+}
+.sky-body {
+  position: absolute;
+  left: calc(var(--arc) * 100%);
+  bottom: calc(sin(var(--arc) * 180deg) * 100% - 0.6rem);
+  width: 1.2rem;
+  height: 1.2rem;
+  transform: translateX(-50%);
+}
+.sky-body svg {
+  width: 100%;
+  height: 100%;
+  fill: color-mix(in srgb, #e3a440 calc(100% - var(--night) * 100%), var(--paper));
+  stroke: color-mix(in srgb, #c98418 calc(100% - var(--night) * 100%), var(--ink));
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+#hour {
+  width: 100%;
+  margin: 0.2rem 0 0.25rem;
+  accent-color: var(--stage);
+}
+.meter-readout {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+#spark {
+  display: block;
+  width: 100%;
+  height: 2.75rem;
+}
+
+/* A building's notes. */
+.panel {
+  position: fixed;
+  z-index: 15;
+  top: 4.25rem;
+  left: var(--edge);
+  bottom: 1.25rem;
+  width: min(31rem, calc(100vw - 2 * var(--edge)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  box-shadow: var(--lift);
+  opacity: 0;
+  transform: translateX(-2rem);
+  transition:
+    opacity 0.3s ease,
+    transform 0.55s var(--ease);
+}
+.panel.open {
+  opacity: 1;
+  transform: none;
+}
+.panel[hidden] {
+  display: none;
+}
+.panel-inner {
+  padding: 1.25rem 1.75rem 1.5rem;
+}
+.panel-inner > * {
+  animation: fade-up 0.6s var(--ease) both;
+}
+.panel-inner > :nth-child(2) {
+  animation-delay: 0.05s;
+}
+.panel-inner > :nth-child(3) {
+  animation-delay: 0.1s;
+}
+.panel-inner > :nth-child(n + 4) {
+  animation-delay: 0.16s;
+}
+.panel-close {
+  margin-bottom: 1.25rem;
+}
+.panel-close::before {
+  content: "‹ ";
+}
+.panel-place {
+  margin-bottom: 0.25rem;
+  font-style: italic;
+  color: var(--leaf);
+}
+.panel h2 {
+  font-size: clamp(2.25rem, 1.8rem + 1.6vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  margin-bottom: 0.6rem;
+}
+.panel h3 {
+  margin: 1.5rem 0 0.25rem;
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+.panel p {
+  font-size: 1.0625rem;
+}
+.panel .panel-lede {
+  font-size: 1.375rem;
+  line-height: 1.35;
+  font-style: italic;
+  color: var(--muted);
+}
+.panel-email {
+  font-size: 1.375rem;
+}
+.panel-facts {
+  margin: 1.25rem 0 0;
+  padding: 0.25rem 0;
+  border-block: 1px solid var(--hairline);
+}
+.panel-facts div {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: 1rem;
+  padding: 0.35rem 0;
+}
+.panel-facts dt {
+  font-style: italic;
+  color: var(--muted);
+}
+.panel-facts dd {
+  margin: 0;
+}
+.proof {
+  margin: 1.75rem 0 0;
+}
+.proof img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+.proof-whisperbook img {
+  width: min(14rem, 70%);
+  border-radius: 1.4rem;
+}
+.proof figcaption {
+  margin-top: 0.6rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--muted);
+}
+.panel-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--hairline);
+}
+
+/* Phones and narrow windows: the garden takes the upper part of the screen. */
+@media (max-width: 899px) {
+  .masthead {
+    padding-block: 0.85rem;
+    background: linear-gradient(var(--paper) 55%, transparent);
+  }
+  .masthead nav {
+    gap: 0.9rem;
+  }
+  .owner {
+    white-space: nowrap;
+    font-size: 1rem;
+  }
+  .wide-only {
+    display: none;
+  }
+  #theme-toggle {
+    margin-left: 0;
+  }
+  #scene {
+    inset: 3rem 0 17rem;
+  }
+  .note {
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    bottom: 4.6rem;
+    padding: 1rem 1.1rem 0.8rem;
+  }
+  .note h1 {
+    font-size: 2.6rem;
+  }
+  .note h2 {
+    font-size: 1.85rem;
+  }
+  .note-copy {
+    font-size: 1rem;
+  }
+  .ruler {
+    bottom: 0.75rem;
+  }
+  .dock {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 4.75rem;
+    width: auto;
+    flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 0.25rem 0 0.5rem;
+  }
+  .widget {
+    flex: 0 0 auto;
+    width: 14.5rem;
+    padding: 0.55rem 0.8rem 0.6rem;
+    transform: translateY(0.75rem) scale(0.96);
+    transform-origin: bottom center;
+  }
+  .widget-garden {
+    width: 19rem;
+  }
+  .widget-head {
+    margin-bottom: 0.3rem;
+  }
+  .widget-light .sky-arc,
+  #hour-now {
+    display: none;
+  }
+  .widget-actions {
+    flex-wrap: nowrap;
+  }
+  .chip {
+    white-space: nowrap;
+  }
+  .widget-meter {
+    display: none;
+  }
+  /* Once the tools appear, the note moves up to make room for them. */
+  :root[data-stage="2"] .note,
+  :root[data-stage="3"] .note {
+    bottom: 10.75rem;
+  }
+  :root[data-stage="2"] #scene,
+  :root[data-stage="3"] #scene {
+    bottom: 25rem;
+  }
+  .reading .dock {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 64svh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    transform: translateY(2.5rem);
+  }
+  .panel-inner {
+    padding: 1rem 1.15rem 1.5rem;
+  }
+  .hotspot {
+    --lead: 1.6rem;
+    font-size: 0.8125rem;
+    padding: 0.1rem 0.55rem;
+  }
+}
+@media (max-width: 899px) and (max-height: 700px) {
+  #scene {
+    inset: 3rem 0 15rem;
+  }
+  :root[data-stage="2"] #scene,
+  :root[data-stage="3"] #scene {
+    bottom: 22rem;
+  }
+  :root[data-stage="2"] .note-copy,
+  :root[data-stage="3"] .note-copy {
+    display: none;
+  }
+  .note-copy {
+    font-size: 0.9375rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

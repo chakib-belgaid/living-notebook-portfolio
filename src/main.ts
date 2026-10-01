@@ -1,0 +1,604 @@
+import "./style.css";
+import type { Garden } from "./scene";
+
+type Spot = "whisperbook" | "wattch" | "about" | "contact";
+
+const projects = {
+  whisperbook: {
+    title: "Whisperbook",
+    place: "The reading pavilion",
+    field: "Local AI on Android",
+    lede: "Your books, given a voice.",
+    intro:
+      "An offline Android app that turns your own EPUBs and PDFs into multi-voice audiobooks, with synchronized reading. Nothing is uploaded.",
+    built:
+      "I designed and built it end to end: document import, speaker attribution, local voice casting, progressive narration, playback, and MP3 export.",
+    decision:
+      "Privacy is part of the architecture. The app has no network permission at runtime. Audio is prepared in small, finalized segments, so the first chapter can play while the rest of the book is still being narrated.",
+    tech: ["Kotlin", "Jetpack Compose", "Supertonic 3", "Media3"],
+    url: "https://github.com/chakib-belgaid/whisper-book",
+    image: "/assets/whisperbook.webp",
+    size: [420, 920],
+    alt: "Whisperbook's Android player showing the current chapter, the narrating voice, and playback controls",
+    caption: "The player. Books and narration stay on the phone.",
+  },
+  wattch: {
+    title: "Wattch Core",
+    place: "The water-wheel observatory",
+    field: "Systems and energy",
+    lede: "Energy measurement developers can rely on.",
+    intro:
+      "A foundation for energy-aware software. A Rust daemon connects hardware counters to reproducible traces, Python workflows, and editor tools.",
+    built:
+      "I designed and implemented the daemon and client boundary, the typed protocol, deterministic validation, replayable capture tools, the Python client, and the Energy Tests workflow for VS Code.",
+    decision:
+      "Keep the evidence intact. Privileged acquisition is separated from everyday clients, raw traces stay replayable, and synthetic test data is always labeled as synthetic, never passed off as a hardware measurement.",
+    tech: ["Rust", "Linux RAPL", "Python", "VS Code"],
+    url: "https://github.com/chakib-belgaid/wattch-core",
+    image: "/assets/wattch.png",
+    size: [1100, 620],
+    alt: "The Energy Tests panel in VS Code listing results from a deterministic test run",
+    caption:
+      "Energy Tests on a deterministic run. These synthetic values check the workflow, not real energy use.",
+  },
+};
+
+const spotOrder: Spot[] = ["whisperbook", "wattch", "about", "contact"];
+const spotNames: Record<Spot, string> = {
+  whisperbook: "Whisperbook",
+  wattch: "Wattch Core",
+  about: "About me",
+  contact: "Write to me",
+};
+
+const chapters = [
+  {
+    stage: "Sketch",
+    title: "Chakib Belgaid",
+    copy: "Product engineer, Ph.D. I build applied AI, developer tools, and software that can account for the energy it uses.",
+    hint: "Scroll, or drag the ruler, to build the garden.",
+  },
+  {
+    stage: "Blueprint",
+    title: "A question first, then a structure",
+    copy: "Can a phone narrate a whole book without sending a page to a server? How much energy does a test suite use? I write the question down, then draw the system that could answer it.",
+  },
+  {
+    stage: "Build",
+    title: "Constraints decided early",
+    copy: "Whisperbook has no network permission at all. Wattch keeps raw traces replayable and labels synthetic data as synthetic. Most of the work is in decisions people never see.",
+    hint: "Try the light. The garden follows your clock.",
+  },
+  {
+    stage: "Bloom",
+    title: "The garden is open",
+    copy: "Whisperbook lives in the reading pavilion, Wattch Core in the water-wheel observatory. Select a building to read about it, or plant something of your own.",
+  },
+];
+const stageProgress = [0, 0.32, 0.64, 1];
+
+/* Headline letters are wrapped so they can be set in one after another. */
+function lettered(text: string) {
+  let i = 0;
+  const words = text
+    .split(" ")
+    .map(
+      (w) =>
+        `<span class="word">${[...w].map((c) => `<span class="char" style="--i:${i++}">${c}</span>`).join("")}</span>`,
+    )
+    .join(" ");
+  return `<span class="sr-only">${text}</span><span aria-hidden="true">${words}</span>`;
+}
+
+const sunIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>`;
+const moonIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.8A8 8 0 0 1 9.2 4.5a8 8 0 1 0 10.3 10.3Z"/></svg>`;
+
+document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
+  <div class="stage" id="stage">
+    <div id="scene" role="img" aria-label="A garden of stone terraces, pavilions, and water. It is drawn first as pencil lines, then as a blue engineering drawing, then built and planted."></div>
+    <p class="scene-fallback" hidden>The garden can’t be drawn in this browser. Everything else on the page still works.</p>
+    ${spotOrder.map((s) => `<button type="button" class="hotspot" data-spot="${s}" tabindex="-1">${spotNames[s]}</button>`).join("")}
+  </div>
+
+  <header class="masthead">
+    <a class="owner" href="#" data-home>Chakib Belgaid</a>
+    <nav aria-label="Sections">
+      <button type="button" class="link" data-open="whisperbook">Work</button>
+      <button type="button" class="link" data-open="about">About</button>
+      <button type="button" class="link" data-open="contact">Contact</button>
+      <button type="button" class="link quiet" id="theme-toggle" aria-pressed="false">Blueprint<span class="wide-only"> paper</span></button>
+    </nav>
+  </header>
+
+  <main class="chapters">
+    ${chapters
+      .map(
+        (c, i) => `
+      <section class="chapter" data-chapter="${i}" aria-labelledby="chapter-${i}">
+        <div class="note">
+          <p class="note-stage">${c.stage}</p>
+          ${i === 0 ? `<h1 id="chapter-${i}">${lettered(c.title)}</h1>` : `<h2 id="chapter-${i}">${lettered(c.title)}</h2>`}
+          <p class="note-copy">${c.copy}</p>
+          ${c.hint ? `<p class="note-hint">${c.hint}</p>` : ""}
+        </div>
+      </section>`,
+      )
+      .join("")}
+  </main>
+
+  <div class="ruler">
+    <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Garden growth" />
+    <div class="ruler-ticks" aria-hidden="true">
+      ${chapters.map((c, i) => `<button type="button" tabindex="-1" data-go="${i}" style="--at:${stageProgress[i]}">${c.stage}</button>`).join("")}
+    </div>
+  </div>
+
+  <aside class="dock" aria-label="Garden controls">
+    <section class="widget widget-light" data-from="2" aria-labelledby="light-title">
+      <div class="widget-head">
+        <h3 id="light-title">Light</h3>
+        <output id="hour-readout" for="hour">1:00 pm</output>
+      </div>
+      <div class="sky-arc" aria-hidden="true"><span class="sky-body"></span></div>
+      <input type="range" id="hour" min="5" max="23" step="0.25" value="13" aria-label="Time of day" />
+      <button type="button" class="link small" id="hour-now">Use my clock</button>
+    </section>
+
+    <section class="widget widget-garden" data-from="3" aria-labelledby="garden-title">
+      <div class="widget-head">
+        <h3 id="garden-title">Garden</h3>
+        <output id="tree-count">0 of 24 trees</output>
+      </div>
+      <div class="widget-actions">
+        <button type="button" class="chip" id="plant-mode" aria-pressed="false">Plant by clicking</button>
+        <button type="button" class="chip" id="plant-one">Plant one</button>
+        <button type="button" class="chip" id="turn">Turn</button>
+      </div>
+    </section>
+
+    <section class="widget widget-meter" data-from="0" aria-labelledby="meter-title">
+      <div class="widget-head">
+        <h3 id="meter-title">Cost to draw</h3>
+        <button type="button" class="link small" id="motion-toggle">Pause motion</button>
+      </div>
+      <canvas id="spark" width="480" height="80" aria-hidden="true"></canvas>
+      <p id="meter-readout" class="meter-readout">Measuring</p>
+    </section>
+  </aside>
+
+  <article class="panel" id="panel" aria-labelledby="panel-title" hidden>
+    <div class="panel-inner" id="panel-content"></div>
+  </article>
+  <p id="announce" class="sr-only" role="status"></p>
+`;
+
+const root = document.documentElement;
+const $ = <E extends HTMLElement>(s: string) => document.querySelector<E>(s)!;
+const $$ = <E extends HTMLElement>(s: string) => [
+  ...document.querySelectorAll<E>(s),
+];
+let garden: Garden | undefined;
+const announce = (text: string) => ($("#announce").textContent = text);
+
+/* Theme: white paper or blueprint paper. */
+const themeQuery = matchMedia("(prefers-color-scheme: dark)");
+let savedTheme: string | null = null;
+try {
+  savedTheme = localStorage.getItem("notebook-theme");
+} catch {
+  /* Storage may be unavailable. */
+}
+let dark = savedTheme ? savedTheme === "dark" : themeQuery.matches;
+const themeButton = $<HTMLButtonElement>("#theme-toggle");
+function syncTheme() {
+  root.dataset.theme = dark ? "dark" : "light";
+  themeButton.setAttribute("aria-pressed", String(dark));
+  $("meta[name=theme-color]").setAttribute(
+    "content",
+    dark ? "#0e2b48" : "#f1f2ee",
+  );
+  garden?.setTheme(dark);
+}
+themeButton.addEventListener("click", () => {
+  dark = !dark;
+  savedTheme = dark ? "dark" : "light";
+  try {
+    localStorage.setItem("notebook-theme", savedTheme);
+  } catch {
+    /* The switch still works without storage. */
+  }
+  syncTheme();
+});
+themeQuery.addEventListener("change", (e) => {
+  if (!savedTheme) {
+    dark = e.matches;
+    syncTheme();
+  }
+});
+syncTheme();
+
+/* Motion. */
+const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
+let reduced = reducedQuery.matches;
+let paused = reduced;
+const motionButton = $<HTMLButtonElement>("#motion-toggle");
+function syncMotion() {
+  motionButton.textContent = paused ? "Resume motion" : "Pause motion";
+  garden?.setMotion(paused);
+}
+motionButton.addEventListener("click", () => {
+  paused = !paused;
+  syncMotion();
+});
+reducedQuery.addEventListener("change", (e) => {
+  reduced = e.matches;
+  paused = reduced;
+  syncMotion();
+  measure();
+});
+syncMotion();
+
+/* Scroll → growth. Each chapter's top is an anchor and the last anchor is the
+   end of the page; progress is interpolated between anchors. */
+const chapterEls = $$<HTMLElement>(".chapter");
+const scrub = $<HTMLInputElement>("#scrub");
+const hotspots = $$<HTMLButtonElement>(".hotspot");
+const widgets = $$<HTMLElement>(".widget");
+let stage = -1;
+
+function anchors() {
+  const max = Math.max(1, root.scrollHeight - innerHeight);
+  return chapterEls.map((c, i) =>
+    i === chapterEls.length - 1 ? max : Math.min(c.offsetTop, max),
+  );
+}
+function progressAt(y: number) {
+  const a = anchors();
+  for (let i = 0; i < a.length - 1; i++)
+    if (y < a[i + 1]) {
+      const t = Math.max(0, (y - a[i]) / (a[i + 1] - a[i]));
+      return stageProgress[i] + (stageProgress[i + 1] - stageProgress[i]) * t;
+    }
+  return 1;
+}
+function scrollFor(p: number) {
+  const a = anchors();
+  for (let i = 0; i < a.length - 1; i++)
+    if (p <= stageProgress[i + 1]) {
+      const t =
+        (p - stageProgress[i]) / (stageProgress[i + 1] - stageProgress[i]);
+      return a[i] + (a[i + 1] - a[i]) * t;
+    }
+  return a[a.length - 1];
+}
+
+function measure() {
+  const p = progressAt(scrollY);
+  const s = stageProgress.reduce((acc, v, i) => (p >= v - 0.04 ? i : acc), 0);
+  const growth = reduced ? stageProgress[s] : p;
+  root.style.setProperty("--grow", growth.toFixed(3));
+  if (document.activeElement !== scrub)
+    scrub.value = String(Math.round(p * 1000));
+  scrub.setAttribute(
+    "aria-valuetext",
+    `${chapters[s].stage}, ${Math.round(p * 100)} percent grown`,
+  );
+  if (s !== stage) {
+    stage = s;
+    root.dataset.stage = String(s);
+    chapterEls.forEach((c, i) => {
+      const active = i === s;
+      c.classList.toggle("active", active);
+      c.querySelector<HTMLElement>(".note")!.inert = !active;
+    });
+    $$<HTMLButtonElement>("[data-go]").forEach((b, i) =>
+      b.classList.toggle("current", i === s),
+    );
+    widgets.forEach((w) => {
+      const show = s >= Number(w.dataset.from);
+      w.classList.toggle("shown", show);
+      w.inert = !show;
+    });
+  }
+  const live = growth > 0.86 && !!garden;
+  hotspots.forEach((h) => {
+    h.classList.toggle("visible", live);
+    h.tabIndex = live ? 0 : -1;
+    h.inert = !live;
+  });
+  garden?.setProgress(growth, reduced);
+}
+
+let queued = false;
+function schedule() {
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => {
+    queued = false;
+    measure();
+  });
+}
+addEventListener("scroll", schedule, { passive: true });
+addEventListener("resize", schedule);
+
+scrub.addEventListener("input", () =>
+  scrollTo({ top: scrollFor(Number(scrub.value) / 1000), behavior: "instant" }),
+);
+$$<HTMLButtonElement>("[data-go]").forEach((b) =>
+  b.addEventListener("click", () =>
+    scrollTo({
+      top: scrollFor(stageProgress[Number(b.dataset.go)]),
+      behavior: reduced ? "instant" : "smooth",
+    }),
+  ),
+);
+$("[data-home]").addEventListener("click", (e) => {
+  e.preventDefault();
+  closePanel();
+  scrollTo({ top: 0, behavior: reduced ? "instant" : "smooth" });
+});
+
+/* Light: the garden follows the visitor's clock until they pick an hour. */
+const hourInput = $<HTMLInputElement>("#hour");
+function clockHour() {
+  const d = new Date();
+  const h = d.getHours() + d.getMinutes() / 60;
+  return Math.round((h < 5 ? 23 : Math.min(h, 23)) * 4) / 4;
+}
+function formatHour(h: number) {
+  const hh = Math.floor(h),
+    mm = Math.round((h - hh) * 60);
+  const twelve = hh % 12 === 0 ? 12 : hh % 12;
+  return `${twelve}:${String(mm).padStart(2, "0")} ${hh >= 12 ? "pm" : "am"}`;
+}
+const smoothstep = (a: number, b: number, v: number) => {
+  const t = Math.min(Math.max((v - a) / (b - a), 0), 1);
+  return t * t * (3 - 2 * t);
+};
+let isNight: boolean | null = null;
+function setHour(h: number) {
+  hourInput.value = String(h);
+  $("#hour-readout").textContent = formatHour(h);
+  hourInput.setAttribute("aria-valuetext", formatHour(h));
+  const night = Math.min(
+    1,
+    smoothstep(19.2, 21.5, h) + (1 - smoothstep(5, 6.6, h)),
+  );
+  const golden = Math.max(
+    0,
+    1 - Math.abs(h - 7) / 1.6,
+    1 - Math.abs(h - 19) / 1.6,
+  );
+  root.style.setProperty("--night", night.toFixed(3));
+  root.style.setProperty("--golden", golden.toFixed(3));
+  root.style.setProperty(
+    "--arc",
+    Math.min(Math.max((h - 5) / 18, 0), 1).toFixed(3),
+  );
+  if (isNight !== night > 0.5) {
+    isNight = night > 0.5;
+    $(".sky-body").innerHTML = isNight ? moonIcon : sunIcon;
+  }
+  garden?.setHour(h);
+}
+hourInput.addEventListener("input", () => setHour(Number(hourInput.value)));
+$("#hour-now").addEventListener("click", () => {
+  setHour(clockHour());
+  announce(`Light set to ${formatHour(clockHour())}.`);
+});
+setHour(clockHour());
+
+/* Planting. */
+const MAX_TREES = 24;
+const plantMode = $<HTMLButtonElement>("#plant-mode");
+function counted(n: number) {
+  $("#tree-count").textContent = `${n} of ${MAX_TREES} trees`;
+  if (n >= MAX_TREES) {
+    plantMode.disabled = true;
+    $<HTMLButtonElement>("#plant-one").disabled = true;
+    setPlanting(false);
+    announce("The garden is full. 24 trees planted.");
+  } else announce(`Tree planted. ${n} of ${MAX_TREES}.`);
+}
+function setPlanting(on: boolean) {
+  plantMode.setAttribute("aria-pressed", String(on));
+  plantMode.textContent = on ? "Planting: click a terrace" : "Plant by clicking";
+  root.classList.toggle("planting", on);
+}
+plantMode.addEventListener("click", () =>
+  setPlanting(plantMode.getAttribute("aria-pressed") !== "true"),
+);
+$("#plant-one").addEventListener("click", () => {
+  if (garden) counted(garden.plant());
+});
+$("#turn").addEventListener("click", () => garden?.rotate());
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && root.classList.contains("planting"))
+    setPlanting(false);
+});
+
+/* Drag to turn the garden; click to plant while planting. */
+const stageEl = $("#stage");
+let drag: { x: number; y: number; last: number; moved: boolean } | null = null;
+stageEl.addEventListener("pointerdown", (e) => {
+  if ((e.target as HTMLElement).closest(".hotspot")) return;
+  drag = { x: e.clientX, y: e.clientY, last: e.clientX, moved: false };
+});
+stageEl.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5) {
+    drag.moved = true;
+    stageEl.setPointerCapture(e.pointerId);
+    root.classList.add("turning");
+  }
+  if (drag.moved) garden?.rotateBy((e.clientX - drag.last) * 0.008);
+  drag.last = e.clientX;
+});
+stageEl.addEventListener("pointerup", (e) => {
+  if (!drag) return;
+  const click = !drag.moved;
+  drag = null;
+  root.classList.remove("turning");
+  if (click && garden && root.classList.contains("planting")) {
+    const r = $("#scene").getBoundingClientRect();
+    const n = garden.plantAt(e.clientX - r.left, e.clientY - r.top);
+    if (n < 0) announce("That spot isn’t a terrace. Try a flat surface.");
+    else counted(n);
+  }
+});
+stageEl.addEventListener("pointercancel", () => {
+  drag = null;
+  root.classList.remove("turning");
+});
+
+/* Render meter: a sparkline of the CPU time each frame takes to draw. */
+const spark = $<HTMLCanvasElement>("#spark");
+const sparkCtx = spark.getContext("2d")!;
+const samples: number[] = [];
+function drawMeter() {
+  if (!garden) return;
+  const s = garden.stats();
+  samples.push(s.ms);
+  if (samples.length > 48) samples.shift();
+  const w = spark.width,
+    h = spark.height;
+  const css = getComputedStyle(root);
+  const top = Math.max(2, ...samples) * 1.15;
+  sparkCtx.clearRect(0, 0, w, h);
+  sparkCtx.fillStyle = css.getPropertyValue("--hairline");
+  sparkCtx.fillRect(0, h - 2, w, 2);
+  sparkCtx.strokeStyle = css.getPropertyValue("--stage");
+  sparkCtx.lineWidth = 3;
+  sparkCtx.lineJoin = "round";
+  sparkCtx.beginPath();
+  samples.forEach((v, i) => {
+    const x = (i / 47) * w,
+      y = h - 6 - (v / top) * (h - 14);
+    if (i === 0) sparkCtx.moveTo(x, y);
+    else sparkCtx.lineTo(x, y);
+  });
+  sparkCtx.stroke();
+  $("#meter-readout").textContent =
+    `${s.ms.toFixed(1)} ms of CPU per frame. ${s.triangles.toLocaleString("en")} triangles in ${s.calls} draw calls.`;
+}
+setInterval(() => {
+  if (!document.hidden) drawMeter();
+}, 300);
+
+/* Panels: a building's notes. The camera glides to the building. */
+const panel = $("#panel");
+const panelContent = $("#panel-content");
+let openSpot: Spot | null = null;
+let panelOpener: HTMLElement | null = null;
+let hideTimer = 0;
+const narrow = matchMedia("(max-width: 899px)");
+
+function panelHtml(spot: Spot) {
+  const i = spotOrder.indexOf(spot);
+  const prev = spotOrder[(i + spotOrder.length - 1) % spotOrder.length];
+  const next = spotOrder[(i + 1) % spotOrder.length];
+  const nav = `<nav class="panel-nav" aria-label="Other buildings">
+      <button type="button" class="link small" data-open="${prev}"><span aria-hidden="true">‹</span> ${spotNames[prev]}</button>
+      <button type="button" class="link small" data-open="${next}">${spotNames[next]} <span aria-hidden="true">›</span></button>
+    </nav>`;
+  const close = `<button type="button" class="panel-close link small" data-close>Back to the garden</button>`;
+  if (spot === "about")
+    return `${close}<p class="panel-place">The atelier roof</p>
+      <h2 id="panel-title" tabindex="-1">A researcher who ships</h2>
+      <p class="panel-lede">I’m Chakib Belgaid, Ph.D., a full-stack product engineer working across applied AI, developer tools, and energy-aware software.</p>
+      <p>My path ran from co-founding a serious-games startup, through doctoral research at the University of Lille and Inria, to energy-measurement infrastructure and production AI workflows.</p>
+      <p>I like following an idea all the way from a rough sketch to something people can use, and checking what is actually true along the way.</p>
+      ${nav}`;
+  if (spot === "contact")
+    return `${close}<p class="panel-place">The greenhouse</p>
+      <h2 id="panel-title" tabindex="-1">Write to me</h2>
+      <p class="panel-lede">For product engineering, applied AI, or energy-aware software.</p>
+      <p class="panel-email"><a href="mailto:chakib.belgaid@gmail.com">chakib.belgaid@gmail.com</a></p>
+      <p><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> and <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a></p>
+      ${nav}`;
+  const p = projects[spot];
+  return `${close}<p class="panel-place">${p.place}</p>
+    <h2 id="panel-title" tabindex="-1">${p.title}</h2>
+    <p class="panel-lede">${p.lede}</p>
+    <p>${p.intro}</p>
+    <dl class="panel-facts">
+      <div><dt>Field</dt><dd>${p.field}</dd></div>
+      <div><dt>Built with</dt><dd>${p.tech.join(", ")}</dd></div>
+      <div><dt>Source</dt><dd><a href="${p.url}" target="_blank" rel="noopener noreferrer">Read it on GitHub</a></dd></div>
+    </dl>
+    <h3>What I built</h3>
+    <p>${p.built}</p>
+    <h3>The decision that shaped it</h3>
+    <p>${p.decision}</p>
+    <figure class="proof proof-${spot}">
+      <img src="${p.image}" alt="${p.alt}" width="${p.size[0]}" height="${p.size[1]}" decoding="async" />
+      <figcaption>${p.caption}</figcaption>
+    </figure>
+    ${nav}`;
+}
+
+function openPanel(spot: Spot, opener?: HTMLElement) {
+  if (!openSpot) panelOpener = opener ?? null;
+  openSpot = spot;
+  clearTimeout(hideTimer);
+  setPlanting(false);
+  // Opening a building from an unfinished drawing grows the garden first.
+  if (stage < 3)
+    scrollTo({ top: scrollFor(1), behavior: reduced ? "instant" : "smooth" });
+  panelContent.innerHTML = panelHtml(spot);
+  panel.hidden = false;
+  panel.scrollTop = 0;
+  requestAnimationFrame(() => panel.classList.add("open"));
+  root.classList.add("reading");
+  hotspots.forEach((h) =>
+    h.classList.toggle("selected", h.dataset.spot === spot),
+  );
+  garden?.focus(spot, narrow.matches ? 0 : 0.2, narrow.matches ? 0.3 : 0);
+  panelContent
+    .querySelector<HTMLElement>("#panel-title")!
+    .focus({ preventScroll: true });
+}
+function closePanel() {
+  if (!openSpot) return;
+  openSpot = null;
+  panel.classList.remove("open");
+  root.classList.remove("reading");
+  hotspots.forEach((h) => h.classList.remove("selected"));
+  garden?.focus(null);
+  hideTimer = window.setTimeout(() => (panel.hidden = true), reduced ? 0 : 450);
+  panelOpener?.focus({ preventScroll: true });
+  panelOpener = null;
+}
+document.addEventListener("click", (e) => {
+  const t = (e.target as HTMLElement).closest<HTMLElement>(
+    "[data-open], [data-close], .hotspot",
+  );
+  if (!t) return;
+  if (t.hasAttribute("data-close")) closePanel();
+  else openPanel((t.dataset.open ?? t.dataset.spot) as Spot, t);
+});
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && openSpot) closePanel();
+});
+
+measure();
+document.fonts?.ready.then(schedule);
+
+import("./scene")
+  .then(({ createGarden }) => {
+    garden = createGarden($("#scene"), hotspots);
+    syncTheme();
+    syncMotion();
+    setHour(Number(hourInput.value));
+    measure();
+  })
+  .catch((error) => {
+    console.warn("The garden could not be drawn.", error);
+    $(".scene-fallback").hidden = false;
+    $("#scene").removeAttribute("role");
+    $("#scene").removeAttribute("aria-label");
+    $(".widget-meter").hidden = true;
+    $(".widget-garden").hidden = true;
+  });
+
+if (import.meta.hot) import.meta.hot.dispose(() => garden?.dispose());
