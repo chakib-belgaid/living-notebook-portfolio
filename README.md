@@ -29,7 +29,7 @@ Each reading project groups its purpose, contribution, decision, screenshot, and
 
 Scrolling carries one garden through Sketch, Blueprint, Build, and Bloom. Only the opening headline uses letter-by-letter animation. Inactive chapters are inert and hidden from assistive navigation.
 
-The original terraces, canal, waterfall, drones, reading pavilion, water-wheel observatory, atelier tower, greenhouse, seasonal foliage, birds, ducks, rabbits, cat, planting, and rotation remain. The sky follows time of day, moon phase, and weather from [Open-Meteo](https://open-meteo.com). The timezone supplies an approximate place; **Use my exact location** requests device location. Unavailable weather has an explicit fallback. Weather and seasons can be previewed from the controls.
+The original terraces, canal, waterfall, drones, reading pavilion, drum-recorder observatory, atelier tower, greenhouse, seasonal foliage, birds, ducks, rabbits, cat, planting, and rotation remain. The sky follows time of day, moon phase, and weather from [Open-Meteo](https://open-meteo.com). The timezone supplies an approximate place; **Use my exact location** requests device location. Unavailable weather has an explicit fallback. Weather and seasons can be previewed from the controls.
 
 One pause state stops CSS effects, mist, marker pulses, sky, and garden motion. Reduced motion keeps the scene still and the stage changes immediate. The motion button reports its current action and honors the system preference.
 

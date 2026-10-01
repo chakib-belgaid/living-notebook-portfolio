@@ -492,7 +492,7 @@ export async function createGarden(
   planter(1.26, 3.15, -2.25, 0.4, 0.5);
   planter(1.3, 3.15, -0.85, 0.32, 0.5);
   await checkpoint("observatory");
-  // Pavilion 02: circular energy observatory with a moving water wheel.
+  // Pavilion 02: circular energy observatory around a drum recorder.
   const ringX = -3.55,
     ringZ = 0.2;
   cylinder(ringX, 0.62, ringZ, 1.47, 0.2, "light");
@@ -509,42 +509,34 @@ export async function createGarden(
   }
   cylinder(ringX, 0.81, ringZ, 1.09, 0.13, "dark");
   cylinder(ringX, 0.9, ringZ, 0.87, 0.1, "glass");
-  // Wattch Core's measuring station. The wheel turns a generator; a cable runs
-  // through the daemon (with its two clients) to a meter post and dial.
-  const wheelAxis = new T.Vector3(Math.sin(0.15), 0, Math.cos(0.15));
-  const hub = new T.Vector3(ringX, 1.7, 0.21);
-  const generator = hub.clone().addScaledVector(wheelAxis, 0.32);
-  beam(hub, generator, 0.035, "dark");
-  add(
-    new T.CylinderGeometry(0.13, 0.13, 0.2, 14).rotateX(Math.PI / 2).rotateY(0.15),
-    generator.x,
-    generator.y,
-    generator.z,
-    "dark",
-  );
-  box(generator.x, 1.275, generator.z, 0.09, 0.65, 0.09, "dark");
-  // The wheel dips into a stone race on the floor (the water comes with the build).
-  for (const [lx, lz, w, d] of [
-    [0, -0.225, 1.3, 0.05],
-    [0, 0.225, 1.3, 0.05],
-    [-0.625, 0, 0.05, 0.4],
-    [0.625, 0, 0.05, 0.4],
-  ])
-    add(
-      new T.BoxGeometry(w, 0.13, d).translate(lx, 0, lz),
-      hub.x,
-      1.015,
-      hub.z,
-      "light",
-      [0, 0.15, 0],
+  // Wattch Core's measuring station. A drum recorder on a plinth keeps the raw
+  // trace on paper (the paper and pen come with the build); a cable runs from
+  // it through the daemon (with its two clients) to a meter post and dial.
+  const drumY = 1.53,
+    drumRadius = 0.36,
+    paperHeight = 0.56;
+  cylinder(ringX, 1.06, ringZ, 0.44, 0.22, "light");
+  cylinder(ringX, 1.195, ringZ, 0.42, 0.05, "wood");
+  cylinder(ringX, drumY, ringZ, drumRadius - 0.07, paperHeight, "dark");
+  for (const y of [drumY - 0.295, drumY + 0.295])
+    cylinder(ringX, y, ringZ, drumRadius + 0.02, 0.03, "dark");
+  cylinder(ringX, drumY + 0.335, ringZ, 0.07, 0.05, "ochre", 0.05);
+  // The pen arm pivots on a post beside the drum and rests on the paper.
+  const penAngle = 2.0,
+    penLength = 0.48,
+    pivot = new T.Vector3(
+      ringX + Math.sin(penAngle) * (drumRadius + penLength),
+      drumY - 0.06,
+      ringZ + Math.cos(penAngle) * (drumRadius + penLength),
     );
+  box(pivot.x, (0.95 + pivot.y) / 2, pivot.z, 0.05, pivot.y - 0.95, 0.05, "dark");
+  box(pivot.x, pivot.y, pivot.z, 0.07, 0.07, 0.07, "ochre");
   const daemon = new T.Vector3(-3.2, 1.03, 0.8);
   box(daemon.x, daemon.y, daemon.z, 0.26, 0.16, 0.2, "dark");
   box(daemon.x, 1.07, daemon.z + 0.102, 0.18, 0.025, 0.006, "glass", false);
   const dialCenter = new T.Vector3(-2.92, 1.52, 1.07);
   const cable = [
-    new T.Vector3(generator.x + 0.07, 1.5, generator.z + 0.07),
-    new T.Vector3(generator.x + 0.07, 0.97, generator.z + 0.07),
+    new T.Vector3(ringX + 0.22, 0.97, ringZ + 0.37),
     new T.Vector3(daemon.x - 0.05, 0.97, daemon.z - 0.1),
     new T.Vector3(daemon.x + 0.13, 0.97, daemon.z + 0.02),
     new T.Vector3(-2.97, 0.9, 1.0),
@@ -599,22 +591,6 @@ export async function createGarden(
       false,
     );
   }
-  // A curved frame inside the ring for the trace wall (the trace itself is animated).
-  const traceStart = 4.3,
-    traceLength = 1.1;
-  for (const a of [traceStart, traceStart + traceLength])
-    box(ringX + Math.sin(a) * 1.08, 1.24, ringZ + Math.cos(a) * 1.08, 0.05, 0.73, 0.05, "dark");
-  for (const y of [1.02, 1.58])
-    for (let i = 0; i < 6; i++) {
-      const a0 = traceStart + (i / 6) * traceLength,
-        a1 = traceStart + ((i + 1) / 6) * traceLength;
-      beam(
-        new T.Vector3(ringX + Math.sin(a0) * 1.09, y, ringZ + Math.cos(a0) * 1.09),
-        new T.Vector3(ringX + Math.sin(a1) * 1.09, y, ringZ + Math.cos(a1) * 1.09),
-        0.018,
-        "light",
-      );
-    }
   tree(-4.4, groundAt(-4.4, -1.9), -1.9, 0.8);
   planter(-5.0, groundAt(-5.0, 1.7), 1.7, 0.55, 1.1);
   steps(-3.55, 0.3, 2.24, 1.3, 4);
@@ -1067,18 +1043,12 @@ export async function createGarden(
   }
   water(0.01, 0.495, 1.965, 1.25, 3.93);
   water(-1.7075, 0.495, 2.61, 2.185, 0.8);
-  // The rill on the atelier terrace, and the race the water wheel turns in.
+  // The rill on the atelier terrace.
   water(0.01, 3.213, -1.09, 0.34, 1.32);
   const basin = new T.Mesh(new T.CircleGeometry(0.17, 20), waterMaterial);
   basin.rotation.x = -Math.PI / 2;
   basin.position.set(0.01, 3.34, -1.95);
   world.add(basin);
-  const race = new T.Mesh(
-    new T.PlaneGeometry(1.2, 0.4).rotateX(-Math.PI / 2).rotateY(0.15),
-    waterMaterial,
-  );
-  race.position.set(ringX, 1.045, 0.21);
-  world.add(race);
   // A broad, front-facing cascade falls from the atelier terrace into the
   // head of the canal; its centre line is the canal's.
   const waterfallLip = new T.Mesh(
@@ -1241,37 +1211,8 @@ export async function createGarden(
     world.add(drone);
     drones.push(drone);
   }
-  // A moving wheel supplies a readable, calm animation at garden scale.
-  const wheel = new T.Group();
-  wheel.position.set(-3.55, 1.7, 0.21);
-  wheel.rotation.y = 0.15;
-  world.add(wheel);
-  const wheelMaterial = new T.MeshStandardMaterial({
-    color: colors.wood,
-    roughness: 0.75,
-    transparent: true,
-    opacity: 0,
-  });
-  const hoop = new T.Mesh(new T.TorusGeometry(0.7, 0.05, 6, 40), wheelMaterial);
-  wheel.add(hoop);
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    const spoke = new T.Mesh(
-      new T.BoxGeometry(0.055, 1.4, 0.065),
-      wheelMaterial,
-    );
-    spoke.rotation.z = a;
-    wheel.add(spoke);
-    const paddle = new T.Mesh(
-      new T.BoxGeometry(0.26, 0.09, 0.32),
-      wheelMaterial,
-    );
-    paddle.position.set(Math.sin(a) * 0.7, Math.cos(a) * 0.7, 0);
-    paddle.rotation.z = -a;
-    wheel.add(paddle);
-  }
   await checkpoint("room-details");
-  /* The rooms' moving parts. Like the wheel, they fade in with the build. */
+  /* The rooms' moving parts. They fade in with the build. */
   // Whisperbook: rings of sound spread over the table while the widget reads.
   const ringGeometry = new T.TorusGeometry(1, 0.045, 3, 48);
   const ringMaterials = [0, 1, 2].map(
@@ -1322,58 +1263,91 @@ export async function createGarden(
     ),
   );
   let needleAngle = -Math.PI / 2;
-  // ...and the trace wall scrolls the same samples.
-  const traceCanvas = document.createElement("canvas");
-  traceCanvas.width = 512;
-  traceCanvas.height = 128;
-  const traceContext = traceCanvas.getContext("2d")!;
-  const traceTexture = new T.CanvasTexture(traceCanvas);
-  traceTexture.colorSpace = T.SRGBColorSpace;
-  // Seen from inside the ring, so the texture is mirrored back.
-  traceTexture.repeat.x = -1;
-  traceTexture.offset.x = 1;
-  const traceMaterial = new T.MeshBasicMaterial({
-    map: traceTexture,
-    side: T.BackSide,
+  // ...and the drum recorder writes the same cost on paper as the drum turns.
+  // The paper keeps most of a turn, so the last half-minute can be read back.
+  const paperCanvas = document.createElement("canvas");
+  paperCanvas.width = 1024;
+  paperCanvas.height = 256;
+  const paperContext = paperCanvas.getContext("2d")!;
+  const paperTexture = new T.CanvasTexture(paperCanvas);
+  paperTexture.colorSpace = T.SRGBColorSpace;
+  paperTexture.anisotropy = 4;
+  const paperMaterial = new T.MeshStandardMaterial({
+    map: paperTexture,
+    roughness: 0.9,
     transparent: true,
     opacity: 0,
-    toneMapped: false,
   });
-  const traceWall = new T.Mesh(
-    new T.CylinderGeometry(1.08, 1.08, 0.55, 20, 1, true, traceStart, traceLength),
-    traceMaterial,
+  const drum = new T.Group();
+  drum.position.set(ringX, drumY, ringZ);
+  world.add(drum);
+  drum.add(
+    new T.Mesh(
+      new T.CylinderGeometry(drumRadius, drumRadius, paperHeight, 40, 1, true),
+      paperMaterial,
+    ),
+    // The clip that holds the paper, so the drum reads as turning before any ink.
+    new T.Mesh(
+      new T.BoxGeometry(0.02, paperHeight, 0.012).translate(0, 0, drumRadius + 0.004),
+      needleMaterial,
+    ),
   );
-  traceWall.position.set(ringX, 1.3, ringZ);
-  world.add(traceWall);
-  const traceSamples: number[] = [];
-  let traceAt = 0;
-  function drawTrace() {
-    const c = traceContext,
-      w = traceCanvas.width,
-      h = traceCanvas.height;
-    c.fillStyle = "#24403b";
+  const pen = new T.Group();
+  pen.position.copy(pivot);
+  pen.rotation.y = penAngle - Math.PI / 2;
+  pen.add(
+    new T.Mesh(
+      new T.BoxGeometry(penLength, 0.014, 0.014).translate(-penLength / 2, 0, 0),
+      needleMaterial,
+    ),
+    new T.Mesh(
+      new T.BoxGeometry(0.022, 0.045, 0.022).translate(-penLength + 0.011, 0, 0),
+      needleMaterial,
+    ),
+  );
+  world.add(pen);
+  // Drum angle at each sample, and the pen's height above the drum's centre.
+  const paperSamples: { angle: number; level: number }[] = [];
+  let drumAngle = 0,
+    penLevel = -0.2;
+  function drawPaper() {
+    const c = paperContext,
+      w = paperCanvas.width,
+      h = paperCanvas.height;
+    c.fillStyle = "#f6efdf";
     c.fillRect(0, 0, w, h);
-    c.strokeStyle = "rgba(200, 232, 210, 0.16)";
-    c.lineWidth = 2;
+    c.strokeStyle = "rgba(206, 130, 101, 0.35)";
+    c.lineWidth = 4;
     c.beginPath();
-    for (let x = 32; x < w; x += 64) c.moveTo(x, 0), c.lineTo(x, h);
+    for (let x = 0; x < w; x += 64) c.moveTo(x, 0), c.lineTo(x, h);
     for (let y = 32; y < h; y += 32) c.moveTo(0, y), c.lineTo(w, y);
     c.stroke();
-    const top = Math.max(2, ...traceSamples) * 1.15;
-    c.strokeStyle = "#c4eaa4";
-    c.lineWidth = 5;
+    // The pen touches the paper at u = (penAngle - drumAngle) / 2π, so the line
+    // wraps past the clip at u = 0.
+    // Thick enough to read at garden scale, where the drum is a few dozen pixels.
+    c.strokeStyle = "#2f3b38";
+    c.lineWidth = 14;
     c.lineJoin = "round";
     c.beginPath();
-    traceSamples.forEach((v, i) => {
-      const x = w - (traceSamples.length - 1 - i) * (w / 63),
-        y = h - 10 - (v / top) * (h - 22);
+    let lastX = 0,
+      lastY = 0;
+    paperSamples.forEach((s, i) => {
+      const u = (penAngle - s.angle) / (Math.PI * 2);
+      const x = (u - Math.floor(u)) * w,
+        y = h / 2 - (s.level / paperHeight) * h;
       if (i === 0) c.moveTo(x, y);
-      else c.lineTo(x, y);
+      else if (x < lastX) {
+        c.lineTo(x + w, y);
+        c.moveTo(lastX - w, lastY);
+        c.lineTo(x, y);
+      } else c.lineTo(x, y);
+      lastX = x;
+      lastY = y;
     });
     c.stroke();
-    traceTexture.needsUpdate = true;
+    paperTexture.needsUpdate = true;
   }
-  drawTrace();
+  drawPaper();
   // About: the drafting board carries a small drawing of the garden itself.
   const sheetCanvas = document.createElement("canvas");
   sheetCanvas.width = 512;
@@ -1596,14 +1570,23 @@ export async function createGarden(
     needle.rotation.z = -needleAngle;
     needleMaterial.opacity = solid;
     needleMaterial.visible = solid > 0.01;
-    traceMaterial.opacity = solid;
-    traceMaterial.visible = solid > 0.01;
-    const now = performance.now();
-    if (!still && solid > 0.5 && now - traceAt > 300) {
-      traceAt = now;
-      traceSamples.push(renderMs);
-      if (traceSamples.length > 64) traceSamples.shift();
-      drawTrace();
+    paperMaterial.opacity = solid;
+    paperMaterial.visible = solid > 0.01;
+    if (!still) {
+      // The square root spreads the usual few milliseconds over the paper.
+      const goal = lerp(-0.2, 0.2, Math.sqrt(Math.min(renderMs / 8, 1)));
+      penLevel = lerp(penLevel, goal, Math.min(dt * 3, 1));
+      drumAngle -= dt * 0.22 * solid;
+    }
+    drum.rotation.y = drumAngle;
+    pen.rotation.z = -Math.asin((penLevel + drumY - pivot.y) / penLength);
+    // A sample for every 0.066 rad of paper (300 ms at full speed); ink older
+    // than most of a turn is dropped, leaving clean paper ahead of the pen.
+    const last = paperSamples[paperSamples.length - 1];
+    if (!last || last.angle - drumAngle >= 0.066) {
+      paperSamples.push({ angle: drumAngle, level: penLevel });
+      while (paperSamples[0].angle - drumAngle > Math.PI * 1.7) paperSamples.shift();
+      drawPaper();
     }
     const step = progress >= 0.6 ? 2 : progress >= 0.28 ? 1 : 0;
     if (step !== sheetStage) drawSheet(step);
@@ -2461,7 +2444,6 @@ export async function createGarden(
     guideMaterial.opacity =
       smooth(0.06, 0.3, progress) * (1 - smooth(0.45, 0.62, progress)) * 0.38;
     shadowMaterial.opacity = solid * 0.15 * shadowStrength;
-    wheelMaterial.opacity = solid;
     waterfallLip.material.opacity = solid;
     waterMaterial.uniforms.uOpacity.value = smooth(0.46, 0.63, progress);
     const glow = night * solid;
@@ -2502,7 +2484,6 @@ export async function createGarden(
         Math.cos(phase) * 0.075 * life,
       );
     });
-    wheel.rotation.z = -elapsed * 0.22 * life;
     updateRooms(dt, solid, drawn, blueprint);
     updateLife(paused || reduced ? 0 : dt, life);
     butterflies.forEach((b, i) => {
@@ -2801,7 +2782,7 @@ export async function createGarden(
       });
       geometries.forEach((g) => g.dispose());
       mats.forEach((m) => m.dispose());
-      traceTexture.dispose();
+      paperTexture.dispose();
       sheetTexture.dispose();
       renderer.dispose();
       renderer.domElement.remove();

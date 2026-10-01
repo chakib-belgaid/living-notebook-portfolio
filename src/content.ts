@@ -21,7 +21,7 @@ export const projects = {
   },
   wattch: {
     title: "Wattch Core",
-    place: "The water-wheel observatory",
+    place: "The drum-recorder observatory",
     field: "Systems and energy",
     lede: "Know what you measured before you optimize it.",
     intro:
