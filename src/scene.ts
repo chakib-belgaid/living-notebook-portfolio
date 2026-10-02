@@ -132,6 +132,9 @@ export async function createGarden(
     // their colour all year and don't sway.
     ochre: 0xe7b763,
     terracotta: 0xce8265,
+    // The warm, rosy stone of Mansourah, and its shade for carved relief.
+    sandstone: 0xd8a87c,
+    sandstoneDark: 0xb98559,
   };
   type ColorName = keyof typeof colors;
   const batches = new Map<ColorName, T.BufferGeometry[]>();
@@ -1093,6 +1096,327 @@ export async function createGarden(
   for (const z of [3.25, 3.8]) box(-0.98, 0.68, z, 0.24, 0.48, 0.05, "dark");
   cylinder(4.36, 1.4, 0.75, 0.027, 1.6, "dark");
   cylinder(4.36, 2.21, 0.75, 0.13, 0.19, "flower");
+
+  await checkpoint("mansourah");
+  // A tile of its own beside the garden: the Mansourah minaret of Tlemcen.
+  // Only its front half still stands, so the gate faces forward and the
+  // side walls break off in steps towards the back. Uses vary(), not
+  // random(), so the rest of the garden keeps its sequence.
+  const tileX = 6.7,
+    tileZ = -2.975;
+  box(tileX, -0.03, tileZ, 2.2, 0.38, 2.75, "stone");
+  box(5.5, 0.13, tileZ + 0.6, 0.3, 0.06, 0.46, "light");
+  // Up one side of a pointed horseshoe arch and down the other, from the
+  // foot of its jambs at (x, y), springing at y + h with half-width r.
+  const horseshoe = (x: number, y: number, r: number, h: number) => {
+    const R = r * 1.25,
+      o = R - r,
+      turn = 0.3,
+      top = Math.acos(-o / R),
+      jamb = R * Math.cos(turn) - o,
+      side: [number, number][] = [];
+    for (let i = 0; i <= 8; i++) {
+      const a = Math.PI + turn - (i / 8) * (Math.PI + turn - top);
+      side.push([o + R * Math.cos(a), h + R * Math.sin(a)]);
+    }
+    return [
+      [-jamb, 0],
+      ...side,
+      ...side.reverse().map(([u, v]) => [-u, v]),
+      [jamb, 0],
+    ].map(([u, v]) => new T.Vector2(x + u, y + v));
+  };
+  const minX = tileX + 0.2,
+    minZ = tileZ + 0.05,
+    minY = 0.16,
+    minH = 4,
+    front = minZ + 0.5;
+  // The gate's façade, with the balcony's three arches and two windows.
+  const facade = new T.Shape([
+    new T.Vector2(-0.36, 0),
+    ...horseshoe(0, 0, 0.24, 0.95),
+    new T.Vector2(0.36, 0),
+    new T.Vector2(0.36, minH - 0.1),
+    new T.Vector2(0.2, minH),
+    new T.Vector2(0.02, minH - 0.06),
+    new T.Vector2(-0.18, minH + 0.03),
+    new T.Vector2(-0.36, minH - 0.05),
+  ]);
+  for (const x of [-0.15, 0, 0.15])
+    facade.holes.push(new T.Path(horseshoe(x, 1.66, 0.055, 0.18)));
+  for (const x of [-0.11, 0.11])
+    facade.holes.push(new T.Path(horseshoe(x, 2.42, 0.07, 0.22)));
+  add(
+    new T.ExtrudeGeometry(facade, { depth: 0.14, bevelEnabled: false }),
+    minX,
+    minY,
+    front - 0.14,
+    "sandstone",
+  );
+  // The side walls, measured back from the façade, end in a ragged edge.
+  const ruin: [number, number][][] = [
+    [[0.86, 0], [0.86, 0.45], [0.7, 0.62], [0.62, 1.3], [0.68, 1.5], [0.55, 2.1],
+      [0.5, 2.8], [0.42, 3.1], [0.4, 3.6], [0.3, minH - 0.05], [0, minH - 0.1]],
+    [[0.8, 0], [0.8, 0.7], [0.66, 0.9], [0.66, 1.6], [0.52, 1.9], [0.56, 2.5],
+      [0.44, 3.0], [0.38, 3.5], [0.26, minH - 0.08], [0, minH - 0.05]],
+  ];
+  ruin.forEach((edge, k) => {
+    const wall = new T.Shape(
+      [[0, 0], ...edge].map(([u, v]) => new T.Vector2(u, v)),
+    );
+    for (const y of [1.7, 2.7])
+      wall.holes.push(new T.Path(horseshoe(0.25, y, 0.06, 0.2)));
+    add(
+      new T.ExtrudeGeometry(wall, { depth: 0.14, bevelEnabled: false }),
+      k ? minX - 0.5 : minX + 0.36,
+      minY,
+      front,
+      "sandstone",
+      [0, Math.PI / 2, 0],
+    );
+  });
+  // What is left of the back wall.
+  box(minX, minY + 0.14, minZ - 0.43, 0.72, 0.28, 0.14, "sandstone");
+  box(minX - 0.25, minY + 0.25, minZ - 0.43, 0.22, 0.5, 0.14, "sandstone");
+  // Carved relief on the façade: the frame round the gate, a cornice and
+  // the balcony's ledge, the lozenge net of the sebka panel, and the band
+  // of green and white tiles near the top.
+  const relief = (x: number, y: number, w: number, h: number, d = 0.025) =>
+    box(minX + x, minY + y, front + d / 2, w, h, d, "sandstoneDark");
+  for (const x of [-0.33, 0.33]) relief(x, 0.71, 0.045, 1.42);
+  relief(0, 1.42, 0.7, 0.045);
+  relief(0, 1.52, 0.72, 0.06, 0.05);
+  relief(0, 1.63, 0.5, 0.04, 0.12);
+  for (const x of [-0.29, 0.29]) relief(x, 2.94, 0.04, 1.24);
+  for (const y of [2.32, 3.56]) relief(0, y, 0.62, 0.04);
+  for (let row = 0; row < 5; row++)
+    for (let col = 0; col < 4 + (row % 2); col++)
+      add(
+        new T.BoxGeometry(0.08, 0.08, 0.02),
+        minX - 0.18 - (row % 2) * 0.06 + col * 0.12,
+        minY + 2.84 + row * 0.14,
+        front + 0.01,
+        "sandstoneDark",
+        [0, 0, Math.PI / 4],
+        false,
+      );
+  for (let i = 0; i < 9; i++)
+    box(minX - 0.32 + i * 0.08, minY + 3.76, front + 0.008, 0.07, 0.09, 0.016,
+      i % 2 ? "light" : "dark", false);
+  // Mansourah's rammed-earth rampart behind, with a square tower and merlons.
+  box(tileX + 0.05, minY + 0.2, tileZ - 1.15, 1.9, 0.4, 0.16, "sandstoneDark");
+  box(tileX - 0.8, minY + 0.32, tileZ - 1.1, 0.36, 0.64, 0.36, "sandstoneDark");
+  for (let i = 0; i < 8; i++)
+    if (i !== 4 && i !== 5)
+      box(tileX - 0.6 + i * 0.22, minY + 0.46, tileZ - 1.15, 0.1, 0.12, 0.16,
+        "sandstoneDark");
+  // Fallen blocks, an old olive tree and a little grass.
+  for (const [x, z, s] of [
+    [0.75, -0.55, 0.16],
+    [-0.25, -0.6, 0.13],
+    [0.9, 0.4, 0.12],
+    [-0.45, -0.25, 0.1],
+  ])
+    add(new T.BoxGeometry(s * 1.4, s, s), tileX + x, minY + s / 2, tileZ + z, "sandstone", [
+      0,
+      vary(x, z) * 3,
+      0,
+    ]);
+  const olive = new T.Vector3(tileX - 0.7, minY, tileZ + 0.6);
+  beam(olive, olive.clone().add(new T.Vector3(0.07, 0.6, -0.04)), 0.07);
+  beam(
+    olive.clone().add(new T.Vector3(0.04, 0.35, 0)),
+    olive.clone().add(new T.Vector3(-0.2, 0.7, 0.1)),
+    0.035,
+  );
+  for (let i = 0; i < 7; i++) {
+    const a = i * 2.4,
+      r = 0.12 + vary(i, 7) * 0.2;
+    const g = new T.IcosahedronGeometry(0.17 + vary(i, 8) * 0.08, 1);
+    g.scale(1, 0.7, 1);
+    add(
+      g,
+      olive.x + Math.cos(a) * r,
+      olive.y + 0.72 + vary(i, 9) * 0.22,
+      olive.z + Math.sin(a) * r,
+      i % 2 ? "leaf" : "leafDark",
+      [vary(i, 10), vary(i, 11), 0],
+      false,
+    );
+  }
+  for (let i = 0; i < 10; i++)
+    add(
+      new T.ConeGeometry(0.05, 0.22, 4),
+      tileX - 1.0 + vary(i, 12) * 2.0,
+      minY + 0.1,
+      tileZ - 0.75 + vary(i, 13) * 1.6,
+      "grass",
+      [0, vary(i, 14) * 4, 0.2],
+      false,
+    );
+
+  await checkpoint("building-site");
+  // In front of Mansourah, two more tiles: a building site, then a plot left
+  // empty for whatever comes next.
+  const siteZ = tileZ + 2.95,
+    siteY = 0.22;
+  box(tileX, -0.03, siteZ, 2.2, 0.38, 2.75, "stone");
+  box(tileX, -0.03, siteZ + 2.95, 2.2, 0.38, 2.75, "stone");
+  box(tileX - 0.5, 0.13, tileZ + 1.475, 0.46, 0.06, 0.3, "light");
+  box(tileX - 0.5, 0.13, siteZ + 1.475, 0.46, 0.06, 0.3, "light");
+  box(5.5, 0.13, siteZ + 0.6, 0.3, 0.06, 0.46, "light");
+  box(tileX - 0.05, 0.19, siteZ, 1.5, 0.06, 1.42, "trim");
+  // Walls laid in courses of stone, running bond, each column of a wall as
+  // high as it has got so far. The front wall leaves a gap for the door.
+  const course = 0.12,
+    brick = 0.24;
+  const wall = (
+    x: number,
+    z: number,
+    axis: "x" | "z",
+    length: number,
+    heights: number[],
+  ) => {
+    for (let c = 0; c < Math.max(...heights); c++)
+      for (let s = c % 2 ? -brick / 2 : 0; s < length; s += brick) {
+        const a = Math.max(s, 0),
+          b = Math.min(s + brick, length);
+        if (c >= heights[Math.floor((a + b) / 2 / brick)]) continue;
+        const along = (a + b) / 2;
+        box(
+          axis === "x" ? x + along : x,
+          siteY + course * (c + 0.5),
+          axis === "z" ? z + along : z,
+          axis === "x" ? b - a : 0.14,
+          course,
+          axis === "z" ? b - a : 0.14,
+          "light",
+        );
+      }
+  };
+  const x0 = tileX - 0.7,
+    x1 = tileX + 0.6,
+    z0 = siteZ - 0.6,
+    z1 = siteZ + 0.6;
+  wall(x0, z0, "x", x1 - x0, [9, 9, 8, 8, 7, 6]);
+  wall(x0, z0 + 0.07, "z", z1 - z0 - 0.07, [9, 8, 7, 5, 4]);
+  wall(x1, z0 + 0.07, "z", z1 - z0 - 0.07, [7, 6, 4, 3, 2]);
+  wall(x0, z1, "x", x1 - x0, [3, 2, 0, 0, 2, 1]);
+  // Scaffolding up the right-hand wall: poles, ledgers and two plank decks.
+  const scaffoldX = x1 + 0.2;
+  for (const z of [z0, siteZ, z1])
+    for (const x of [scaffoldX - 0.08, scaffoldX + 0.08])
+      beam(new T.Vector3(x, 0.16, z), new T.Vector3(x, 1.5, z), 0.014);
+  for (const y of [0.62, 1.12]) {
+    box(scaffoldX, y, siteZ, 0.24, 0.025, z1 - z0 + 0.05, "wood");
+    for (const x of [scaffoldX - 0.08, scaffoldX + 0.08])
+      box(x, y + 0.3, siteZ, 0.018, 0.018, z1 - z0, "dark");
+  }
+  beam(
+    new T.Vector3(scaffoldX + 0.08, 0.2, z0),
+    new T.Vector3(scaffoldX + 0.08, 1.1, z1),
+    0.01,
+    "dark",
+  );
+  // A tower crane at the back corner, clear of the minaret's gate, its jib
+  // swung over the walls with a pallet of stone on the hook.
+  const craneX = tileX - 0.88,
+    craneZ = siteZ - 0.85,
+    craneTop = 3.1,
+    m = 0.08;
+  box(craneX, 0.21, craneZ, 0.3, 0.1, 0.3, "trim");
+  for (const dx of [-m, m])
+    for (const dz of [-m, m])
+      beam(
+        new T.Vector3(craneX + dx, 0.26, craneZ + dz),
+        new T.Vector3(craneX + dx, craneTop, craneZ + dz),
+        0.016,
+        "ochre",
+      );
+  // Zigzag bracing on the two faces that can be seen.
+  for (let y = 0.26, k = 1; y < craneTop - 0.1; y += 0.28, k = -k) {
+    beam(
+      new T.Vector3(craneX - k * m, y, craneZ + m),
+      new T.Vector3(craneX + k * m, y + 0.28, craneZ + m),
+      0.008,
+      "ochre",
+      false,
+    );
+    beam(
+      new T.Vector3(craneX + m, y, craneZ - k * m),
+      new T.Vector3(craneX + m, y + 0.28, craneZ + k * m),
+      0.008,
+      "ochre",
+      false,
+    );
+  }
+  box(craneX, craneTop + 0.07, craneZ + m + 0.08, 0.16, 0.14, 0.14, "light");
+  const jibTip = tileX + 0.55,
+    counterEnd = craneX - 0.55;
+  for (const dz of [-0.06, 0.06])
+    beam(
+      new T.Vector3(counterEnd, craneTop, craneZ + dz),
+      new T.Vector3(jibTip, craneTop, craneZ + dz),
+      0.014,
+      "ochre",
+    );
+  beam(
+    new T.Vector3(craneX + 0.05, craneTop + 0.2, craneZ),
+    new T.Vector3(jibTip - 0.2, craneTop + 0.05, craneZ),
+    0.012,
+    "ochre",
+  );
+  for (let i = 0; i < 8; i++) {
+    const xa = craneX + 0.05 + i * 0.17,
+      t = i / 8;
+    beam(
+      new T.Vector3(xa, craneTop, craneZ),
+      new T.Vector3(xa + 0.085, craneTop + 0.2 - t * 0.15, craneZ),
+      0.007,
+      "ochre",
+      false,
+    );
+  }
+  beam(
+    new T.Vector3(craneX, craneTop, craneZ),
+    new T.Vector3(craneX, craneTop + 0.6, craneZ),
+    0.016,
+    "ochre",
+  );
+  for (const end of [jibTip - 0.1, counterEnd + 0.05])
+    beam(
+      new T.Vector3(craneX, craneTop + 0.6, craneZ),
+      new T.Vector3(end, craneTop + 0.03, craneZ),
+      0.005,
+      "dark",
+      false,
+    );
+  box(counterEnd + 0.12, craneTop - 0.05, craneZ, 0.2, 0.22, 0.2, "trim");
+  const hookX = tileX + 0.1;
+  box(hookX, craneTop - 0.03, craneZ, 0.1, 0.05, 0.16, "dark");
+  beam(
+    new T.Vector3(hookX, craneTop - 0.05, craneZ),
+    new T.Vector3(hookX, 1.95, craneZ),
+    0.004,
+    "dark",
+    false,
+  );
+  box(hookX, 1.9, craneZ, 0.06, 0.08, 0.06, "dark");
+  for (const dx of [-0.12, 0.12])
+    beam(new T.Vector3(hookX, 1.86, craneZ), new T.Vector3(hookX + dx, 1.7, craneZ), 0.004, "dark", false);
+  box(hookX, 1.68, craneZ, 0.3, 0.03, 0.26, "wood");
+  box(hookX, 1.76, craneZ, 0.26, 0.13, 0.22, "light");
+  // On the ground: a pallet of stone, a heap of sand, and a striped barrier.
+  box(tileX - 0.65, 0.18, siteZ + 1.0, 0.36, 0.04, 0.3, "wood");
+  for (let i = 0; i < 2; i++)
+    for (let j = 0; j < 2; j++)
+      box(tileX - 0.65, 0.26 + i * course, siteZ + 0.93 + j * 0.15, 0.32, course, 0.14, "light");
+  add(new T.ConeGeometry(0.3, 0.26, 10), tileX + 0.55, 0.29, siteZ + 0.98, "trim");
+  for (const x of [tileX - 0.25, tileX + 0.15])
+    box(x, 0.36, siteZ + 1.25, 0.03, 0.4, 0.03, "dark");
+  for (let i = 0; i < 6; i++)
+    box(tileX - 0.29 + i * 0.08 + 0.04, 0.48, siteZ + 1.25, 0.08, 0.07, 0.025,
+      i % 2 ? "dark" : "ochre", false);
 
   await checkpoint("geometry-batches");
   const solidMeshes: T.Mesh[] = [];
@@ -2915,7 +3239,9 @@ export async function createGarden(
     whisperbook: { at: new T.Vector3(3.4, 1.7, -0.55), zoom: 1.6 },
     wattch: { at: new T.Vector3(-3.4, 1.45, 0.45), zoom: 1.8 },
   };
-  const lookDefault = new T.Vector3(0, 2.4, 0);
+  // Centred on the garden with its strip of tiles on the right, which makes
+  // it wider to the right than to the left.
+  const lookDefault = new T.Vector3(0.55, 2.4, -0.55);
   const sunColor = new T.Color();
   function applyLight() {
     // 6:00 sunrise, 13:00 high sun, 20:00 sunset.
@@ -3110,9 +3436,9 @@ export async function createGarden(
     const aspect = width / (height * band);
     const stackedMobile = innerWidth <= 760 && innerHeight > 520;
     const span = stackedMobile
-      ? Math.max(12.8, 15.2 / aspect)
+      ? Math.max(12.8, 16.4 / aspect)
       : aspect < 0.9
-        ? 15.3 / aspect
+        ? 16.4 / aspect
         : 15.6;
     const half = span / 2 / (1 + focusAmount * focusZoom);
     const full = half / band;
