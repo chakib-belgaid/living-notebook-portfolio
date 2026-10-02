@@ -10,6 +10,8 @@ import { createSheet } from "./sheet";
 export type JourneyOptions = {
   /** The visitor reached a new stop. */
   onStop: (stop: Stop) => void;
+  /** The header's pause button was pressed. */
+  onTogglePause: () => void;
 };
 export type Journey = {
   readonly active: boolean;
@@ -19,6 +21,8 @@ export type Journey = {
   setActive: (on: boolean) => void;
   /** A short message in the header for a few seconds. */
   notify: (text: string) => void;
+  /** Shows the motion state on the header's pause button. */
+  setMotion: (stopped: boolean, systemReduced: boolean) => void;
 };
 
 const details: Partial<Record<StopName, { key: string; title: string; text: string; label?: string }>> = {
@@ -30,6 +34,9 @@ const details: Partial<Record<StopName, { key: string; title: string; text: stri
 const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
 
+// Outlined like the sketched clouds on the desktop sky.
+const cloud = `<svg viewBox="0 0 120 50" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 44h94c9 0 13-7 10-13-2-5-8-7-13-5 0-10-9-16-18-13-4-9-15-13-24-9-7 3-11 10-10 17-6-3-15 0-17 7-8-1-14 4-13 10 1 4 5 6 11 6z"/></svg>`;
+
 export function createPhoneJourney(options: JourneyOptions): Journey {
   const root = document.documentElement;
   const $ = <E extends HTMLElement>(s: string) => document.querySelector<E>(s)!;
@@ -37,14 +44,25 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
   const layer = document.createElement("div");
   layer.className = "journey";
   layer.setAttribute("aria-hidden", "true");
-  layer.innerHTML = `${stops.map((s) => `<img class="journey-still" data-still="${s.name}" alt="" decoding="async" />`).join("")}<span class="journey-edge"></span>`;
+  layer.innerHTML = `${stops.map((s) => `<img class="journey-still" data-still="${s.name}" alt="" decoding="async" />`).join("")}<span class="journey-edge"></span>
+    <div class="journey-clouds">${cloud}${cloud}</div>
+    <div class="journey-leaves">${Array.from({ length: 10 }, (_, i) => `<i style="--n:${i}"></i>`).join("")}</div>`;
   const stills = [...layer.querySelectorAll<HTMLImageElement>(".journey-still")];
 
   const bar = document.createElement("div");
   bar.className = "journey-bar";
-  bar.innerHTML = `<span class="journey-label"></span><span class="journey-toast" role="status"></span>`;
+  bar.innerHTML = `<span class="journey-label"></span><span class="journey-toast" role="status"></span><button type="button" class="journey-pause" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>`;
   const label = bar.querySelector<HTMLElement>(".journey-label")!;
   const toast = bar.querySelector<HTMLElement>(".journey-toast")!;
+  const pause = bar.querySelector<HTMLButtonElement>(".journey-pause")!;
+  pause.addEventListener("click", () => options.onTogglePause());
+  function setMotion(stopped: boolean, systemReduced: boolean) {
+    const name = systemReduced ? "Motion paused by your system preference" : stopped ? "Resume motion" : "Pause motion";
+    pause.setAttribute("aria-pressed", String(stopped));
+    pause.setAttribute("aria-label", name);
+    pause.title = name;
+    pause.disabled = systemReduced;
+  }
 
   // Blueprint's card carries the career as a timeline that fills with scroll.
   const years = [...document.querySelectorAll(".career-list .eyebrow")].map((e) => e.textContent!.slice(0, 4)).reverse();
@@ -169,5 +187,6 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     layer,
     setActive,
     notify,
+    setMotion,
   };
 }

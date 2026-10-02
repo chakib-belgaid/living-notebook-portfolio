@@ -138,7 +138,11 @@ let activeIllustration: HTMLDetailsElement | undefined;
 const announce = (text: string) => ($("#announce").textContent = text);
 /* Phones in portrait get the garden journey over the reading page. */
 const phoneQuery = matchMedia("(max-width: 899px) and (min-height: 500px)");
-const journey = createPhoneJourney({ onStop: () => {} });
+const journey = createPhoneJourney({
+  onStop: () => {},
+  // The journey's own button stands in for the ruler's, which phones don't show.
+  onTogglePause: () => motionButton.click(),
+});
 
 /* The notebook is always drawn on blueprint paper. */
 function syncTheme() {
@@ -160,6 +164,7 @@ function syncMotion() {
   motionButton.disabled = reduced;
   motionButton.title = reduced ? "Motion paused by your system preference" : paused ? "Resume motion" : "Pause motion";
   motionButton.setAttribute("aria-label", motionButton.title);
+  journey.setMotion(stopped, reduced);
   garden?.setMotion(stopped || (reading && !previewEnabled));
   sky?.setMotion(stopped || (reading && !previewEnabled));
 }

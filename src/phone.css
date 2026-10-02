@@ -112,8 +112,32 @@
   .sheet-body .note-widget[data-contact-read] h3 { display: none; }
   .sheet-body .note-widget[data-contact-read] .note-label { position: static; width: auto; height: auto; clip-path: none; }
 
+  /* Ambient motion: two sketched clouds, and leaves falling in Bloom. Paused
+     with the rest of the page, and off with reduced motion. */
+  .journey-clouds { position: absolute; inset: 0 0 auto; height: 45%; z-index: 3; color: rgb(230 240 248 / 0.4); }
+  .journey-clouds svg { position: absolute; top: 16%; width: 8.5rem; height: auto; animation: cloud-drift 80s linear infinite -25s; }
+  .journey-clouds svg + svg { top: 30%; width: 6rem; animation-duration: 110s; animation-delay: -70s; }
+  @keyframes cloud-drift { from { transform: translateX(-10rem); } to { transform: translateX(calc(100vw + 1rem)); } }
+  .journey-leaves { position: absolute; inset: 0; z-index: 3; opacity: 0; transition: opacity 0.8s ease; }
+  .journey[data-at="bloom"] .journey-leaves { opacity: 1; }
+  .journey-leaves i {
+    position: absolute; top: -3%; left: calc(var(--n) * 9.5% + 3%); width: 0.5rem; height: 0.32rem;
+    border-radius: 60% 0; background: #d98a3a;
+    animation: leaf-fall calc(9s + var(--n) * 0.7s) linear infinite; animation-delay: calc(var(--n) * -1.9s);
+  }
+  .journey-leaves i:nth-child(3n) { background: #c4572e; }
+  .journey-leaves i:nth-child(4n) { background: #e8b84a; }
+  .journey:not([data-at="bloom"]) .journey-leaves i { animation-play-state: paused; }
+  @keyframes leaf-fall { to { transform: translate(-3rem, 72vh) rotate(540deg); } }
+  .journey-pause { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: -0.4rem -0.6rem -0.4rem 0; border: 0; background: none; color: var(--ink); cursor: pointer; }
+  .journey-pause:disabled { color: var(--muted); cursor: default; }
+  .journey-pause svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .journey-pause .icon-play { display: none; }
+  .journey-pause[aria-pressed="true"] .icon-pause { display: none; }
+  .journey-pause[aria-pressed="true"] .icon-play { display: inline; fill: currentColor; }
+
   @media (prefers-reduced-motion: reduce) {
     :root[data-journey="true"] .stop-card { opacity: 1; transform: none; }
-    .journey-edge { display: none; }
+    .journey-edge, .journey-clouds, .journey-leaves { display: none; }
   }
 }

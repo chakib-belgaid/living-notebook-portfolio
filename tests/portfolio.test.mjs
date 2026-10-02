@@ -471,3 +471,33 @@ test('200% text enlargement and 400% reflow expose links and fields', async () =
     healthy(zoom);
   } finally {await zoom.context().close();}
 });
+
+test('phone motion pauses from the header, and reduced motion keeps the journey still', async () => {
+  const running = p => p.evaluate(()=>document.getAnimations().filter(a=>a.playState==='running').length);
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await go(p,'contact');
+    await p.waitForTimeout(600);
+    assert.ok(await running(p) > 0, 'clouds drift and leaves fall in Bloom');
+    await p.getByRole('button',{name:'Pause motion',exact:true}).click();
+    assert.equal(await running(p), 0);
+    assert.equal(await p.getByRole('button',{name:'Resume motion',exact:true}).getAttribute('aria-pressed'),'true');
+    healthy(p);
+  } finally { await p.context().close(); }
+  const r = await page({viewport:{width:390,height:844}, reducedMotion:'reduce'});
+  try {
+    await ready(r);
+    await go(r,'wattch');
+    assert.equal(await running(r), 0);
+    const wipes = await r.locator('.journey-still').evaluateAll(es=>es.map(e=>getComputedStyle(e).getPropertyValue('--wipe').trim()));
+    assert.ok(wipes.every(w=>w==='0.000'||w==='1.000'), wipes.join());
+    const more = r.getByRole('button',{name:'More about Wattch Core',exact:true});
+    await more.click();
+    assert.equal(await r.locator('dialog.sheet').evaluate(d=>d.open), true);
+    await r.keyboard.press('Escape');
+    assert.equal(await r.locator('dialog.sheet').evaluate(d=>d.open), false, 'closes at once');
+    assert.equal(await more.evaluate(e=>e===document.activeElement), true);
+    healthy(r);
+  } finally { await r.context().close(); }
+});
