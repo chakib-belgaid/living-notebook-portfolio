@@ -49,7 +49,7 @@ export function renderPortfolio() {
           <article class="reading-project" id="${id}" data-stop="${id}" aria-labelledby="${id}-title">
             <div class="project-copy">
               <div class="stop-card"><p class="eyebrow">${e(p.field)}</p><h3 id="${id}-title" tabindex="-1">${e(p.title)}</h3>
-                <p class="reading-lede">${e(p.lede)}</p><p class="journey-only project-summary">${e(p.summary)}</p></div>
+                <p class="reading-lede">${e(p.lede)}</p></div>
               <div class="stop-detail" data-detail="${id}"><p>${e(p.intro)}</p>
                 <h4>Project status</h4><p>${e(p.status)}</p><h4>Outcome</h4><p>${e(p.outcome)}</p><h4>Scope and limits</h4><p>${e(p.limits)}</p>
                 <h4>What I built</h4><p>${e(p.built)}</p><h4>The decision that shaped it</h4><p>${e(p.decision)}</p>

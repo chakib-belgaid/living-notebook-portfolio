@@ -1,21 +1,27 @@
 import "./phone.css";
-import { stops, type Stop, type StopName } from "./content";
+import { stageProgress, stops, type Stop, type StopName } from "./content";
 import { lettered } from "./lettered";
 import { createSheet } from "./sheet";
 
 /* The garden journey on phones (docs/superpowers/specs/2026-10-02-phone-journey-design.md).
    It is laid over the reading page: each stop is one of its sections, shown
-   as a short card over a still of the garden, and the stills wipe into one
-   another as the visitor scrolls. Details open in a sheet. */
+   as a short card over the garden. As on the desktop, the live garden grows
+   with the scroll; its stills stand in while it loads, or when it is off.
+   Only the current stop's card shows, and none while the garden moves
+   between stops. Details open in a sheet. */
 export type JourneyOptions = {
   /** The visitor reached a new stop. */
   onStop: (stop: Stop) => void;
+  /** The garden's growth followed the scroll (0–1, see stageProgress). */
+  onGrowth: (growth: number) => void;
   /** The header's pause button was pressed. */
   onTogglePause: () => void;
 };
 export type Journey = {
   readonly active: boolean;
   readonly stop: Stop;
+  /** The garden's growth at the current scroll. */
+  readonly growth: number;
   /** The fixed layer behind the cards; main.ts puts the live garden in it. */
   readonly layer: HTMLElement;
   setActive: (on: boolean) => void;
@@ -26,6 +32,8 @@ export type Journey = {
   setNight: (night: boolean) => void;
   /** Shows the motion state on the header's pause button. */
   setMotion: (stopped: boolean, systemReduced: boolean) => void;
+  /** The live garden is drawing in the layer: stills no longer load. */
+  setLive: (on: boolean) => void;
 };
 
 const details: Partial<Record<StopName, { key: string; title: string; text: string; label?: string }>> = {
@@ -36,6 +44,7 @@ const details: Partial<Record<StopName, { key: string; title: string; text: stri
 };
 const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
+const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
 // Outlined like the sketched clouds on the desktop sky.
 const cloud = `<svg viewBox="0 0 120 50" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 44h94c9 0 13-7 10-13-2-5-8-7-13-5 0-10-9-16-18-13-4-9-15-13-24-9-7 3-11 10-10 17-6-3-15 0-17 7-8-1-14 4-13 10 1 4 5 6 11 6z"/></svg>`;
@@ -93,12 +102,14 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
   const stopEls = stops.map((s) => $(`[data-stop="${s.name}"]`));
   let active = false;
   let current: Stop | undefined;
-  let observer: IntersectionObserver | undefined;
+  let growth = 0;
+  let live = false;
   let toastTimer = 0;
   let night = false;
 
   function load(i: number) {
     const img = stills[i];
+    if (live) return;
     if (img && !img.getAttribute("src")) img.src = `/assets/stills/${stops[i].name}${night ? "-night" : ""}.webp`;
   }
   function setNight(on: boolean) {
@@ -121,12 +132,22 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     load(at);
     load(at + 1);
     let wiping = -1;
+    let moving = false;
+    let grown = stageProgress[stops[0].stage];
     stills.forEach((img, i) => {
       // A still wipes in while its stop rises from the bottom of the screen
-      // to 40% from the top; with reduced motion it cuts at halfway.
+      // to 40% from the top; with reduced motion it cuts at halfway. The
+      // garden grows into the stop's stage over the same stretch.
       const raw = i === 0 ? 1 : clamp((h - tops[i]) / (h * 0.6));
       const wipe = reducedQuery.matches ? (raw >= 0.5 ? 1 : 0) : raw;
       if (wipe > 0 && wipe < 1) wiping = wipe;
+      if (i > 0 && raw > 0) {
+        const from = stageProgress[stops[i - 1].stage], to = stageProgress[stops[i].stage];
+        grown = from + (to - from) * smoothstep(wipe);
+        // A card leaves as the next stop starts to rise, and the next card
+        // sets in once its stop has taken over.
+        if (i === at + 1 && raw > 0.04) moving = true;
+      }
       img.style.setProperty("--wipe", wipe.toFixed(3));
       // While its stop holds, the still drifts a little closer.
       const span = i < stops.length - 1 ? tops[i + 1] - tops[i] : h;
@@ -136,6 +157,11 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     layer.style.setProperty("--edge", Math.max(wiping, 0).toFixed(3));
     const b = stops.findIndex((s) => s.name === "blueprint");
     timeline.style.setProperty("--fill", clamp((h - tops[b]) / Math.max(1, tops[b + 1] - tops[b])).toFixed(3));
+    stopEls.forEach((el, i) => el.querySelector(".stop-card")!.classList.toggle("current", i === at && !moving));
+    if (grown !== growth) {
+      growth = grown;
+      options.onGrowth(growth);
+    }
     if (stops[at] !== current) {
       current = stops[at];
       layer.dataset.at = current.name;
@@ -165,9 +191,8 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
       $('[data-stop="blueprint"] .stop-card').append(timeline);
       for (const { stop, button } of moreButtons) $(`[data-stop="${stop}"] .stop-card`).append(button);
       title.innerHTML = lettered(titleText);
-      observer = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("seen"); }), { threshold: 0.15 });
-      document.querySelectorAll(".stop-card").forEach((card) => observer!.observe(card));
       current = undefined;
+      growth = -1;
       addEventListener("scroll", schedule, { passive: true });
       addEventListener("resize", schedule);
       // Measured on the next frame, once the page has scrolled to a deep link's stop.
@@ -185,8 +210,7 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
       moreButtons.forEach(({ button }) => button.remove());
       portfolio.insertBefore(about, contact);
       title.textContent = titleText;
-      observer?.disconnect();
-      document.querySelectorAll(".stop-card.seen").forEach((card) => card.classList.remove("seen"));
+      document.querySelectorAll(".stop-card.current").forEach((card) => card.classList.remove("current"));
       removeEventListener("scroll", schedule);
       removeEventListener("resize", schedule);
       if (stranded) $(`[data-stop="${stranded}"]`).querySelector<HTMLElement>("h1, h2, h3")!.focus({ preventScroll: true });
@@ -203,10 +227,18 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
   return {
     get active() { return active; },
     get stop() { return current ?? stops[0]; },
+    get growth() { return Math.max(0, growth); },
     layer,
     setActive,
     notify,
     setMotion,
     setNight,
+    setLive(on: boolean) {
+      if (on === live) return;
+      live = on;
+      layer.toggleAttribute("data-live", on);
+      // Back to stills: the ones around the current stop load again.
+      if (!on) schedule();
+    },
   };
 }

@@ -136,6 +136,10 @@ const compact = matchMedia("(max-width: 899px), (max-height: 599px)");
 let reading = true;
 let previewEnabled = false;
 let requestedView = new URL(location.href).searchParams.get("view");
+// In the phone journey the live garden is on unless the visitor turned it off
+// (?view=stills), asked to save data, or it can't be drawn.
+let liveFailed = false;
+const saveData = () => !!(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
 // On a phone, whether the visitor chose the reading page over the journey.
 // The live garden then opens over the page, and closing it returns there.
 let overPage = requestedView === "read";
@@ -149,6 +153,7 @@ const announce = (text: string) => ($("#announce").textContent = text);
 const phoneQuery = matchMedia("screen and (max-width: 899px) and (min-height: 500px)");
 const journey = createPhoneJourney({
   onStop: (stop) => { if (previewEnabled) driveLive(stop); },
+  onGrowth: () => { if (previewEnabled) growLive(); },
   // The journey's own button stands in for the ruler's, which phones don't show.
   onTogglePause: () => motionButton.click(),
 });
@@ -272,16 +277,20 @@ function measureFrames() {
 }
 new ResizeObserver(() => measureFrames()).observe($(".masthead"));
 function frameGarden() {
-  // In the journey the garden sits where the stills have it, above the cards.
-  if (journey.active) garden?.frame(0.12, 0.64);
+  // In the journey the garden fills the screen above the small cards.
+  if (journey.active) garden?.frame(0.1, 0.7);
   else garden?.frame(reading ? 0.04 : 0.02, reading ? 0.96 : 0.89);
 }
-/* In the journey the live garden shows each stop as its still does. */
-function driveLive(stop: Stop) {
-  const growth = stageProgress[stop.stage];
+/* In the journey the live garden grows with the scroll, as on the desktop,
+   and the camera visits each stop as its still does. */
+function growLive() {
+  const growth = reduced ? stageProgress[journey.stop.stage] : journey.growth;
   scrub.value = String(Math.round(growth * 1000));
   garden?.setProgress(growth, reduced || paused);
   sky?.setGrowth(growth);
+}
+function driveLive(stop: Stop) {
+  growLive();
   garden?.focus(stop.spot, 0, 0);
 }
 
@@ -997,7 +1006,9 @@ function syncPresentation() {
   const stageElement = $("#stage");
   const journeyOn = reading && phoneQuery.matches && !overPage;
   journey.setActive(journeyOn);
+  if (requestedView === null) previewEnabled = journeyOn && !liveFailed && !saveData();
   root.dataset.preview = String(previewEnabled);
+  journey.setLive(journeyOn && previewEnabled && !!garden);
   $("#portfolio").hidden = !reading;
   $(".chapters").hidden = reading;
   $(".chapters").inert = reading;
@@ -1047,7 +1058,7 @@ $$<HTMLAnchorElement>("[data-view]").forEach(a => a.addEventListener("click", e 
   previewEnabled = compact.matches && previewEnabled && a.classList.contains("view-switch") ? false : requestedView === "garden";
   // On a compact screen, closing the garden returns to the journey there,
   // otherwise to the reading page.
-  if (compact.matches && !previewEnabled) requestedView = closingInJourney ? null : "read";
+  if (compact.matches && !previewEnabled) requestedView = closingInJourney ? "stills" : "read";
   const url = new URL(location.href);
   if (requestedView) url.searchParams.set("view", requestedView);
   else url.searchParams.delete("view");
@@ -1066,6 +1077,7 @@ phoneQuery.addEventListener("change", () => {
   const section = navigation.section;
   syncPresentation();
   navigation.go(section, false, false);
+  if (previewEnabled) void loadGarden();
 });
 
 $$<HTMLDetailsElement>("[data-illustration]").forEach(details => details.addEventListener("toggle", () => {
@@ -1081,6 +1093,7 @@ $$<HTMLDetailsElement>("[data-illustration]").forEach(details => details.addEven
    and the address no longer asks for it. */
 function leaveLiveGarden(message: string) {
   previewEnabled = false;
+  liveFailed = true;
   requestedView = null;
   const url = new URL(location.href);
   url.searchParams.delete("view");
@@ -1112,7 +1125,7 @@ async function loadGarden() {
     });
     $("#scene").addEventListener("garden-context-restored", () => $(".scene-fallback").hidden = true);
     syncTheme(); syncMotion(); setHour(Number(hourInput.value)); applyWeather(); applySeason();
-    if (journey.active) driveLive(journey.stop);
+    if (journey.active) { driveLive(journey.stop); journey.setLive(previewEnabled); }
     else if (reading) { garden.setProgress(1, reduced || paused); sky.setGrowth(1); }
     else {
       // The meter needs a renderer; contact and speech already work while loading.
@@ -1153,6 +1166,7 @@ syncPresentation();
 navigation.go(navigation.section, false, false);
 measure();
 if (!reading || requestedView === "garden") { previewEnabled = reading; syncPresentation(); void loadGarden(); }
+else if (previewEnabled) void loadGarden();
 document.fonts?.ready.then(schedule);
 const offLocale = onLocaleChange(() => {
   setHour(Number(hourInput.value));

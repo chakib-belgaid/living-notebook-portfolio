@@ -70,6 +70,9 @@ export async function createGarden(
     batchDone = phase(`construction:${name}`);
   };
   seed = 73;
+  // Phones draw a lighter garden: no gardener, animals or small props, simpler
+  // foliage, fewer lights, and a slower, steadier frame rate.
+  const lite = quality === "low";
   const scene = new T.Scene();
   const renderer = new T.WebGLRenderer({
     alpha: true,
@@ -82,6 +85,9 @@ export async function createGarden(
   renderer.setClearColor(0xfafbf8, 0);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = T.PCFSoftShadowMap;
+  // Nothing that casts a shadow moves on its own in the phone garden, so the
+  // shadows are only redrawn when the garden changes (see render).
+  renderer.shadowMap.autoUpdate = !lite;
   renderer.toneMapping = T.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.2;
   renderer.domElement.setAttribute("aria-hidden", "true");
@@ -284,7 +290,7 @@ export async function createGarden(
       const px = x + Math.cos(a) * r,
         pz = z + Math.sin(a) * r,
         py = y + size * (1.02 + random() * 0.43);
-      const g = new T.IcosahedronGeometry(size * (0.25 + random() * 0.16), 1);
+      const g = new T.IcosahedronGeometry(size * (0.25 + random() * 0.16), lite ? 0 : 1);
       g.scale(1, 0.75 + random() * 0.35, 1);
       add(
         g,
@@ -429,6 +435,7 @@ export async function createGarden(
   for (const x of [-0.95, -0.61])
     for (const z of [-0.64, -0.2]) box(x, 0.6, z, 0.03, 0.27, 0.03, "wood");
   box(-0.78, 0.78, -0.47, 0.36, 0.02, 0.36, "light");
+  if (!lite) {
   for (let i = 0; i < 4; i++)
     for (let j = 0; j < 4; j++)
       if ((i + j) % 2)
@@ -442,12 +449,14 @@ export async function createGarden(
     cylinder(x, 0.815, z, 0.026, 0.045, c);
   add(new T.BoxGeometry(0.045, 0.045, 0.045), -0.88, 0.792, -0.23, "light", [0, 0.4, 0]);
   add(new T.BoxGeometry(0.045, 0.045, 0.045), -0.74, 0.792, -0.22, "light", [0, -0.3, 0]);
+  }
   // Terrace, the research: a chalkboard, a desk with papers, a reading lamp.
   box(0.08, 4.12, -2.77, 1.4, 0.8, 0.02, "dark");
   for (const y of [3.7, 4.54]) box(0.08, y, -2.76, 1.5, 0.05, 0.04, "wood");
   for (const x of [-0.65, 0.81]) box(x, 4.12, -2.76, 0.05, 0.89, 0.04, "wood");
   box(0.25, 3.63, -2.42, 0.72, 0.04, 0.34, "wood");
   for (const x of [-0.08, 0.58]) box(x, 3.41, -2.42, 0.03, 0.4, 0.3, "dark");
+  if (!lite) {
   for (let i = 0; i < 5; i++)
     add(
       new T.BoxGeometry(0.17, 0.007, 0.23),
@@ -461,6 +470,7 @@ export async function createGarden(
   cylinder(0.02, 3.66, -2.5, 0.05, 0.02, "dark");
   beam(new T.Vector3(0.02, 3.66, -2.5), new T.Vector3(0.06, 3.92, -2.45), 0.012, "dark");
   cylinder(0.08, 3.9, -2.42, 0.1, 0.09, "ochre", 0.04);
+  }
   // Roof, the atelier: a Mediterranean pergola. Slim stone posts with old
   // vines twisting up them carry a leafy roof over the back half, shading a
   // wicker sofa; the front is open, with an armchair, a low table, terracotta
@@ -472,6 +482,7 @@ export async function createGarden(
   for (const x of postXs)
     for (const z of postZs) {
       cylinder(x, (5.16 + pergolaTop) / 2, z, 0.042, pergolaTop - 5.16, "stone", 0.036);
+      if (lite) continue;
       // Two old vine trunks wind round each other up the post...
       for (let k = 0; k < 2; k++) {
         let from = new T.Vector3(x + 0.05, 5.17, z);
@@ -511,11 +522,12 @@ export async function createGarden(
     box(0.05, pergolaTop + 0.14, z, 2.7, 0.025, 0.03, "trim", false);
   // The leafy roof: flat clumps, mostly fresh green, with gaps for the sun to
   // fall through in patches. Leaves spill over the front and right edges.
-  for (let i = 0; i < 230; i++) {
+  // Fewer, larger clumps on phones.
+  for (let i = 0; i < (lite ? 80 : 230); i++) {
     const x = -1.28 + vary(i, 1) * 2.68,
       z = -3.22 + vary(i, 2) * 1.62;
     add(
-      new T.IcosahedronGeometry(0.07 + vary(i, 3) * 0.07, 0).scale(1, 0.5, 1),
+      new T.IcosahedronGeometry((0.07 + vary(i, 3) * 0.07) * (lite ? 1.6 : 1), 0).scale(1, 0.5, 1),
       x,
       pergolaTop + 0.17 + vary(i, 4) * 0.05,
       z,
@@ -524,7 +536,7 @@ export async function createGarden(
       false,
     );
   }
-  for (let i = 0; i < 22; i++) {
+  for (let i = 0; i < (lite ? 0 : 22); i++) {
     const front = i < 14;
     const x = front ? -1.2 + i * 0.185 + (vary(i, 11) - 0.5) * 0.1 : 1.33,
       z = front ? -1.6 : -3.0 + (i - 14) * 0.2,
@@ -541,7 +553,7 @@ export async function createGarden(
       );
   }
   // A few clusters of bloom hang through the rafters.
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < (lite ? 0 : 10); i++) {
     const length = 0.12 + vary(i, 9) * 0.08;
     add(
       new T.ConeGeometry(0.03, length, 5).rotateX(Math.PI),
@@ -603,7 +615,7 @@ export async function createGarden(
   function pot(x: number, z: number, r: number) {
     const h = r * 1.3;
     cylinder(x, 5.16 + h / 2, z, r * 0.75, h, "terracotta", r);
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < (lite ? 3 : 6); i++) {
       const a = i * 2.4 + x * 5;
       add(
         new T.IcosahedronGeometry(r * (0.5 + vary(i, x + z) * 0.25), 0),
@@ -634,6 +646,8 @@ export async function createGarden(
   pot(-1.12, -0.78, 0.11);
   pot(1.2, -2.6, 0.1);
   pot(table.x + 0.08, table.z, 0.045);
+  // The gardener's clothesline, basket and lantern.
+  if (!lite) {
   for (const z of [-1.6, -0.66]) {
     beam(new T.Vector3(1.32, 5.16, z), new T.Vector3(1.32, 5.82, z), 0.022, "dark");
     box(1.32, 5.8, z, 0.03, 0.03, 0.16, "wood");
@@ -646,6 +660,7 @@ export async function createGarden(
   cylinder(sofa.x, 5.795, -1.62, 0.012, 0.03, "dark", 0.045);
   cylinder(sofa.x, 5.72, -1.62, 0.032, 0.12, "glass", 0.032);
   cylinder(sofa.x, 5.65, -1.62, 0.045, 0.02, "dark");
+  }
   // A rill crosses the terrace from a small basin to the spout over the canal.
   // The rail opens around the spout; the right planter opens for the bridge.
   rail(-0.91, 3.12, -0.46, 0.58);
@@ -728,7 +743,7 @@ export async function createGarden(
     dialCenter.z,
     "light",
   );
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < (lite ? 0 : 7); i++) {
     const a = -Math.PI / 2 + (i / 6) * Math.PI;
     add(
       new T.BoxGeometry(0.012, i % 3 ? 0.035 : 0.055, 0.008)
@@ -744,7 +759,7 @@ export async function createGarden(
     );
   }
   // Two client screens on low stands, wired to the daemon.
-  for (const [x, z] of [
+  for (const [x, z] of lite ? [] : [
     [-3.52, 0.86],
     [-3.78, 0.7],
   ]) {
@@ -842,7 +857,7 @@ export async function createGarden(
       new T.Vector3(1.95, pageTop(0.6), -0.75 + side * 0.6),
       new T.Vector3(4.71, pageTop(0.6), -0.75 + side * 0.6),
     );
-    for (let i = 0; i < 21; i++) {
+    for (let i = 0; i < (lite ? 0 : 21); i++) {
       if (vary(i, side + 20) < 0.12) continue;
       const len = 0.5 + vary(i, side + 21) * 0.3,
         u = 0.72 + len / 2,
@@ -995,7 +1010,7 @@ export async function createGarden(
     for (const z of [2.52, 3.72]) box(x, 0.895, z, 0.035, 0.37, 0.035, "dark");
   for (const z of [2.72, 3.12]) {
     box(2.43, 1.145, z, 0.34, 0.05, 0.34, "dark");
-    for (let i = 0; i < 3; i++)
+    for (let i = 0; i < (lite ? 0 : 3); i++)
       for (let j = 0; j < 3; j++)
         add(
           new T.ConeGeometry(0.02, 0.07, 4),
@@ -1010,7 +1025,7 @@ export async function createGarden(
   cylinder(2.43, 1.195, 3.5, 0.065, 0.15, "trim");
   beam(new T.Vector3(2.48, 1.17, 3.5), new T.Vector3(2.62, 1.3, 3.5), 0.015, "trim");
   add(new T.TorusGeometry(0.05, 0.009, 4, 12, Math.PI), 2.4, 1.27, 3.5, "trim");
-  (["light", "ochre", "terracotta", "light"] as const).forEach((c, k) =>
+  if (!lite) (["light", "ochre", "terracotta", "light"] as const).forEach((c, k) =>
     add(new T.BoxGeometry(0.07, 0.1, 0.012), 2.28 + k * 0.1, 1.17, 3.72, c, [-0.12, 0, 0]),
   );
   box(3.05, 0.47, 3.95, 0.05, 0.62, 0.05, "dark");
@@ -1069,7 +1084,7 @@ export async function createGarden(
   for (let i = 0; i < 90; i++) {
     const x = (random() - 0.5) * 10,
       z = (random() - 0.5) * 8;
-    if (Math.abs(x) < 1.25 || Math.abs(z) < 0.8 || bare(x, z)) continue;
+    if (Math.abs(x) < 1.25 || Math.abs(z) < 0.8 || bare(x, z) || (lite && i % 2)) continue;
     const y = groundAt(x, z) + 0.1;
     add(
       new T.ConeGeometry(0.05, 0.22, 4),
@@ -1189,7 +1204,7 @@ export async function createGarden(
   relief(0, 1.63, 0.5, 0.04, 0.12);
   for (const x of [-0.29, 0.29]) relief(x, 2.94, 0.04, 1.24);
   for (const y of [2.32, 3.56]) relief(0, y, 0.62, 0.04);
-  for (let row = 0; row < 5; row++)
+  for (let row = 0; row < (lite ? 0 : 5); row++)
     for (let col = 0; col < 4 + (row % 2); col++)
       add(
         new T.BoxGeometry(0.08, 0.08, 0.02),
@@ -1200,7 +1215,7 @@ export async function createGarden(
         [0, 0, Math.PI / 4],
         false,
       );
-  for (let i = 0; i < 9; i++)
+  for (let i = 0; i < (lite ? 0 : 9); i++)
     box(minX - 0.32 + i * 0.08, minY + 3.76, front + 0.008, 0.07, 0.09, 0.016,
       i % 2 ? "light" : "dark", false);
   // Mansourah's rammed-earth rampart behind, with a square tower and merlons.
@@ -1232,7 +1247,7 @@ export async function createGarden(
   for (let i = 0; i < 7; i++) {
     const a = i * 2.4,
       r = 0.12 + vary(i, 7) * 0.2;
-    const g = new T.IcosahedronGeometry(0.17 + vary(i, 8) * 0.08, 1);
+    const g = new T.IcosahedronGeometry(0.17 + vary(i, 8) * 0.08, lite ? 0 : 1);
     g.scale(1, 0.7, 1);
     add(
       g,
@@ -1244,7 +1259,7 @@ export async function createGarden(
       false,
     );
   }
-  for (let i = 0; i < 10; i++)
+  for (let i = 0; i < (lite ? 4 : 10); i++)
     add(
       new T.ConeGeometry(0.05, 0.22, 4),
       tileX - 1.0 + vary(i, 12) * 2.0,
@@ -1334,7 +1349,7 @@ export async function createGarden(
         "ochre",
       );
   // Zigzag bracing on the two faces that can be seen.
-  for (let y = 0.26, k = 1; y < craneTop - 0.1; y += 0.28, k = -k) {
+  for (let y = 0.26, k = 1; !lite && y < craneTop - 0.1; y += 0.28, k = -k) {
     beam(
       new T.Vector3(craneX - k * m, y, craneZ + m),
       new T.Vector3(craneX + k * m, y + 0.28, craneZ + m),
@@ -1366,7 +1381,7 @@ export async function createGarden(
     0.012,
     "ochre",
   );
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < (lite ? 0 : 8); i++) {
     const xa = craneX + 0.05 + i * 0.17,
       t = i / 8;
     beam(
@@ -1414,7 +1429,7 @@ export async function createGarden(
   add(new T.ConeGeometry(0.3, 0.26, 10), tileX + 0.55, 0.29, siteZ + 0.98, "trim");
   for (const x of [tileX - 0.25, tileX + 0.15])
     box(x, 0.36, siteZ + 1.25, 0.03, 0.4, 0.03, "dark");
-  for (let i = 0; i < 6; i++)
+  for (let i = 0; i < (lite ? 0 : 6); i++)
     box(tileX - 0.29 + i * 0.08 + 0.04, 0.48, siteZ + 1.25, 0.08, 0.07, 0.025,
       i % 2 ? "dark" : "ochre", false);
 
@@ -1728,7 +1743,7 @@ export async function createGarden(
       "uniform float uOpacity;varying vec3 vColor;varying float vOn;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float a=pow(1.-d*2.,1.6);gl_FragColor=vec4(mix(vColor,vec3(1.),smoothstep(.22,0.,d)*.7),a*vOn*uOpacity);}",
   });
   const drones: T.Group[] = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < (lite ? 1 : 3); i++) {
     const drone = new T.Group();
     drone.add(
       new T.Mesh(bodyGeo, droneBodyMaterial),
@@ -1794,9 +1809,12 @@ export async function createGarden(
   let needleAngle = -Math.PI / 2;
   // ...and the drum recorder writes the same cost on paper as the drum turns.
   // The paper keeps most of a turn, so the last half-minute can be read back.
+  // Drawn at 1024 × 256; phones keep it at half that, as it is redrawn and
+  // uploaded every few hundred milliseconds.
+  const paperScale = lite ? 0.5 : 1;
   const paperCanvas = document.createElement("canvas");
-  paperCanvas.width = 1024;
-  paperCanvas.height = 256;
+  paperCanvas.width = 1024 * paperScale;
+  paperCanvas.height = 256 * paperScale;
   const paperContext = paperCanvas.getContext("2d")!;
   const paperTexture = new T.CanvasTexture(paperCanvas);
   paperTexture.colorSpace = T.SRGBColorSpace;
@@ -1841,8 +1859,9 @@ export async function createGarden(
     penLevel = -0.2;
   function drawPaper() {
     const c = paperContext,
-      w = paperCanvas.width,
-      h = paperCanvas.height;
+      w = 1024,
+      h = 256;
+    c.setTransform(paperScale, 0, 0, paperScale, 0, 0);
     c.fillStyle = "#f6efdf";
     c.fillRect(0, 0, w, h);
     c.strokeStyle = "rgba(206, 130, 101, 0.35)";
@@ -2176,7 +2195,7 @@ export async function createGarden(
     transparent: true,
     opacity: 0,
   });
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < (lite ? 0 : 5); i++) {
     const butterfly = new T.Group();
     for (const sign of [-1, 1]) {
       const wing = new T.Mesh(new T.CircleGeometry(0.09, 4), butterflyMaterial);
@@ -2196,7 +2215,9 @@ export async function createGarden(
     [0.05, 1.6, -1.8],
     [2.02, 1.3, 3.11],
   ];
-  const lanternLights = lanternSpots.map(([x, y, z]) => {
+  // Every lit material pays for each point light, lit or not, so phones
+  // keep only the lanterns' glow.
+  const lanternLights = (lite ? [] : lanternSpots).map(([x, y, z]) => {
     const light = new T.PointLight(0xffb565, 0, 3.4, 1.6);
     light.position.set(x, y, z);
     world.add(light);
@@ -2216,7 +2237,7 @@ export async function createGarden(
   });
   const fireflyGeometry = new T.BufferGeometry();
   const fireflySeeds: number[] = [];
-  for (let i = 0; i < 70; i++)
+  for (let i = 0; i < (lite ? 25 : 70); i++)
     fireflySeeds.push(
       (random() - 0.5) * 10,
       0.7 + random() * 2.6,
@@ -2368,7 +2389,7 @@ export async function createGarden(
     world.updateMatrixWorld(true);
     const down = new T.Vector3(0, -1, 0);
     const spots: T.Vector3[] = [];
-    for (let i = 0; i < 260 && spots.length < 170; i++) {
+    for (let i = 0; i < (lite ? 120 : 260) && spots.length < (lite ? 80 : 170); i++) {
       if (i && i % 8 === 0) await yieldTask();
       raycaster.set(
         new T.Vector3((random() - 0.5) * 10.4, 12, (random() - 0.5) * 8.4),
@@ -2418,7 +2439,7 @@ export async function createGarden(
   }
   const fallGeometry = new T.BufferGeometry();
   const fallSeeds: number[] = [];
-  for (let i = 0; i < 70; i++)
+  for (let i = 0; i < (lite ? 30 : 70); i++)
     fallSeeds.push((random() - 0.5) * 11, random(), (random() - 0.5) * 9);
   fallGeometry.setAttribute(
     "position",
@@ -2529,7 +2550,7 @@ export async function createGarden(
       [0.12, 0.07, -0.12],
     ].map(([x, y, z]) => shape(new T.IcosahedronGeometry(0.03, 0), x, y, z)),
   )!;
-  const bushSpots = await surfaceSpots(48, onGround);
+  const bushSpots = await surfaceSpots(lite ? 24 : 48, onGround);
   const bushMeshes = bushMaterials.map(
     (m) => new T.InstancedMesh(bushGeometry, m, bushSpots.length),
   );
@@ -2566,7 +2587,8 @@ export async function createGarden(
     new T.Vector3(0.26, 0.02, -0.03),
   ]);
   wingGeometry.computeVertexNormals();
-  const birds = Array.from({ length: 7 }, (_, i) => {
+  // Phones leave the animals out: they would be a few pixels across.
+  const birds = Array.from({ length: lite ? 0 : 7 }, (_, i) => {
     const bird = new T.Group();
     const body = new T.Mesh(
       new T.ConeGeometry(0.035, 0.18, 5).rotateX(Math.PI / 2),
@@ -2590,7 +2612,7 @@ export async function createGarden(
   const duckBody = mat(0xf3eee2, 0.8),
     duckHead = mat(0x2f5a45, 0.5),
     duckBeak = mat(0xe39a3b, 0.6);
-  const ducks = Array.from({ length: 3 }, (_, i) => {
+  const ducks = Array.from({ length: lite ? 0 : 3 }, (_, i) => {
     const duck = new T.Group();
     const size = i === 2 ? 1 : 1.6;
     const body = new T.Mesh(
@@ -2618,8 +2640,8 @@ export async function createGarden(
   const fennecFur = mat(0xd9b98a),
     fennecPale = mat(0xf3e6cf),
     fennecDark = mat(0x4a3426);
-  const groundSpots = await surfaceSpots(70, onGround);
-  const fennecs = Array.from({ length: 3 }, () => {
+  const groundSpots = lite ? [] : await surfaceSpots(70, onGround);
+  const fennecs = Array.from({ length: lite ? 0 : 3 }, () => {
     const fennec = new T.Group();
     const body = new T.Mesh(
       new T.SphereGeometry(0.09, 10, 8).scale(0.7, 0.7, 1.3),
@@ -2723,7 +2745,7 @@ export async function createGarden(
   catBody.castShadow = true;
   cat.position.set(-0.98, 1.02, 3.48);
   cat.rotation.y = -Math.PI / 2 + 0.3;
-  world.add(cat);
+  if (!lite) world.add(cat);
 
   /* The gardener on the roof keeps a day: watering the pots in the cool of
      the morning and evening, hanging the washing out when it's sunny,
@@ -2841,7 +2863,8 @@ export async function createGarden(
   const roofY = 5.16;
   const lanternGlow = new T.Mesh(new T.SphereGeometry(0.05, 8, 6), glowMaterial);
   lanternGlow.position.set(sofa.x, 5.72, -1.62);
-  world.add(gardener, book, can, drops, cloth, lanternGlow);
+  // Phones leave the gardener out, with the props only the gardener uses.
+  if (!lite) world.add(gardener, book, can, drops, cloth, lanternGlow);
   // Facing the pot from here keeps the can's side of the body to the camera.
   const potFacing = Math.PI - 0.5;
   const waterSpots = pots.map(([x, z]): [number, number, number] => [
@@ -3292,6 +3315,8 @@ export async function createGarden(
       last = now;
       return;
     }
+    // Phones draw at most 30 frames a second.
+    if (lite && now - last < 1000 / 30 - 4) return;
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     if (drawIn < 1) {
@@ -3310,6 +3335,7 @@ export async function createGarden(
       roomsSettling() ||
       growing;
     if ((paused || progress < 0.5) && !changed && !dirty) return;
+    if (lite && (changed || dirty)) renderer.shadowMap.needsUpdate = true;
     dirty = false;
     const work = performance.now();
     progress = lerp(
@@ -3409,7 +3435,7 @@ export async function createGarden(
     });
     updateRooms(dt, solid, drawn, blueprint);
     updateLife(paused || reduced ? 0 : dt, life);
-    updateGardener(paused || reduced ? 0 : dt, paused || reduced);
+    if (!lite) updateGardener(paused || reduced ? 0 : dt, paused || reduced);
     butterflies.forEach((b, i) => {
       b.position.set(
         Math.cos(elapsed * 0.2 + i * 1.9) * (2 + i * 0.25),

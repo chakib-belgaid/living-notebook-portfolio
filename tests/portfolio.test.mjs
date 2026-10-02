@@ -227,8 +227,8 @@ for (const [width,height] of [[390,844],[375,667],[320,568]]) {
       await ready(p);
       assert.equal(await p.locator('html').getAttribute('data-view'), 'read');
       assert.equal(await p.locator('html').getAttribute('data-journey'), 'true');
-      assert.equal(await p.locator('#scene canvas').count(), 0, 'the journey does not initialize WebGL');
       await p.waitForFunction(() => { const i = document.querySelector('.journey-still[data-still="sketch"]'); return i?.complete && i.naturalWidth > 0; });
+      await p.waitForFunction(() => !!document.querySelector('.journey[data-live] #scene canvas'), undefined, {timeout:15000});
       assert.equal(await p.evaluate(()=>scrollY), 0, 'the introduction starts above the fold');
       assert.ok(await p.locator('#intro-title').evaluate(e=>e.getBoundingClientRect().top>=document.querySelector('.masthead').getBoundingClientRect().bottom),'the header does not obscure the introduction');
       const clipped = await p.locator('.masthead a').evaluateAll(es=>es.filter(e=>{const r=e.getBoundingClientRect();return r.left<0||r.right>innerWidth+1;}).map(e=>e.textContent));
@@ -383,26 +383,34 @@ test('no JavaScript, blocked entry module, and print still expose the portfolio'
   } finally { await phone.context().close(); }
 });
 
-test('on phones the sprout swaps the stills for the live garden, which follows the stops', async () => {
+test('on phones the live garden grows with the scroll, and the sprout swaps it for the stills', async () => {
   const p=await page({viewport:{width:390,height:844}});
   try {
     await ready(p);
-    await p.locator('.view-switch').click();
-    await p.waitForFunction(()=>!!document.querySelector('.journey #scene canvas'));
+    await p.waitForFunction(()=>!!document.querySelector('.journey[data-live] #scene canvas'), undefined, {timeout:15000});
     assert.equal(await p.locator('html').getAttribute('data-journey'),'true');
     assert.equal(await p.locator('#stage').isVisible(),true);
-    assert.equal(await p.locator('.journey-still[data-still="sketch"]').isVisible(),false);
-    assert.match(p.url(),/view=garden/);
+    assert.doesNotMatch(p.url(),/view=/);
+    // Halfway between two stops the garden is between their stages, and no card shows.
+    const between = await p.evaluate(()=>{const t=document.querySelector('[data-stop="blueprint"]').getBoundingClientRect().top+scrollY;scrollTo(0,t-innerHeight*0.7);return t;});
+    await p.waitForTimeout(300);
+    const growth = Number(await p.locator('#scrub').inputValue());
+    assert.ok(growth > 0 && growth < 330, `growth ${growth}`);
+    assert.equal(await p.locator('.stop-card.current').count(), 0);
+    await p.evaluate(t=>scrollTo(0,t),between);
+    await p.waitForTimeout(300);
+    assert.equal(await p.locator('#scrub').inputValue(),'330');
+    assert.deepEqual(await p.locator('.stop-card.current').evaluateAll(es=>es.map(e=>e.closest('[data-stop]').dataset.stop)), ['blueprint']);
     await p.locator('.view-switch').click();
     assert.equal(await p.locator('#stage').isVisible(),false);
-    assert.doesNotMatch(p.url(),/view=/);
+    assert.equal(await p.locator('.journey').getAttribute('data-live'),null);
+    assert.match(p.url(),/view=stills/);
+    await p.reload();
+    await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
+    assert.equal(await p.locator('#stage').isVisible(),false,'the stills stay chosen');
     await p.goBack();
     await p.waitForTimeout(300);
     assert.equal(await p.locator('#stage').isVisible(),true);
-    await p.goBack();
-    await p.waitForTimeout(300);
-    assert.equal(await p.locator('#stage').isVisible(),false);
-    await p.locator('.view-switch').click();
     await go(p,'wattch');
     await p.waitForTimeout(500);
     assert.equal(await p.locator('#scrub').inputValue(),'660');
@@ -487,7 +495,8 @@ test('phone motion pauses from the header, and reduced motion keeps the journey 
   const running = p => p.evaluate(()=>document.getAnimations().filter(a=>a.playState==='running').length);
   const p = await page({viewport:{width:390,height:844}});
   try {
-    await ready(p);
+    // The stills' own sky: with the live garden on, the garden draws it.
+    await ready(p, '?view=stills');
     await go(p,'contact');
     await p.waitForTimeout(600);
     assert.ok(await running(p) > 0, 'clouds drift and leaves fall in Bloom');
@@ -603,7 +612,7 @@ test('the live garden opened from the reading page closes back to the page', asy
   } finally { await p.context().close(); }
 });
 
-test('on phones a live garden that cannot be drawn leaves the address and is announced', async () => {
+test('on phones a live garden that cannot be drawn gives way to the stills and is announced', async () => {
   const p = await page({viewport:{width:390,height:844}});
   try {
     await p.addInitScript(()=>{
@@ -611,7 +620,6 @@ test('on phones a live garden that cannot be drawn leaves the address and is ann
       HTMLCanvasElement.prototype.getContext=function(type,...args) {return type.startsWith('webgl')?null:original.call(this,type,...args);};
     });
     await ready(p);
-    await p.locator('.view-switch').click();
     await p.waitForFunction(()=>document.querySelector('#announce').textContent.includes('can’t be drawn'), undefined, {timeout:10000});
     assert.doesNotMatch(p.url(), /view=/);
     assert.equal(await p.locator('html').getAttribute('data-preview'), 'false');
