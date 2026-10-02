@@ -18,6 +18,7 @@ import { createTransferEstimate, formatGrams } from "./transfer";
 import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY, estimateCompute, type ComputeWork } from "./compute";
 import { initEvidence } from "./evidence";
 import { lettered } from "./lettered";
+import { createPhoneJourney } from "./phone";
 
 const sunIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>`;
 const moonIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.8A8 8 0 0 1 9.2 4.5a8 8 0 1 0 10.3 10.3Z"/></svg>`;
@@ -135,6 +136,9 @@ const readingContact = widgetLifecycle();
 const illustration = widgetLifecycle();
 let activeIllustration: HTMLDetailsElement | undefined;
 const announce = (text: string) => ($("#announce").textContent = text);
+/* Phones in portrait get the garden journey over the reading page. */
+const phoneQuery = matchMedia("(max-width: 899px) and (min-height: 500px)");
+const journey = createPhoneJourney({ onStop: () => {} });
 
 /* The notebook is always drawn on blueprint paper. */
 function syncTheme() {
@@ -280,11 +284,14 @@ function goTo(i: number) {
 function measure() {
   if (reading) {
     const sections: SectionId[] = ["intro", "work", "whisperbook", "wattch", "about", "contact"];
+    // The section whose top most recently passed the threshold, whatever the DOM order.
     let current: SectionId = "intro";
+    let best = -Infinity;
     for (const id of sections) {
       const section = $("#" + id);
       const threshold = Math.max(innerHeight * 0.35, parseFloat(getComputedStyle(section).scrollMarginTop) || 0);
-      if (section.getBoundingClientRect().top <= threshold + 1) current = id;
+      const top = section.getBoundingClientRect().top;
+      if (top <= threshold + 1 && top > best) { best = top; current = id; }
     }
     navigation.passive(current);
     root.style.setProperty("--grow", "1");
@@ -934,6 +941,7 @@ function syncPresentation() {
   const previous = reading;
   reading = compact.matches || requestedView === "read";
   root.dataset.view = reading ? "read" : "garden";
+  journey.setActive(reading && phoneQuery.matches && !requestedView);
   root.dataset.preview = String(previewEnabled);
   $("#portfolio").hidden = !reading;
   $(".chapters").hidden = reading;
@@ -990,6 +998,11 @@ compact.addEventListener("change", () => {
   syncPresentation();
   navigation.go(section, false, false);
   if (!reading || previewEnabled) void loadGarden();
+});
+phoneQuery.addEventListener("change", () => {
+  const section = navigation.section;
+  syncPresentation();
+  navigation.go(section, false, false);
 });
 
 $$<HTMLDetailsElement>("[data-illustration]").forEach(details => details.addEventListener("toggle", () => {

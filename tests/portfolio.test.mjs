@@ -24,11 +24,16 @@ async function ready(p, path = '') {
   await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
 }
 async function go(p, id) {
-  await p.locator(`.masthead a[href="#${id}"]`).click();
+  // The masthead links Work, About and Contact; projects are reached by their fragment.
+  const link = p.locator(`.masthead a[href="#${id}"]`);
+  if (await link.count()) await link.click();
+  else await p.evaluate(id => { location.hash = id; }, id);
   await p.waitForTimeout(1500);
   if (id === 'contact' && await p.locator('html').getAttribute('data-view') === 'garden') await p.locator('.chapter.active textarea').waitFor({state:'visible',timeout:5000});
 }
 function healthy(p) { assert.deepEqual(p.errors, []); }
+// The sheet slides up; measure it once it has arrived.
+const settled = sheet => sheet.evaluate(d => Promise.all(d.getAnimations().map(a => a.finished)));
 
 test('every journey stop and its details are in the served page', async () => {
   const html = await (await fetch(base + '/')).text();
@@ -216,28 +221,120 @@ test('Fog and every CSS/canvas layer stop when paused; stage actions are keyboar
   } finally { await p.context().close(); }
 });
 
-for (const [width,height] of [[390,844],[375,667],[320,568],[844,390]]) {
-  test(`normal-flow reading exposes required content at ${width}×${height}`, async () => {
+for (const [width,height] of [[390,844],[375,667],[320,568]]) {
+  test(`the phone journey at ${width}×${height}`, async () => {
     const p = await page({viewport:{width,height}});
     try {
       await ready(p);
       assert.equal(await p.locator('html').getAttribute('data-view'), 'read');
-      assert.equal(await p.locator('#scene canvas').count(), 0, 'reading does not initialize WebGL');
-      assert.equal(await p.locator('#portfolio').isVisible(), true);
+      assert.equal(await p.locator('html').getAttribute('data-journey'), 'true');
+      assert.equal(await p.locator('#scene canvas').count(), 0, 'the journey does not initialize WebGL');
+      await p.waitForFunction(() => { const i = document.querySelector('.journey-still[data-still="sketch"]'); return i?.complete && i.naturalWidth > 0; });
       assert.equal(await p.evaluate(()=>scrollY), 0, 'the introduction starts above the fold');
       assert.ok(await p.locator('#intro-title').evaluate(e=>e.getBoundingClientRect().top>=document.querySelector('.masthead').getBoundingClientRect().bottom),'the header does not obscure the introduction');
       const clipped = await p.locator('.masthead a').evaluateAll(es=>es.filter(e=>{const r=e.getBoundingClientRect();return r.left<0||r.right>innerWidth+1;}).map(e=>e.textContent));
       assert.deepEqual(clipped, []);
       assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-      await p.screenshot({path:output+`/reading-${width}x${height}.png`});
+      await p.screenshot({path:output+`/journey-${width}x${height}.png`});
       await go(p,'contact');
-      await p.locator('#contact textarea').fill('A visible mobile draft.');
-      assert.equal(await p.locator('#contact textarea').evaluate(e=>getComputedStyle(e).position),'static');
-      await p.screenshot({path:output+`/contact-${width}x${height}.png`});
+      const leave = p.getByRole('button',{name:'Leave a note',exact:true});
+      await leave.click();
+      await p.locator('dialog.sheet textarea').fill('A visible mobile draft.');
+      await p.screenshot({path:output+`/sheet-${width}x${height}.png`});
+      await p.keyboard.press('Escape');
+      await p.waitForFunction(()=>!document.querySelector('dialog.sheet').open);
+      assert.equal(await p.locator('#contact textarea').inputValue(), 'A visible mobile draft.', 'the draft goes back with the form');
+      assert.equal(await leave.evaluate(e=>e===document.activeElement), true, 'focus returns to the opener');
       healthy(p);
     } finally { await p.context().close(); }
   });
 }
+
+test('landscape phones keep the reading page', async () => {
+  const p = await page({viewport:{width:844,height:390}});
+  try {
+    await ready(p);
+    assert.equal(await p.locator('html').getAttribute('data-journey'), null);
+    assert.equal(await p.locator('#portfolio').isVisible(), true);
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await p.screenshot({path:output+'/reading-844x390.png'});
+    await go(p,'contact');
+    await p.locator('#contact textarea').fill('A visible landscape draft.');
+    assert.equal(await p.locator('#contact textarea').evaluate(e=>getComputedStyle(e).position),'static');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('a card’s More opens its details in a sheet and puts them back', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await go(p,'whisperbook');
+    assert.equal(await p.locator('.journey-label').textContent(), 'Build · Whisperbook');
+    assert.ok(await p.locator('#whisperbook .stop-card').evaluate(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}), 'the card is on screen at its stop');
+    const more = p.getByRole('button',{name:'More about Whisperbook',exact:true});
+    await more.click();
+    const sheet = p.locator('dialog.sheet');
+    await sheet.waitFor({state:'visible'});
+    await settled(sheet);
+    assert.equal(await sheet.locator('h2').innerText(), 'Whisperbook');
+    assert.equal(await sheet.getByRole('link',{name:/Read Whisperbook on GitHub/}).isVisible(), true);
+    assert.equal(await sheet.locator('img[src$="whisperbook.webp"]').isVisible(), true);
+    assert.ok(await sheet.evaluate(d=>{const r=d.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1;}), 'the sheet fits the screen');
+    await sheet.getByRole('button',{name:'Close',exact:true}).click();
+    await p.waitForFunction(()=>!document.querySelector('dialog.sheet').open);
+    assert.equal(await p.locator('#whisperbook [data-detail="whisperbook"]').count(), 2, 'both detail nodes are back');
+    assert.equal(await more.evaluate(e=>e===document.activeElement), true);
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('rotating to landscape with a sheet open restores the reading page intact', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await go(p,'wattch');
+    await p.getByRole('button',{name:'More about Wattch Core',exact:true}).click();
+    await p.locator('dialog.sheet').waitFor({state:'visible'});
+    await p.setViewportSize({width:844,height:390});
+    await p.waitForTimeout(400);
+    assert.equal(await p.locator('html').getAttribute('data-journey'), null);
+    assert.equal(await p.locator('dialog.sheet').evaluate(d=>d.open), false);
+    assert.equal(await p.locator('#wattch [data-detail="wattch"]').count(), 2);
+    assert.equal(await p.locator('#wattch .project-tech').isVisible(), true);
+    assert.deepEqual(await p.locator('#portfolio > section').evaluateAll(es=>es.map(e=>e.id)), ['intro','work','about','contact'], 'reading order is restored');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('a deep link opens the journey at its stop', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p, '#wattch');
+    await p.waitForTimeout(600);
+    assert.equal(await p.locator('.journey-label').textContent(), 'Build · Wattch Core');
+    assert.equal(await p.locator('.journey').getAttribute('data-at'), 'wattch');
+    assert.equal(await p.locator('.journey-still[data-still="wattch"]').evaluate(e=>getComputedStyle(e).getPropertyValue('--wipe').trim()), '1.000');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('a phone load fetches the first still, at most one ahead, and no preview image', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  const urls = [];
+  p.on('request', r => urls.push(r.url()));
+  // A slow entry module: the page lays out well before the journey starts.
+  await p.route('**/assets/index-*.js', async route => { await new Promise(f => setTimeout(f, 1000)); await route.continue(); });
+  try {
+    await ready(p);
+    await p.waitForTimeout(800);
+    const stills = urls.filter(u => u.includes('/assets/stills/'));
+    assert.ok(stills.some(u => u.endsWith('/sketch.webp')), stills.join());
+    assert.ok(stills.length <= 2, stills.join());
+    assert.equal(urls.filter(u => u.includes('garden-preview.png')).length, 0);
+    healthy(p);
+  } finally { await p.context().close(); }
+});
 
 test('no JavaScript, blocked entry module, and print still expose the portfolio', async () => {
   for (const javaScriptEnabled of [false,true]) {
@@ -356,7 +453,12 @@ test('200% text enlargement and 400% reflow expose links and fields', async () =
     assert.deepEqual(clipped,[]);
     await p.screenshot({path:output+'/text-200.png'});
     await go(p,'contact');
-    await p.locator('#contact textarea').fill('Enlarged text remains readable.');
+    await p.getByRole('button',{name:'Leave a note',exact:true}).click();
+    const sheet = p.locator('dialog.sheet');
+    await sheet.locator('textarea').fill('Enlarged text remains readable.');
+    await settled(sheet);
+    assert.ok(await sheet.evaluate(d=>{const r=d.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1&&r.right<=innerWidth+1;}),'the sheet stays within the viewport');
+    await p.screenshot({path:output+'/text-200-sheet.png'});
     healthy(p);
   } finally {await p.context().close();}
   const zoom=await page({viewport:{width:360,height:225}});

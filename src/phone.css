@@ -1,0 +1,119 @@
+/* The phone journey (src/phone.ts). Loaded only with JavaScript, and only for
+   screens: printing falls back to the reading page. */
+@media screen {
+  /* The garden: stills in a fixed layer behind the cards. Each still wipes
+     up over the one before (--wipe, 0–1), fades out at its foot into the
+     paper, and drifts closer while its stop holds (--drift). */
+  .journey { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .journey-still {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; object-position: 50% 0;
+    transform: scale(calc(1 + var(--drift, 0) * 0.04)); transform-origin: 50% 32%;
+    mask-image:
+      linear-gradient(to top, #000 calc(var(--wipe, 0) * 115% - 15%), transparent calc(var(--wipe, 0) * 115%)),
+      linear-gradient(#000 68%, transparent 94%);
+    mask-composite: intersect;
+  }
+  .journey-still:not([src]) { visibility: hidden; }
+  /* A pencil line rides the edge of a wipe. */
+  .journey-edge {
+    position: absolute; left: 0; right: 0; height: 1px;
+    bottom: calc(var(--edge, 0) * 115% - 7.5%);
+    background: linear-gradient(90deg, transparent, var(--blueprint) 30%, var(--blueprint) 70%, transparent);
+    box-shadow: 0 0 10px var(--blueprint);
+    opacity: 0;
+  }
+  .journey[data-wiping] .journey-edge { opacity: 0.85; }
+
+  /* Stops: each is a stretch of scroll with its card held at the foot. */
+  :root[data-journey="true"] .portfolio { position: relative; z-index: 1; padding: 0 1rem; }
+  :root[data-journey="true"] [data-stop] {
+    display: flex; flex-direction: column; justify-content: flex-end;
+    min-height: 150svh; margin: 0; padding: 0 0 1rem; border: 0;
+  }
+  :root[data-journey="true"] #contact { min-height: 100svh; }
+  :root[data-journey="true"] #work { padding: 0; margin: 0; border: 0; }
+  /* A project's card belongs to its stop, so it holds at the foot of the whole stop. */
+  :root[data-journey="true"] .project-copy { display: contents; }
+  :root[data-journey="true"] .portfolio [data-detail],
+  :root[data-journey="true"] #intro .reading-lede,
+  :root[data-journey="true"] .garden-preview,
+  :root[data-journey="true"] .project-shortcuts,
+  :root[data-journey="true"] .work-copy,
+  :root[data-journey="true"] .sign-off,
+  :root[data-journey="true"] .journey-hidden { display: none !important; }
+
+  /* Cards: a slip of paper over the garden, rising into place when seen. */
+  :root[data-journey="true"] .stop-card {
+    position: sticky; bottom: 1rem;
+    padding: 1.1rem 1.2rem 1.2rem;
+    border: 1px solid var(--hairline); border-radius: 1rem;
+    background: color-mix(in srgb, var(--paper) 84%, transparent);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 18px 40px -28px rgb(0 0 0 / 0.6);
+    opacity: 0; transform: translateY(24px);
+    transition: opacity 0.5s var(--ease), transform 0.6s var(--ease);
+  }
+  :root[data-journey="true"] .stop-card.seen { opacity: 1; transform: none; }
+  :root[data-journey="true"] .stop-card .eyebrow { margin: 0; }
+  :root[data-journey="true"] .stop-card h1 { font-size: 2.6rem; margin: 0.2rem 0 0.6rem; }
+  :root[data-journey="true"] .stop-card h2,
+  :root[data-journey="true"] .stop-card h3 { font-size: 1.9rem; line-height: 1.12; margin: 0.15rem 0 0.5rem; }
+  :root[data-journey="true"] .stop-card .reading-lede,
+  :root[data-journey="true"] .stop-line { font-size: 1.15rem; line-height: 1.4; margin: 0 0 0.9rem; }
+  :root[data-journey="true"] .stop-card .entry-actions { margin: 0.25rem 0 0; }
+  :root[data-journey="true"] .stop-card .note-links { margin-top: 0.5rem; }
+  :root[data-journey="true"] .char { animation: set-in 0.7s calc(0.15s + var(--i) * 28ms) var(--ease) both; }
+  .stop-more {
+    display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.75rem; margin-top: 0.4rem; padding: 0 1.1rem;
+    border: 1px solid var(--hairline); border-radius: 999px; background: none; font-size: 1rem; cursor: pointer;
+  }
+  .stop-more::after { content: "↑"; color: var(--blueprint); }
+  .stop-more.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 600; }
+  .stop-more.primary::after { content: none; }
+
+  /* Blueprint's timeline, inked in as its stop is read. */
+  .mini-timeline { position: relative; display: flex; justify-content: space-between; margin: 0.2rem 0 0.9rem; padding-top: 0.9rem; font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mini-timeline::before, .mini-line { content: ""; position: absolute; top: 0.3rem; left: 0; right: 0; height: 1px; background: var(--hairline); }
+  .mini-line { height: 2px; background: var(--blueprint); transform-origin: left; transform: scaleX(var(--fill, 0)); }
+  .mini-year { position: relative; }
+  .mini-year::before { content: ""; position: absolute; top: -0.78rem; left: 0; width: 0.45rem; height: 0.45rem; border-radius: 50%; border: 1.5px solid var(--blueprint); background: var(--paper); }
+  .mini-year:last-child::before { left: auto; right: 0; }
+
+  /* Header: translucent over the garden, with a second row naming the stop. */
+  :root[data-journey="true"] .masthead { background: color-mix(in srgb, var(--paper) 78%, transparent); backdrop-filter: blur(12px); }
+  .journey-bar { order: 3; flex-basis: 100%; display: flex; align-items: center; justify-content: space-between; min-height: 2rem; margin-top: -0.35rem; font-size: 0.8125rem; letter-spacing: 0.06em; color: var(--muted); }
+  .journey-label { text-transform: uppercase; }
+  .journey-toast { display: none; color: var(--ink); }
+  .journey-bar.toasting .journey-label { display: none; }
+  .journey-bar.toasting .journey-toast { display: block; }
+
+  /* The sheet. */
+  .sheet {
+    position: fixed; inset: auto 0 0; width: 100%; max-width: none; max-height: calc(100% - 3rem); margin: 0; padding: 0;
+    border: 1px solid var(--hairline); border-bottom: 0; border-radius: 1.1rem 1.1rem 0 0;
+    background: var(--paper); color: var(--ink);
+    transform: translateY(var(--drag, 0px)); transition: transform 0.2s var(--ease);
+  }
+  .sheet[open] { display: flex; flex-direction: column; animation: sheet-up 0.28s var(--ease); }
+  .sheet.closing { animation: sheet-down 0.22s ease-in forwards; }
+  @keyframes sheet-up { from { transform: translateY(100%); } }
+  @keyframes sheet-down { to { transform: translateY(100%); } }
+  .sheet::backdrop { background: rgb(6 22 38 / 0.55); }
+  .sheet-head { position: relative; display: flex; align-items: center; gap: 0.75rem; padding: 1.1rem 0.75rem 0.5rem 1.25rem; touch-action: none; cursor: grab; }
+  .sheet-handle { position: absolute; top: 0.45rem; left: 50%; width: 2.5rem; height: 0.3rem; margin-left: -1.25rem; border-radius: 999px; background: var(--hairline); }
+  .sheet-head h2 { flex: 1; font-size: 1.5rem; font-weight: 550; line-height: 1.15; }
+  .sheet-close { flex: none; width: 2.75rem; height: 2.75rem; border: 1px solid var(--hairline); border-radius: 50%; background: none; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+  .sheet-body { overflow: auto; overscroll-behavior: contain; padding: 0.25rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom)); font-size: 1.0625rem; }
+  .sheet-body p { max-width: 65ch; }
+  .sheet-body h4 { font-size: 1.125rem; font-weight: 650; margin: 1.5rem 0 0.35rem; }
+  .sheet-body .reading-proof { margin-top: 1.5rem; }
+  .sheet-body .note-widget[data-contact-read] { max-width: none; margin: 0; padding: 0; border: 0; }
+  .sheet-body .note-widget[data-contact-read] h3 { display: none; }
+  .sheet-body .note-widget[data-contact-read] .note-label { position: static; width: auto; height: auto; clip-path: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root[data-journey="true"] .stop-card { opacity: 1; transform: none; }
+    .journey-edge { display: none; }
+  }
+}

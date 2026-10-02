@@ -1182,6 +1182,7 @@ button {
 /* Journey markup (styled in phone.css) stays out of the reading page. */
 :root:not([data-journey="true"]) .stop-line,
 :root:not([data-journey="true"]) .journey-only { display: none !important; }
+:root[data-journey="pending"] .garden-preview { display: none; }
 .masthead { position: sticky; inset: auto; flex-wrap: wrap; align-items: center; background: var(--paper); pointer-events: auto; }
 .masthead nav { flex-wrap: wrap; gap: 0.25rem 1rem; }
 .masthead nav a { display: inline-flex; align-items: center; min-height: 2.75rem; text-decoration: none; }
