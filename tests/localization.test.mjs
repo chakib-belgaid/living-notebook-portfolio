@@ -57,20 +57,20 @@ test('both translations cover portfolio narratives and retain every message plac
   assert.equal(translate('Build, note 8 of 16', 'fr'), 'Construction, note 8 sur 16');
 });
 
-test('switching in place keeps drafts, link targets and history; the preference survives reload', async () => {
+test('switching in place keeps the contact link, link targets and history; the preference survives reload', async () => {
   const p = await page();
   try {
     await ready(p, '?view=read&lang=en#contact');
-    await p.locator('#contact textarea').fill('Bonjour — مرحبًا');
-    await p.locator('#contact textarea').evaluate(el => { window.draftNode = el; });
+    const email = p.locator('#contact .note-email a');
+    await email.evaluate(el => { window.emailNode = el; });
     await select(p, 'fr');
     assert.equal(await p.locator('.masthead a[href="#work"]').innerText(), 'Projets');
     assert.match(await p.title(), /Ingénieur produit/);
     await select(p, 'ar');
     assert.equal(await p.locator('html').getAttribute('dir'), 'rtl');
-    assert.equal(await p.locator('#contact textarea').inputValue(), 'Bonjour — مرحبًا');
-    assert.ok(await p.locator('#contact textarea').evaluate(el => el === window.draftNode));
-    assert.equal(await p.locator('#contact [data-send]').innerText(), 'فتح مسودة بريد');
+    assert.ok(await email.evaluate(el => el === window.emailNode), 'the link is translated in place');
+    assert.match(await email.innerText(), /راسلني/);
+    assert.equal(await email.getAttribute('href'), 'mailto:chakib.belgaid@gmail.com');
     assert.equal(await p.locator('#whisperbook .source-link').getAttribute('href'), projects.whisperbook.url);
     assert.match(await p.locator('.view-switch').getAttribute('href'), /lang=ar/);
     await p.goBack();

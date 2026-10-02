@@ -29,16 +29,25 @@ async function go(p, id) {
   if (await link.count()) await link.click();
   else await p.evaluate(id => { location.hash = id; }, id);
   await p.waitForTimeout(1500);
-  if (id === 'contact' && await p.locator('html').getAttribute('data-view') === 'garden') await p.locator('.chapter.active textarea').waitFor({state:'visible',timeout:5000});
+  if (id === 'contact' && await p.locator('html').getAttribute('data-view') === 'garden') await p.locator('.chapter.active .note-email a').waitFor({state:'visible',timeout:5000});
 }
 function healthy(p) { assert.deepEqual(p.errors, []); }
+// QA screenshots for review. Chromium's headless shell now and then can't
+// capture a frame, so try again before failing.
+async function snap(p, path) {
+  for (let attempt = 1; ; attempt++) {
+    try { return await p.screenshot({ path }); }
+    catch (e) { if (attempt === 3 || !/Unable to capture screenshot/.test(e.message)) throw e; await p.waitForTimeout(250); }
+  }
+}
 // The sheet slides up; measure it once it has arrived.
 const settled = sheet => sheet.evaluate(d => Promise.all(d.getAnimations().map(a => a.finished)));
 
 test('every journey stop and its details are in the served page', async () => {
   const html = await (await fetch(base + '/')).text();
   for (const s of ['sketch', 'blueprint', 'build', 'whisperbook', 'wattch', 'bloom']) assert.match(html, new RegExp(`data-stop="${s}"`), s);
-  for (const d of ['about', 'whisperbook', 'wattch', 'contact']) assert.match(html, new RegExp(`data-detail="${d}"`), d);
+  for (const d of ['about', 'whisperbook', 'wattch']) assert.match(html, new RegExp(`data-detail="${d}"`), d);
+  assert.match(html, /data-stop="bloom"[\s\S]*href="mailto:chakib\.belgaid@gmail\.com"/, 'Bloom carries the email link');
   assert.equal((html.match(/class="[^"]*\bstop-card\b/g) || []).length, 6);
   assert.match(html, /class="stop-line">Product engineer, Ph\.D\. AI products, developer tools, and how we measure the energy software uses\.</);
   assert.match(html, /class="static-garden"[^>]*loading="lazy"/);
@@ -51,7 +60,8 @@ test('desktop entry, project links, wheel chaining and clean landmarks', async (
     assert.match(await p.title(), /Chakib Belgaid.*Product engineer/);
     assert.equal(await p.locator('html').getAttribute('data-view'), 'garden');
     await p.locator('.chapter.active a[href="#whisperbook"]').click();
-    await p.waitForTimeout(1500);
+    // The smooth scroll can take a while on a busy machine.
+    await p.waitForFunction(() => document.querySelector('.chapter.active h2')?.textContent === 'Whisperbook');
     assert.match(p.url(), /#whisperbook$/);
     assert.equal(await p.locator('.chapter:not(.active):not([inert])').count(), 0);
     assert.equal(await p.locator('.chapter.active h2').innerText(), 'Whisperbook');
@@ -60,42 +70,7 @@ test('desktop entry, project links, wheel chaining and clean landmarks', async (
     await p.mouse.wheel(0, 800);
     await p.waitForTimeout(500);
     assert.ok(await p.evaluate(() => scrollY) > before, 'wheel over a note advances the document');
-    await p.screenshot({ path: output + '/desktop-story.png' });
-    healthy(p);
-  } finally { await p.context().close(); }
-});
-
-test('draft survives navigation, view changes, resize and email handoff', async () => {
-  const p = await page();
-  try {
-    await ready(p);
-    await go(p, 'contact');
-    await p.locator('.chapter.active textarea').fill('Hello & a draft with accents: café.');
-    await go(p, 'about');
-    await go(p, 'contact');
-    assert.equal(await p.locator('.chapter.active textarea').inputValue(), 'Hello & a draft with accents: café.');
-    await p.setViewportSize({width:320,height:568});
-    await p.waitForTimeout(300);
-    assert.equal(await p.locator('#contact textarea').inputValue(), 'Hello & a draft with accents: café.');
-    assert.equal(await p.locator('#contact [data-send]').isEnabled(), true);
-    const mail = await p.locator('#contact [data-send]').evaluate(button => {
-      let href;
-      const original = HTMLAnchorElement.prototype.click;
-      HTMLAnchorElement.prototype.click = function () { href = this.href; };
-      button.click();
-      HTMLAnchorElement.prototype.click = original;
-      return href;
-    });
-    assert.match(mail, /^mailto:chakib\.belgaid@gmail\.com\?subject=/);
-    assert.equal(new URLSearchParams(mail.split('?')[1]).get('body'), 'Hello & a draft with accents: café.');
-    assert.equal(await p.locator('#contact textarea').inputValue(), 'Hello & a draft with accents: café.');
-    await p.setViewportSize({width:1440,height:900});
-    await p.waitForTimeout(500);
-    assert.equal(await p.locator('.chapter.active textarea').inputValue(), 'Hello & a draft with accents: café.');
-    await p.reload();
-    await p.locator('.chapter.active textarea').waitFor({state:'visible'});
-    assert.equal(await p.locator('.chapter.active textarea').inputValue(), '');
-    assert.equal(await p.locator('.chapter.active [data-send]').isDisabled(), true);
+    await snap(p, output + '/desktop-story.png');
     healthy(p);
   } finally { await p.context().close(); }
 });
@@ -113,22 +88,6 @@ test('wheel chains from the bottom of an overflowing garden note into the docume
     const before = await p.evaluate(()=>scrollY);
     await note.hover();await p.mouse.wheel(0,400);await p.waitForTimeout(200);
     assert.ok(await p.evaluate(()=>scrollY)>before, 'wheel continues beyond the note');
-    healthy(p);
-  } finally {await p.context().close();}
-});
-
-test('a contact field usable during scene loading keeps its draft and focus when the scene arrives', async () => {
-  const p = await page();
-  try {
-    const delay = async route => { await new Promise(resolve=>setTimeout(resolve,1000));await route.continue(); };
-    await p.route('**/assets/scene-*.js', delay);
-    await p.route('**/src/scene.ts*', delay);
-    await ready(p, '#contact');
-    const field=p.locator('.chapter.active textarea');
-    await field.fill('A draft written while the garden loads.');
-    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
-    assert.equal(await field.inputValue(), 'A draft written while the garden loads.');
-    assert.equal(await field.evaluate(e=>e===document.activeElement), true);
     healthy(p);
   } finally {await p.context().close();}
 });
@@ -169,7 +128,7 @@ test('screenshot dialog supports keyboard, actual size, Escape and focus restora
     assert.match(await dialog.innerText(), /synthetic values/);
     await dialog.getByRole('button',{name:'Actual size',exact:true}).click();
     assert.equal(await dialog.locator('img').evaluate(e=>getComputedStyle(e).maxHeight), 'none');
-    await p.screenshot({path:output+'/evidence-dialog.png'});
+    await snap(p, output+'/evidence-dialog.png');
     await dialog.press('Escape');
     assert.equal(await dialog.isVisible(), false);
     assert.equal(await opener.evaluate(e=>e===document.activeElement), true);
@@ -234,16 +193,13 @@ for (const [width,height] of [[390,844],[375,667],[320,568]]) {
       const clipped = await p.locator('.masthead a').evaluateAll(es=>es.filter(e=>{const r=e.getBoundingClientRect();return r.left<0||r.right>innerWidth+1;}).map(e=>e.textContent));
       assert.deepEqual(clipped, []);
       assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-      await p.screenshot({path:output+`/journey-${width}x${height}.png`});
+      await snap(p, output+`/journey-${width}x${height}.png`);
       await go(p,'contact');
-      const leave = p.getByRole('button',{name:'Leave a note',exact:true});
-      await leave.click();
-      await p.locator('dialog.sheet textarea').fill('A visible mobile draft.');
-      await p.screenshot({path:output+`/sheet-${width}x${height}.png`});
-      await p.keyboard.press('Escape');
-      await p.waitForFunction(()=>!document.querySelector('dialog.sheet').open);
-      assert.equal(await p.locator('#contact textarea').inputValue(), 'A visible mobile draft.', 'the draft goes back with the form');
-      assert.equal(await leave.evaluate(e=>e===document.activeElement), true, 'focus returns to the opener');
+      const email = p.locator('#contact .note-email a');
+      assert.ok(await email.evaluate(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.right<=innerWidth+1;}), 'the email link is on screen at Bloom');
+      assert.equal(await p.locator('#contact .note-links a').count(), 4);
+      assert.equal(await p.locator('#contact .stop-more').count(), 1, 'only Explore the garden; the details are on the card');
+      await snap(p, output+`/contact-${width}x${height}.png`);
       healthy(p);
     } finally { await p.context().close(); }
   });
@@ -256,10 +212,9 @@ test('landscape phones keep the reading page', async () => {
     assert.equal(await p.locator('html').getAttribute('data-journey'), null);
     assert.equal(await p.locator('#portfolio').isVisible(), true);
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-    await p.screenshot({path:output+'/reading-844x390.png'});
+    await snap(p, output+'/reading-844x390.png');
     await go(p,'contact');
-    await p.locator('#contact textarea').fill('A visible landscape draft.');
-    assert.equal(await p.locator('#contact textarea').evaluate(e=>getComputedStyle(e).position),'static');
+    assert.equal(await p.locator('#contact .note-email a').isVisible(), true);
     healthy(p);
   } finally { await p.context().close(); }
 });
@@ -349,7 +304,7 @@ test('no JavaScript, blocked entry module, and print still expose the portfolio'
       assert.equal(await p.locator('#portfolio').isVisible(),true);
       assert.equal(await p.locator('#contact a[href^="mailto:"]').isVisible(),true);
       assert.match(await p.locator('#work').innerText(),/Whisperbook/);
-      if(!javaScriptEnabled) await p.screenshot({path:output+'/no-javascript.png'});
+      if(!javaScriptEnabled) await snap(p, output+'/no-javascript.png');
     } finally { await p.context().close(); }
   }
   const interrupted = await page();
@@ -418,7 +373,7 @@ test('WebGL unavailable, context loss/restoration and offline weather preserve n
     await ready(failed);
     await failed.waitForFunction(()=>document.querySelector('[data-fallback-message]').textContent.includes('can’t be drawn'));
     await go(failed,'contact');
-    assert.equal(await failed.locator('.chapter.active textarea').isVisible(),true);
+    assert.equal(await failed.locator('.chapter.active .note-email a').isVisible(),true);
     healthy(failed);
   } finally {await failed.context().close();}
   const p=await page();
@@ -452,7 +407,7 @@ test('missing local speech voices have a useful fallback state', async () => {
   } finally {await p.context().close();}
 });
 
-test('200% text enlargement and 400% reflow expose links and fields', async () => {
+test('200% text enlargement and 400% reflow expose links and sheets', async () => {
   const p=await page({viewport:{width:390,height:844}});
   try {
     await ready(p);
@@ -460,14 +415,14 @@ test('200% text enlargement and 400% reflow expose links and fields', async () =
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'200% text does not overflow');
     const clipped=await p.locator('.masthead a').evaluateAll(es=>es.filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>e.textContent));
     assert.deepEqual(clipped,[]);
-    await p.screenshot({path:output+'/text-200.png'});
-    await go(p,'contact');
-    await p.getByRole('button',{name:'Leave a note',exact:true}).click();
+    await snap(p, output+'/text-200.png');
+    await go(p,'wattch');
+    await p.getByRole('button',{name:'View details about Wattch Core',exact:true}).click();
     const sheet = p.locator('dialog.sheet');
-    await sheet.locator('textarea').fill('Enlarged text remains readable.');
+    await sheet.waitFor({state:'visible'});
     await settled(sheet);
     assert.ok(await sheet.evaluate(d=>{const r=d.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1&&r.right<=innerWidth+1;}),'the sheet stays within the viewport');
-    await p.screenshot({path:output+'/text-200-sheet.png'});
+    await snap(p, output+'/text-200-sheet.png');
     healthy(p);
   } finally {await p.context().close();}
   const zoom=await page({viewport:{width:360,height:225}});
@@ -475,8 +430,8 @@ test('200% text enlargement and 400% reflow expose links and fields', async () =
     await ready(zoom);
     assert.ok(await zoom.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'400% equivalent reflow does not overflow');
     await go(zoom,'contact');
-    assert.equal(await zoom.locator('#contact textarea').isVisible(),true);
-    await zoom.screenshot({path:output+'/reflow-400.png'});
+    assert.equal(await zoom.locator('#contact .note-email a').isVisible(),true);
+    await snap(zoom, output+'/reflow-400.png');
     healthy(zoom);
   } finally {await zoom.context().close();}
 });
@@ -516,9 +471,9 @@ test('a sheet opens on screen while motion is paused', async () => {
   const p = await page({viewport:{width:390,height:844}});
   try {
     await ready(p);
-    await go(p,'contact');
+    await go(p,'wattch');
     await p.getByRole('button',{name:'Pause motion',exact:true}).click();
-    await p.getByRole('button',{name:'Leave a note',exact:true}).click();
+    await p.getByRole('button',{name:'View details about Wattch Core',exact:true}).click();
     await p.waitForTimeout(400);
     assert.ok(await p.locator('dialog.sheet').evaluate(d=>{const r=d.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1;}), 'the sheet is on screen');
     healthy(p);
@@ -605,7 +560,7 @@ test('on phones the header has no garden switch, and Bloom explores the garden',
     await p.mouse.move(box.x + 260, box.y + 300, {steps: 5});
     assert.equal(await p.locator('html').evaluate(e=>e.classList.contains('turning')), true, 'a drag turns the garden');
     await p.mouse.up();
-    await p.screenshot({path:output+'/explore-390x844.png'});
+    await snap(p, output+'/explore-390x844.png');
     await p.keyboard.press('Escape');
     assert.equal(await p.locator('html').getAttribute('data-exploring'), null);
     assert.equal(await p.locator('#portfolio').evaluate(e=>e.inert), false);
@@ -634,7 +589,7 @@ test('on phones the header opens the garden controls: time, weather and season',
     assert.match(await p.locator('#hour-readout').textContent(), /10:00/);
     const box = await sheet.boundingBox();
     assert.ok(box.y > 844 * 0.3, 'the garden stays in view above the controls');
-    await p.screenshot({path:output+'/controls-390x844.png'});
+    await snap(p, output+'/controls-390x844.png');
     await p.keyboard.press('Escape');
     await p.waitForFunction(()=>!document.querySelector('dialog.sheet[open]'));
     assert.equal(await opener.evaluate(e=>e===document.activeElement), true, 'focus returns to the opener');
@@ -668,7 +623,7 @@ test('exploring on a phone, a pinch and the zoom buttons zoom the garden, not th
     await p.getByRole('button',{name:'Zoom in',exact:true}).click();
     await p.waitForTimeout(800);
     assert.notDeepEqual(await shot(), pinched);
-    await p.screenshot({path:output+'/explore-zoomed-390x844.png'});
+    await snap(p, output+'/explore-zoomed-390x844.png');
     await p.getByRole('button',{name:'Done',exact:true}).click();
     assert.equal(await p.locator('html').getAttribute('data-exploring'), null);
     healthy(p);
@@ -742,39 +697,6 @@ test('at night the journey shows the garden at night', async () => {
 });
 
 
-test('contact email draft handoff preserves the note on desktop and in the phone sheet', async () => {
-  for (const width of [1440, 390]) {
-    const p = await page({viewport:{width,height:844}});
-    try {
-      await ready(p, '#contact');
-      const phone = width === 390;
-      if (phone) {
-        await p.getByRole('button',{name:'Leave a note',exact:true}).click();
-        await settled(p.locator('.sheet'));
-      }
-      const form = p.locator(phone ? '.sheet' : '.chapter.active');
-      const value = 'A draft with café & مرحبًا';
-      await form.locator('textarea').fill(value);
-      await form.locator('[data-send]').evaluate(button=>{
-        const click = HTMLAnchorElement.prototype.click;
-        HTMLAnchorElement.prototype.click = function(){window.draftHref=this.href;};
-        try {button.click();} finally {HTMLAnchorElement.prototype.click=click;}
-      });
-      const href = await p.evaluate(()=>window.draftHref);
-      assert.equal(new URLSearchParams(href.split('?')[1]).get('body'),value);
-      assert.match(await form.locator('[data-status]').innerText(),/Email draft opened/);
-      assert.equal(await form.locator('textarea').inputValue(),value);
-      if (phone) {
-        await p.keyboard.press('Escape');
-        await p.locator('.sheet').waitFor({state:'hidden'});
-        await p.getByRole('button',{name:'Leave a note',exact:true}).click();
-        assert.equal(await form.locator('textarea').inputValue(),value);
-      }
-      healthy(p);
-    } finally {await p.context().close();}
-  }
-});
-
 // Counts every audio context the page makes.
 const countAudio = () => {
   window.audioContexts = [];
@@ -783,21 +705,18 @@ const countAudio = () => {
 };
 const audioState = p => p.evaluate(() => window.audioContexts.map(c => c.state));
 
-test('garden sound is off until asked for, follows the pause, and sleeps when silent', async () => {
+test('garden sound is on by default, starts on the first gesture, follows the pause, and sleeps when silent', async () => {
   const p = await page();
   try {
     await p.addInitScript(countAudio);
     await ready(p, '#contact');
     await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
-    assert.deepEqual(await audioState(p), [], 'no audio engine before the visitor asks');
-    assert.equal(await p.locator('html').getAttribute('data-sound'), 'off');
-    const play = p.getByRole('button',{name:'Play garden sounds',exact:true});
-    assert.equal(await play.getAttribute('aria-pressed'), 'false');
-    await play.click();
+    assert.deepEqual(await audioState(p), [], 'no audio engine before the visitor interacts');
     assert.equal(await p.locator('html').getAttribute('data-sound'), 'playing');
-    await p.waitForFunction(() => window.audioContexts[0]?.state === 'running');
     const stop = p.getByRole('button',{name:'Stop garden sounds',exact:true});
     assert.equal(await stop.getAttribute('aria-pressed'), 'true');
+    await p.keyboard.press('Shift');
+    await p.waitForFunction(() => window.audioContexts[0]?.state === 'running');
     await p.getByRole('button',{name:'Pause motion',exact:true}).click();
     assert.equal(await p.locator('html').getAttribute('data-sound'), 'paused');
     await p.waitForFunction(() => window.audioContexts[0].state === 'suspended', undefined, {timeout: 5000});
@@ -805,7 +724,11 @@ test('garden sound is off until asked for, follows the pause, and sleeps when si
     await p.waitForFunction(() => window.audioContexts[0].state === 'running');
     await stop.click();
     assert.equal(await p.locator('html').getAttribute('data-sound'), 'off');
+    const play = p.getByRole('button',{name:'Play garden sounds',exact:true});
+    assert.equal(await play.getAttribute('aria-pressed'), 'false');
     await p.waitForFunction(() => window.audioContexts[0].state === 'suspended', undefined, {timeout: 5000});
+    await play.click();
+    await p.waitForFunction(() => window.audioContexts[0].state === 'running');
     assert.equal((await audioState(p)).length, 1, 'one engine, reused');
     healthy(p);
   } finally { await p.context().close(); }
@@ -816,16 +739,24 @@ test('garden sound plays in the phone journey, and the reading page is silent', 
   try {
     await p.addInitScript(countAudio);
     await ready(p, '?view=stills');
-    await p.locator('.journey-bar').getByRole('button',{name:'Play garden sounds',exact:true}).click();
+    const button = p.locator('.journey-bar .journey-sound');
+    assert.equal(await button.getAttribute('aria-label'), 'Stop garden sounds');
+    assert.deepEqual(await audioState(p), []);
+    await p.locator('#intro-title').click();
     await p.waitForFunction(() => window.audioContexts[0]?.state === 'running');
     assert.equal(await p.locator('html').getAttribute('data-sound'), 'playing');
+    await button.click();
+    assert.equal(await p.locator('html').getAttribute('data-sound'), 'off');
     healthy(p);
   } finally { await p.context().close(); }
   const r = await page();
   try {
     await r.addInitScript(countAudio);
     await ready(r, '?view=read');
-    assert.equal(await r.getByRole('button',{name:'Play garden sounds',exact:true}).isVisible(), false);
+    assert.equal(await r.locator('#sound-toggle').isVisible(), false);
+    await r.keyboard.press('Shift');
+    await r.waitForTimeout(300);
+    assert.ok((await audioState(r)).every(state => state !== 'running'), 'a gesture on the reading page plays nothing');
     assert.deepEqual(await audioState(r), []);
     healthy(r);
   } finally { await r.context().close(); }
@@ -847,23 +778,6 @@ test('left alone, the garden view quiets its controls and note, and Bloom slowly
     assert.ok(Number(await p.locator('#scene').getAttribute('data-rotation')) > turned + 0.02, 'the garden drifts');
     await p.mouse.move(720, 320);
     assert.equal(await p.locator('html').getAttribute('data-idle'), 'false');
-    healthy(p);
-  } finally { await p.context().close(); }
-});
-
-test('a visitor writing a note, or with motion paused, keeps the garden still and the controls', async () => {
-  const p = await page();
-  try {
-    await ready(p, '#contact');
-    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
-    await p.getByRole('button',{name:'Pause motion',exact:true}).click();
-    const turned = await p.locator('#scene').getAttribute('data-rotation');
-    await p.waitForFunction(() => document.documentElement.dataset.idle === 'true', undefined, {timeout: 25000});
-    await p.waitForTimeout(1000);
-    assert.equal(await p.locator('#scene').getAttribute('data-rotation'), turned, 'paused motion does not drift');
-    await p.locator('.chapter.active textarea').click();
-    await p.waitForTimeout(21000);
-    assert.equal(await p.locator('html').getAttribute('data-idle'), 'false', 'writing is not idle');
     healthy(p);
   } finally { await p.context().close(); }
 });

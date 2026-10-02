@@ -56,7 +56,6 @@ const details: Partial<Record<StopName, { key: string; title: string; text: stri
   blueprint: { key: "about", title: "Background", text: "View background", label: "View details about my background" },
   whisperbook: { key: "whisperbook", title: "Whisperbook", text: "View project", label: "View details about Whisperbook" },
   wattch: { key: "wattch", title: "Wattch Core", text: "View project", label: "View details about Wattch Core" },
-  bloom: { key: "contact", title: "Leave a note", text: "Leave a note" },
 };
 const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
@@ -130,7 +129,7 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     if (!d) return [];
     const button = document.createElement("button");
     button.type = "button";
-    button.className = s.name === "bloom" ? "stop-more primary" : "stop-more";
+    button.className = "stop-more";
     button.textContent = d.text;
     if (d.label) button.setAttribute("aria-label", d.label);
     button.addEventListener("click", () => sheet.open(d.key, d.title, button));

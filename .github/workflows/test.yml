@@ -1,0 +1,57 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TEST_URL: http://127.0.0.1:5199
+      QA_OUTPUT: ${{ github.workspace }}/.qa
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build website
+        run: npm run build
+
+      # The browser tests run against the production preview, as in the README.
+      - name: Start production preview
+        shell: bash
+        run: |
+          npm run preview -- --port 5199 --strictPort > preview.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl -fsS -o /dev/null "$TEST_URL/" && exit 0
+            sleep 1
+          done
+          cat preview.log
+          exit 1
+
+      - name: Run tests
+        run: npm test

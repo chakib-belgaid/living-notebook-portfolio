@@ -491,7 +491,7 @@ button {
 }
 
 /* The rest of a note: a project's facts, its widget, its screenshot, and in
-   Bloom the address and Leave a note. */
+   Bloom the address and links. */
 .note-body > :last-child {
   margin-bottom: 0.3rem;
 }
@@ -1140,7 +1140,6 @@ button {
   .note-widget {
     padding: 0.55rem 0.8rem 0.6rem;
   }
-  /* Leave a note, unboxed. */
   .chapter:last-child .note h2 {
     margin-bottom: 0.6rem;
   }

@@ -187,7 +187,6 @@ export const translations: Record<string, readonly [string, string]> = {
   "Rendering is off in this browser, so there is nothing to measure.": ["L’affichage du jardin est désactivé dans ce navigateur ; il n’y a donc rien à mesurer.", "رسم الحديقة متوقف في هذا المتصفح، لذا لا يوجد ما يمكن قياسه."],
   "Measuring": ["Mesure en cours", "جارٍ القياس"],
   "Measured live in your browser, like the dial in the observatory. Energy uses assumed CPU and GPU wattages and co2.js grid data.": ["Mesuré en direct dans votre navigateur, comme le cadran de l’observatoire. L’énergie repose sur des puissances CPU et GPU supposées et les données réseau de co2.js.", "يُقاس مباشرة في متصفحك، مثل قرص المرصد. تستند الطاقة إلى قدرات مفترضة لـ CPU وGPU وبيانات الشبكة الكهربائية من co2.js."],
-  "Leave a note": ["Laisser un message", "اترك رسالة"],
   "Email me": ["M’écrire", "راسلني"],
   "Social links": ["Réseaux sociaux", "روابط التواصل الاجتماعي"],
   "and": ["et", "و"],

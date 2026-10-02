@@ -50,6 +50,8 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
         shell: bash
         run: |
+          # The verify job waits for the live site to serve this file.
+          printf '%s\n' "$SOURCE_SHA" > dist/version.txt
           # Preserve existing case studies, evidence assets, and resume URLs.
           rsync -a dist/ .pages-deploy/
           cat > .pages-deploy/README.md <<EOF
@@ -73,3 +75,30 @@ jobs:
           git -C .pages-deploy commit -m "update [website]: deploy living notebook ${SOURCE_SHA:0:7}"
           git -C .pages-deploy push origin HEAD:main
           echo 'Published build to https://chakib-belgaid.github.io/. GitHub Pages is deploying the update.' >> "$GITHUB_STEP_SUMMARY"
+
+  # The push above only queues a GitHub Pages build; wait until the live site
+  # serves this commit.
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for the live site to serve this build
+        env:
+          SITE_ORIGIN: https://chakib-belgaid.github.io
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          # Pages caches for 10 minutes; a fresh query string bypasses it.
+          for attempt in $(seq 1 60); do
+            served=$(curl -fsS "$SITE_ORIGIN/version.txt?sha=$SOURCE_SHA&attempt=$attempt" || true)
+            if [ "$served" = "$SOURCE_SHA" ]; then
+              curl -fsS -o /dev/null "$SITE_ORIGIN/?sha=$SOURCE_SHA"
+              echo "The live site serves ${SOURCE_SHA:0:7} (attempt $attempt)." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $attempt: live site serves '${served:-nothing}', waiting for ${SOURCE_SHA:0:7}."
+            sleep 10
+          done
+          echo "The live site did not serve ${SOURCE_SHA:0:7} within 10 minutes." >> "$GITHUB_STEP_SUMMARY"
+          exit 1

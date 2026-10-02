@@ -971,7 +971,7 @@ function drawCarbon() {
 drawCarbon();
 
 /* Each building has a small widget, shown in its first note: the
-   Whisperbook player and the Wattch meter. Bloom has Leave a note. */
+   Whisperbook player and the Wattch meter. */
 
 /* Wattch: the cost to draw this page, a sparkline of the CPU time each frame
    takes to submit (solid) and, where the browser exposes GPU timers, the GPU
