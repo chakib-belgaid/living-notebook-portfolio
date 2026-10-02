@@ -345,12 +345,15 @@ function layoutRuler() {
 /* The camera follows the story: a lit level of the tower in Blueprint, a
    building in Build. */
 const narrow = compact;
+// Set after a while left alone; see setIdle.
+let idle = false;
 function syncStory() {
   const b = beats[beat];
   garden?.highlightPath(b?.path ?? null);
-  if (b?.spot)
-    garden?.focus(b.spot, narrow.matches ? 0 : 0.16, narrow.matches ? 0 : 0.04);
-  else garden?.focus(null, wholeShift());
+  // Idle, the note steps back too, so the garden comes to the centre.
+  const side = narrow.matches || idle ? 0 : 1;
+  if (b?.spot) garden?.focus(b.spot, 0.16 * side, 0.04 * side);
+  else garden?.focus(null, wholeShift() * side);
 }
 
 /* The dock's widgets come out with the stage. The carbon counter is on the
@@ -824,12 +827,11 @@ addEventListener("pointerdown", (e) => {
   if (tally.open && !tally.contains(e.target as Node)) tally.open = false;
 });
 
-/* Left alone in the garden view, the controls step back and leave the garden
-   and the note; any movement brings them back. At Bloom, with nothing in
-   focus, the garden slowly turns, in frames it draws anyway. Writing,
-   planting, or an open slip or dialog is never idle. */
+/* Left alone in the garden view, the controls and the note step back and
+   leave the garden, centred; any movement brings them back. At Bloom, with
+   nothing in focus, the garden slowly turns, in frames it draws anyway.
+   Writing, planting, or an open slip or dialog is never idle. */
 const IDLE_AFTER = 20000;
-let idle = false;
 let idleTimer = 0;
 let drift = 0;
 let wokeAt = 0;
@@ -842,6 +844,7 @@ function setIdle(on: boolean) {
   if (idle === on) return;
   idle = on;
   root.dataset.idle = String(on);
+  syncStory();
   cancelAnimationFrame(drift);
   if (on && !(paused || reduced) && stage === 3 && !beats[beat]?.spot) {
     let last = performance.now();

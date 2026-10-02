@@ -831,17 +831,19 @@ test('garden sound plays in the phone journey, and the reading page is silent', 
   } finally { await r.context().close(); }
 });
 
-test('left alone, the garden view quiets its controls, and Bloom slowly turns', async () => {
+test('left alone, the garden view quiets its controls and note, and Bloom slowly turns', async () => {
   const p = await page();
   try {
     await ready(p, '#contact');
     await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
     await p.mouse.move(700, 300);
     const turned = Number(await p.locator('#scene').getAttribute('data-rotation'));
+    assert.ok(Number(await p.locator('#scene').getAttribute('data-shift')) > 0.05, 'the garden sits beside the note');
     await p.waitForFunction(() => document.documentElement.dataset.idle === 'true', undefined, {timeout: 25000});
     await p.waitForTimeout(2500);
+    assert.ok(Math.abs(Number(await p.locator('#scene').getAttribute('data-shift'))) < 0.01, 'idle, the garden is centred');
     assert.equal(await p.locator('.ruler').evaluate(e => getComputedStyle(e).opacity), '0');
-    assert.equal(await p.locator('.chapter.active .note').evaluate(e => getComputedStyle(e).opacity), '1', 'the note stays to read');
+    assert.equal(await p.locator('.chapter.active .note').evaluate(e => getComputedStyle(e).opacity), '0', 'the note steps back too');
     assert.ok(Number(await p.locator('#scene').getAttribute('data-rotation')) > turned + 0.02, 'the garden drifts');
     await p.mouse.move(720, 320);
     assert.equal(await p.locator('html').getAttribute('data-idle'), 'false');

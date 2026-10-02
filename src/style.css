@@ -1342,9 +1342,9 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 /* Before Bloom the dock waits, unseen; it fades in with the finished garden. */
 .dock { transition: opacity 0.5s ease, visibility 0.5s; }
 .dock.waiting { opacity: 0; visibility: hidden; pointer-events: none; }
-/* Idle: the controls step back and leave the garden and the note. They come
+/* Idle: the controls and the note step back and leave the garden. They come
    back at once with any movement. */
-:root[data-view="garden"][data-idle="true"] :is(.masthead, .ruler, .dock, .hotspot) { opacity: 0; pointer-events: none; transition: opacity 1.6s ease; }
+:root[data-view="garden"][data-idle="true"] :is(.masthead, .ruler, .dock, .hotspot, .chapter.active .note) { opacity: 0; pointer-events: none; transition: opacity 1.6s ease; }
 :root[data-view="garden"][data-idle="true"] .stage { cursor: none; }
 :root[data-motion-paused="true"] *, :root[data-motion-paused="true"] *::before, :root[data-motion-paused="true"] *::after { animation-play-state: paused !important; transition: none !important; }
 :root[data-motion-paused="true"] .char, :root[data-motion-paused="true"] .note-copy, :root[data-motion-paused="true"] .note-lede, :root[data-motion-paused="true"] .note-body, :root[data-motion-paused="true"] .note-hint { animation: none !important; }

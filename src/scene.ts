@@ -3537,6 +3537,7 @@ export async function createGarden(
     container.dataset.drones = String(drones.length);
     container.dataset.animationTime = elapsed.toFixed(3);
     container.dataset.rotation = rotation.toFixed(3);
+    container.dataset.shift = shift.x.toFixed(3);
     // 0 is the needle hard left (0 ms), 1 hard right (8 ms or more).
     container.dataset.meter = ((needleAngle + Math.PI / 2) / Math.PI).toFixed(3);
     container.dataset.narrating = narration.toFixed(2);
