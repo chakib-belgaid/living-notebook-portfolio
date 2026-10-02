@@ -69,9 +69,11 @@ Without a configured origin, canonical and absolute social URLs are omitted.
 
 ## Publishing
 
-This repository contains the source. The production build is published at the root of the existing [GitHub Pages repository](https://github.com/chakib-belgaid/chakib-belgaid.github.io), which serves `main` from `/`. Source pushes alone do not deploy the site.
+Every push to `main` runs [Deploy personal website](.github/workflows/deploy.yml): install the locked dependencies with Node.js 24, check TypeScript and build, then publish `dist/` to the existing [GitHub Pages repository](https://github.com/chakib-belgaid/chakib-belgaid.github.io). GitHub Pages serves that repository's `main` branch from `/`. Failed builds stop before publication. The workflow can also be run manually from the Actions tab.
 
-After building, testing, and inspecting the production preview, copy `dist/` into a clean, up-to-date checkout of the Pages repository, review the diff, then commit and push there:
+The source repository's `PAGES_DEPLOY_KEY` Actions secret holds a dedicated SSH deploy key with write access to the Pages repository. Its public key is listed there as **Living Notebook automatic deployment**. Deployments are serialized. GitHub Pages runs its own deployment after the generated files are pushed; the public update can take a few minutes.
+
+For a manual deployment, build and inspect the production preview, copy `dist/` into a clean, up-to-date checkout of the Pages repository, review the diff, then commit and push there:
 
 ```sh
 SITE_ORIGIN=https://chakib-belgaid.github.io npm run build

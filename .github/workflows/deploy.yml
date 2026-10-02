@@ -1,0 +1,75 @@
+name: Deploy personal website
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: personal-website-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SITE_ORIGIN: https://chakib-belgaid.github.io
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build website
+        run: npm run build
+
+      # Load the repository-scoped write key only after the build succeeds.
+      - name: Check out GitHub Pages repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: chakib-belgaid/chakib-belgaid.github.io
+          ref: main
+          path: .pages-deploy
+          ssh-key: ${{ secrets.PAGES_DEPLOY_KEY }}
+
+      - name: Publish build
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          # Preserve existing case studies, evidence assets, and resume URLs.
+          rsync -a dist/ .pages-deploy/
+          cat > .pages-deploy/README.md <<EOF
+          # Chakib Belgaid — personal website
+
+          Published at https://chakib-belgaid.github.io/ using GitHub Pages.
+
+          Automatically built from [Living Notebook](https://github.com/chakib-belgaid/living-notebook-portfolio) on pushes to main.
+
+          Source commit: https://github.com/chakib-belgaid/living-notebook-portfolio/commit/${SOURCE_SHA}
+
+          Existing case-study, evidence, and resume URLs are retained. The previous website remains in Git history for rollback.
+          EOF
+          git -C .pages-deploy config user.name 'github-actions[bot]'
+          git -C .pages-deploy config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C .pages-deploy add --all
+          if git -C .pages-deploy diff --cached --quiet; then
+            echo 'The published website is already up to date.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git -C .pages-deploy commit -m "update [website]: deploy living notebook ${SOURCE_SHA:0:7}"
+          git -C .pages-deploy push origin HEAD:main
+          echo 'Published build to https://chakib-belgaid.github.io/. GitHub Pages is deploying the update.' >> "$GITHUB_STEP_SUMMARY"
