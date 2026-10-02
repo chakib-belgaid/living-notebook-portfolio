@@ -1179,6 +1179,9 @@ button {
 .script-only { display: none; }
 .enhanced .script-only { display: block; }
 .enhanced a.script-only { display: inline-flex; }
+/* Journey markup (styled in phone.css) stays out of the reading page. */
+:root:not([data-journey="true"]) .stop-line,
+:root:not([data-journey="true"]) .journey-only { display: none !important; }
 .masthead { position: sticky; inset: auto; flex-wrap: wrap; align-items: center; background: var(--paper); pointer-events: auto; }
 .masthead nav { flex-wrap: wrap; gap: 0.25rem 1rem; }
 .masthead nav a { display: inline-flex; align-items: center; min-height: 2.75rem; text-decoration: none; }
@@ -1241,14 +1244,14 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 .career-comma { position: absolute; opacity: 0; pointer-events: none; }
 .career-org { display: block; margin-top: 0.1rem; font-size: 1rem; font-weight: 400; font-style: italic; color: var(--muted); }
 .career-list p { font-size: 1.0625rem; }
-.reading-contact .note-widget { max-width: 38rem; padding: 1.25rem; margin-top: 1.5rem; }
-.reading-contact .note-widget h3 { font-size: 1.3rem; }
-.reading-contact .note-label { position: static; display: block; width: auto; height: auto; clip-path: none; margin-bottom: 0.4rem; font-size: 1rem; }
-.reading-contact textarea { width: 100%; min-height: 8rem; resize: vertical; font-size: 1rem; }
+.note-widget[data-contact-read] { max-width: 38rem; padding: 1.25rem; margin-top: 1.5rem; }
+[data-contact-read] h3 { font-size: 1.3rem; }
+[data-contact-read] .note-label { position: static; display: block; width: auto; height: auto; clip-path: none; margin-bottom: 0.4rem; font-size: 1rem; }
+[data-contact-read] textarea { width: 100%; min-height: 8rem; resize: vertical; font-size: 1rem; }
 .note-email a { overflow-wrap: anywhere; }
 /* Send is the main action; until there is a note it waits, dashed, rather than fading out. */
-.reading-contact [data-send] { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 600; }
-.reading-contact [data-send]:disabled { opacity: 1; background: transparent; border: 1px dashed color-mix(in srgb, var(--ink) 35%, transparent); color: var(--muted); font-weight: 400; }
+[data-contact-read] [data-send] { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 600; }
+[data-contact-read] [data-send]:disabled { opacity: 1; background: transparent; border: 1px dashed color-mix(in srgb, var(--ink) 35%, transparent); color: var(--muted); font-weight: 400; }
 .reading-contact .note-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; }
 .reading-contact .note-links a { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1.1rem; border: 1px solid var(--hairline); border-radius: 999px; text-decoration: none; }
 .reading-contact .note-links a:hover { border-color: var(--blueprint); }
@@ -1392,7 +1395,7 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 }
 @media print {
   :root { --paper: #fff !important; --ink: #162536 !important; --muted: #37495b !important; }
-  .entry-actions, .project-shortcuts, .sign-off { display: none; }
+  .entry-actions, .project-shortcuts, .sign-off, .stop-line { display: none; }
   .reading-proof { background: white; border-color: #bbb; }
   .reading-project { grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.65fr); break-inside: avoid; }
   h2, h3, h4 { break-after: avoid; }

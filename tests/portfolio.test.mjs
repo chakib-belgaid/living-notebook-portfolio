@@ -30,6 +30,15 @@ async function go(p, id) {
 }
 function healthy(p) { assert.deepEqual(p.errors, []); }
 
+test('every journey stop and its details are in the served page', async () => {
+  const html = await (await fetch(base + '/')).text();
+  for (const s of ['sketch', 'blueprint', 'build', 'whisperbook', 'wattch', 'bloom']) assert.match(html, new RegExp(`data-stop="${s}"`), s);
+  for (const d of ['about', 'whisperbook', 'wattch', 'contact']) assert.match(html, new RegExp(`data-detail="${d}"`), d);
+  assert.equal((html.match(/class="[^"]*\bstop-card\b/g) || []).length, 6);
+  assert.match(html, /class="stop-line">Product engineer, Ph\.D\. AI products, developer tools, and how we measure the energy software uses\.</);
+  assert.match(html, /class="static-garden"[^>]*loading="lazy"/);
+});
+
 test('desktop entry, project links, wheel chaining and clean landmarks', async () => {
   const p = await page();
   try {

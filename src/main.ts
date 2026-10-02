@@ -27,7 +27,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
   <div class="stage" id="stage">
     <canvas class="sky sky-back" aria-hidden="true"></canvas>
     <div id="scene" role="img" aria-label="A garden of stone terraces, pavilions, and water. It is drawn first as pencil lines, then as a blue engineering drawing, then built and planted."></div>
-    <div class="scene-fallback"><img src="/assets/garden-preview.png" width="1440" height="900" alt="The notebook garden, with a reading pavilion and energy observatory." /><p data-fallback-message>Preparing the garden. The portfolio is ready to read.</p></div>
+    <div class="scene-fallback"><img src="/assets/garden-preview.png" width="1440" height="900" loading="lazy" alt="The notebook garden, with a reading pavilion and energy observatory." /><p data-fallback-message>Preparing the garden. The portfolio is ready to read.</p></div>
     <canvas class="sky sky-front" aria-hidden="true"></canvas>
     ${spotOrder.map((s) => `<div class="hotspot" data-spot="${s}"><a href="#${s}" class="hotspot-title" tabindex="-1">${spotNames[s]}</a></div>`).join("")}
   </div>
