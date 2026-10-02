@@ -24,6 +24,13 @@
     opacity: 0;
   }
   .journey[data-wiping] .journey-edge { opacity: 0.85; }
+  /* The live garden, when the sprout asks for it, replaces the stills. */
+  .journey .stage { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+  .journey .scene-fallback, .journey .hotspot { display: none; }
+  :root[data-preview="true"] .journey-still,
+  :root[data-preview="true"] .journey-clouds,
+  :root[data-preview="true"] .journey-leaves,
+  :root[data-preview="true"] .journey-edge { visibility: hidden; }
 
   /* Stops: each is a stretch of scroll with its card held at the foot. */
   :root[data-journey="true"] .portfolio { position: relative; z-index: 1; padding: 0 1rem; }

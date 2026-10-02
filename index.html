@@ -13,7 +13,7 @@
     <!-- Phones in portrait get the garden journey (src/phone.ts). Marking it
          before the first layout keeps the reading page's preview image from loading. -->
     <script>
-      if (matchMedia("(max-width: 899px) and (min-height: 500px)").matches && !/[?&]view=read\b/.test(location.search))
+      if (matchMedia("screen and (max-width: 899px) and (min-height: 500px)").matches && !/[?&]view=read\b/.test(location.search))
         document.documentElement.dataset.journey = "pending";
     </script>
     <link rel="stylesheet" href="/src/style.css" />

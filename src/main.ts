@@ -10,7 +10,7 @@ import {
   type WeatherKind,
 } from "./weather";
 
-import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, type Spot, type WidgetSpot } from "./content";
+import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, type Spot, type WidgetSpot, type Stop } from "./content";
 import { createNavigation, type SectionId } from "./navigation";
 import { mountContact } from "./contact";
 import { widgetLifecycle } from "./widgets";
@@ -136,10 +136,11 @@ const readingContact = widgetLifecycle();
 const illustration = widgetLifecycle();
 let activeIllustration: HTMLDetailsElement | undefined;
 const announce = (text: string) => ($("#announce").textContent = text);
-/* Phones in portrait get the garden journey over the reading page. */
-const phoneQuery = matchMedia("(max-width: 899px) and (min-height: 500px)");
+/* Phones in portrait get the garden journey over the reading page. Printing
+   tears it down, so the printout is the reading page in its own order. */
+const phoneQuery = matchMedia("screen and (max-width: 899px) and (min-height: 500px)");
 const journey = createPhoneJourney({
-  onStop: () => {},
+  onStop: (stop) => { if (previewEnabled) driveLive(stop); },
   // The journey's own button stands in for the ruler's, which phones don't show.
   onTogglePause: () => motionButton.click(),
 });
@@ -262,7 +263,19 @@ function measureFrames() {
   frameGarden();
 }
 new ResizeObserver(() => measureFrames()).observe($(".masthead"));
-function frameGarden() { garden?.frame(reading ? 0.04 : 0.08, reading ? 0.96 : 0.95); }
+function frameGarden() {
+  // In the journey the garden sits where the stills have it, above the cards.
+  if (journey.active) garden?.frame(0.06, 0.58);
+  else garden?.frame(reading ? 0.04 : 0.08, reading ? 0.96 : 0.95);
+}
+/* In the journey the live garden shows each stop as its still does. */
+function driveLive(stop: Stop) {
+  const growth = stageProgress[stop.stage];
+  scrub.value = String(Math.round(growth * 1000));
+  garden?.setProgress(growth, reduced || paused);
+  sky?.setGrowth(growth);
+  garden?.focus(stop.spot, 0, 0);
+}
 
 /* One widget is mounted at a time, in the active note. */
 const noteWidget = widgetLifecycle();
@@ -946,14 +959,16 @@ function syncPresentation() {
   const previous = reading;
   reading = compact.matches || requestedView === "read";
   root.dataset.view = reading ? "read" : "garden";
-  journey.setActive(reading && phoneQuery.matches && !requestedView);
+  // Found before the journey is torn down: the live garden may be in its layer.
+  const stageElement = $("#stage");
+  const journeyOn = reading && phoneQuery.matches && requestedView !== "read";
+  journey.setActive(journeyOn);
   root.dataset.preview = String(previewEnabled);
   $("#portfolio").hidden = !reading;
   $(".chapters").hidden = reading;
   $(".chapters").inert = reading;
   $(".mist").hidden = reading;
-  const stageElement = $("#stage");
-  (reading ? $("#preview-frame") : $("#experience")).prepend(stageElement);
+  (journeyOn ? journey.layer : reading ? $("#preview-frame") : $("#experience")).prepend(stageElement);
   stageElement.hidden = reading && !previewEnabled;
   for (const element of [$<HTMLElement>(".ruler"), $<HTMLElement>(".dock")]) {
     (reading ? $("#preview-tools") : $("#experience")).append(element);
@@ -977,7 +992,8 @@ function syncPresentation() {
   syncMotion();
   syncWidgets();
   measureFrames();
-  if (reading && previewEnabled) {
+  if (reading && previewEnabled && journeyOn) driveLive(journey.stop);
+  else if (reading && previewEnabled) {
     garden?.setProgress(1, reduced || paused); garden?.focus(null); sky?.setGrowth(1);
     scrub.value = "1000";
     scrub.setAttribute("aria-valuetext", "Bloom");
@@ -989,10 +1005,15 @@ $$<HTMLAnchorElement>("[data-view]").forEach(a => a.addEventListener("click", e 
   if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
   e.preventDefault();
   const section = navigation.section;
+  const closingInJourney = journey.active && previewEnabled && a.classList.contains("view-switch");
   requestedView = a.dataset.view!;
   previewEnabled = compact.matches && previewEnabled && a.classList.contains("view-switch") ? false : requestedView === "garden";
+  // On a compact screen, closing the garden returns to the journey there,
+  // otherwise to the reading page.
+  if (compact.matches && !previewEnabled) requestedView = closingInJourney ? null : "read";
   const url = new URL(location.href);
-  url.searchParams.set("view", compact.matches && !previewEnabled ? "read" : requestedView);
+  if (requestedView) url.searchParams.set("view", requestedView);
+  else url.searchParams.delete("view");
   history.pushState(null, "", url);
   syncPresentation();
   if (!reading || previewEnabled) void loadGarden();
@@ -1032,13 +1053,15 @@ async function loadGarden() {
     garden = await createGarden($("#scene"), hotspots, quality);
     $(".scene-fallback").hidden = true;
     $("#scene").addEventListener("garden-context-lost", () => {
+      if (journey.active) { previewEnabled = false; syncPresentation(); journey.notify("The live garden’s graphics were lost."); }
       $(".scene-fallback").hidden = false;
       $("[data-fallback-message]").textContent = "The garden’s graphics connection was lost. The portfolio and links still work.";
       announce("Garden graphics unavailable. Portfolio navigation remains available.");
     });
     $("#scene").addEventListener("garden-context-restored", () => $(".scene-fallback").hidden = true);
     syncTheme(); syncMotion(); setHour(Number(hourInput.value)); applyWeather(); applySeason();
-    if (reading) { garden.setProgress(1, reduced || paused); sky.setGrowth(1); }
+    if (journey.active) driveLive(journey.stop);
+    else if (reading) { garden.setProgress(1, reduced || paused); sky.setGrowth(1); }
     else {
       // The meter needs a renderer; contact and speech already work while loading.
       if (beats[beat]?.widget === "wattch") mountNoteWidget();
@@ -1060,6 +1083,7 @@ async function loadGarden() {
     $("#scene").removeAttribute("aria-label");
     $(".widget-garden").hidden = true;
     sky?.setMotion(true);
+    if (journey.active) { previewEnabled = false; syncPresentation(); journey.notify("The live garden can’t be drawn in this browser."); }
   });
   return gardenLoading;
 }

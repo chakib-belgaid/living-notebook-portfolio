@@ -370,27 +370,41 @@ test('no JavaScript, blocked entry module, and print still expose the portfolio'
     await p.pdf({path:output+'/portfolio-print.pdf',format:'A4',printBackground:true});
     healthy(p);
   } finally { await p.context().close(); }
+  const phone = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(phone);
+    await go(phone,'wattch');
+    await phone.emulateMedia({media:'print'});
+    await phone.waitForTimeout(300);
+    assert.equal(await phone.locator('html').getAttribute('data-journey'), null, 'a phone prints the reading page');
+    assert.deepEqual(await phone.locator('#portfolio > section').evaluateAll(es=>es.map(e=>e.id)), ['intro','work','about','contact']);
+    healthy(phone);
+  } finally { await phone.context().close(); }
 });
 
-test('compact garden preview, view history and keyboard stage controls stay in document flow', async () => {
+test('on phones the sprout swaps the stills for the live garden, which follows the stops', async () => {
   const p=await page({viewport:{width:390,height:844}});
   try {
     await ready(p);
     await p.locator('.view-switch').click();
-    await p.waitForFunction(()=>!!document.querySelector('#scene canvas'));
-    assert.equal(await p.locator('#stage').evaluate(e=>getComputedStyle(e).position),'absolute');
-    const bounds=await p.locator('#stage').boundingBox();
-    assert.ok(bounds.height<400 && bounds.height>150);
-    await p.getByRole('button',{name:'Go to Sketch',exact:true}).click();
-    assert.equal(await p.locator('#scrub').inputValue(),'0');
+    await p.waitForFunction(()=>!!document.querySelector('.journey #scene canvas'));
+    assert.equal(await p.locator('html').getAttribute('data-journey'),'true');
+    assert.equal(await p.locator('#stage').isVisible(),true);
+    assert.equal(await p.locator('.journey-still[data-still="sketch"]').isVisible(),false);
+    assert.match(p.url(),/view=garden/);
     await p.locator('.view-switch').click();
     assert.equal(await p.locator('#stage').isVisible(),false);
+    assert.doesNotMatch(p.url(),/view=/);
     await p.goBack();
-    await p.waitForTimeout(200);
+    await p.waitForTimeout(300);
     assert.equal(await p.locator('#stage').isVisible(),true);
     await p.goBack();
-    await p.waitForTimeout(200);
+    await p.waitForTimeout(300);
     assert.equal(await p.locator('#stage').isVisible(),false);
+    await p.locator('.view-switch').click();
+    await go(p,'wattch');
+    await p.waitForTimeout(500);
+    assert.equal(await p.locator('#scrub').inputValue(),'660');
     healthy(p);
   } finally {await p.context().close();}
 });
