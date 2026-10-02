@@ -231,6 +231,25 @@ button {
 .scene-fallback[hidden] {
   display: none;
 }
+.garden-loading {
+  position: absolute;
+  z-index: 4;
+  top: 40%;
+  left: 62%;
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  padding: 0.8rem 1.2rem;
+  border: 1px solid var(--hairline);
+  border-radius: 1rem;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+}
+.garden-loading[hidden] { display: none; }
+@media (max-width: 899px) {
+  .garden-loading { left: 50%; }
+}
 
 /* Callouts: a label on a leader line, as on a drawing. */
 .hotspot {
@@ -1319,7 +1338,7 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 .stage-buttons button { position: static; min-height: 2.75rem; border: 0; background: transparent; border-radius: 6px; font-size: 0.9375rem; color: var(--muted); cursor: pointer; padding: 0.3rem; }
 .stage-buttons button[aria-current="step"] { color: var(--ink); background: var(--hairline); }
 .ruler-motion { width: 2.75rem; height: 2.75rem; margin: 0; }
-.dock { width: 17rem; display: block; pointer-events: auto; border: 1px solid var(--hairline); border-radius: 0.9rem; background: var(--paper); max-height: calc(100svh - 9rem); overflow: auto; }
+.dock { width: 20rem; display: block; pointer-events: auto; border: 1px solid var(--hairline); border-radius: 0.9rem; background: var(--paper); max-height: calc(100svh - 8rem); overflow: auto; }
 .dock > summary { padding: 0.55rem 1rem; font-size: 1rem; }
 .dock-body { display: flex; flex-direction: column; gap: 0.6rem; padding: 0 0.6rem 0.6rem; }
 .dock .widget { display: none; transform: none; opacity: 1; box-shadow: none; background: var(--paper); }
@@ -1330,7 +1349,7 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 /* Where the centred ruler would run into the dock, it sits beside the dock,
    and the counter's slip opens up and to the right, clear of the note. */
 @media (max-width: 1199px) {
-  :root[data-view="garden"] .ruler { left: auto; right: calc(var(--edge) + 18rem); transform: none; width: min(34rem, calc(100vw - 2 * var(--edge) - 18rem)); }
+  :root[data-view="garden"] .ruler { left: auto; right: calc(var(--edge) + 21rem); transform: none; width: min(34rem, calc(100vw - 2 * var(--edge) - 21rem)); }
   :root[data-view="garden"] .tally-panel { right: auto; left: calc(100% - 8.5rem); }
 }
 :root[data-view="read"] .stage { position: absolute; inset: 0; }

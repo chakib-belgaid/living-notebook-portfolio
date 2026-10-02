@@ -2,6 +2,7 @@
  * Keep product names, employers, links and technical identifiers unchanged.
  * Named placeholders are substituted as text, never as HTML. */
 export const translations: Record<string, readonly [string, string]> = {
+  "Growing the garden… The trees are getting dressed. One little moment.": ["Le jardin pousse… Les arbres s’habillent. Encore un petit instant.", "الحديقة تنمو… الأشجار ترتدي أوراقها. لحظة صغيرة فقط."],
   "Language": ["Langue", "اللغة"],
   "Skip to portfolio": ["Aller au portfolio", "انتقل إلى ملف الأعمال"],
   "Sections": ["Rubriques", "الأقسام"],

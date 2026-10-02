@@ -32,6 +32,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
     <canvas class="sky sky-back" aria-hidden="true"></canvas>
     <div id="scene" role="img" aria-label="A garden of stone terraces, pavilions, and water. It is drawn first as pencil lines, then as a blue engineering drawing, then built and planted."></div>
     <div class="scene-fallback"><img src="/assets/garden-preview.png" width="1440" height="900" loading="lazy" alt="The notebook garden, with a reading pavilion and energy observatory." /><p data-fallback-message>Preparing the garden. The portfolio is ready to read.</p></div>
+    <p class="garden-loading" role="status" hidden>Growing the garden… The trees are getting dressed. One little moment.</p>
     <canvas class="sky sky-front" aria-hidden="true"></canvas>
     ${spotOrder.map((s) => `<div class="hotspot" data-spot="${s}"><a href="#${s}" class="hotspot-title" tabindex="-1">${spotNames[s]}</a></div>`).join("")}
   </div>
@@ -1091,6 +1092,7 @@ function leaveLiveGarden(message: string) {
 
 async function loadGarden() {
   if (gardenLoading) return gardenLoading;
+  $(".garden-loading").hidden = false;
   performance.mark("notebook:scene-request");
   gardenLoading = (async () => {
     // Two animation frames let the semantic page paint before scene work starts.
@@ -1100,6 +1102,7 @@ async function loadGarden() {
     const { createGarden } = await import("./scene");
     const quality = compact.matches || new URL(location.href).searchParams.get("quality") === "low" ? "low" : "full";
     garden = await createGarden($("#scene"), hotspots, quality);
+    $(".garden-loading").hidden = true;
     $(".scene-fallback").hidden = true;
     $("#scene").addEventListener("garden-context-lost", () => {
       $(".scene-fallback").hidden = false;
@@ -1125,6 +1128,7 @@ async function loadGarden() {
     measureFrames();
     void startWeather();
   })().catch(error => {
+    $(".garden-loading").hidden = true;
     console.warn("The garden could not be drawn.", error);
     const message = "The garden can’t be drawn in this browser. The portfolio and links still work.";
     $(".scene-fallback").hidden = false;
