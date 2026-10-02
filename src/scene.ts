@@ -33,6 +33,8 @@ export interface Garden {
   setSeason: (season: Season) => void;
   /** 0–1 mist that hides the far side of the garden, in the page's paper colour. */
   setFog: (amount: number, color: number) => void;
+  /** The visit's carbon so far in g CO₂e, rolled onto the register under the Wattch dial; null shows dashes. */
+  setTally: (grams: number | null) => void;
   dispose: () => void;
 }
 const smooth = (a: number, b: number, v: number) =>
@@ -704,6 +706,18 @@ export async function createGarden(
   for (let i = 0; i < cable.length - 1; i++)
     beam(cable[i], cable[i + 1], 0.016, "dark", false);
   box(dialCenter.x, 1.1, dialCenter.z, 0.05, 0.44, 0.05, "dark");
+  // Under the dial, a register with digit wheels totals the visit's carbon,
+  // like an electricity meter, over a plate painted with its unit.
+  const tallyY = 1.2;
+  add(new T.BoxGeometry(0.5, 0.14, 0.07), dialCenter.x, tallyY, dialCenter.z, "dark", [0, 0.75, 0]);
+  add(
+    new T.BoxGeometry(0.22, 0.05, 0.02).translate(0, 0, 0.025),
+    dialCenter.x,
+    tallyY - 0.1,
+    dialCenter.z,
+    "light",
+    [0, 0.75, 0],
+  );
   add(
     new T.CylinderGeometry(0.2, 0.2, 0.035, 24).rotateX(Math.PI / 2).rotateY(0.75),
     dialCenter.x,
@@ -1539,6 +1553,108 @@ export async function createGarden(
     paperTexture.needsUpdate = true;
   }
   drawPaper();
+  // ...and the register under the dial totals the visit's carbon on digit
+  // wheels, grams to two decimals. One canvas holds the wheels' face (the top
+  // two thirds) and the unit plate (the bottom left), each on its own plane.
+  const tallyCanvas = document.createElement("canvas");
+  tallyCanvas.width = 512;
+  tallyCanvas.height = 192;
+  const tallyContext = tallyCanvas.getContext("2d")!;
+  const tallyTexture = new T.CanvasTexture(tallyCanvas);
+  tallyTexture.colorSpace = T.SRGBColorSpace;
+  tallyTexture.anisotropy = 4;
+  const tallyMaterial = new T.MeshStandardMaterial({
+    map: tallyTexture,
+    roughness: 0.7,
+    transparent: true,
+    opacity: 0,
+  });
+  // A w × h plane that shows the canvas from (u0, v0) to (u1, v1).
+  function facePlane(w: number, h: number, u0: number, v0: number, u1: number, v1: number) {
+    const g = new T.PlaneGeometry(w, h);
+    const uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++)
+      uv.setXY(i, lerp(u0, u1, uv.getX(i)), lerp(v0, v1, uv.getY(i)));
+    return g;
+  }
+  const register = new T.Group();
+  register.position.set(dialCenter.x, tallyY, dialCenter.z);
+  register.rotation.y = 0.75;
+  register.add(
+    new T.Mesh(facePlane(0.48, 0.12, 0, 1 / 3, 1, 1).translate(0, 0, 0.0365), tallyMaterial),
+    new T.Mesh(
+      facePlane(0.2, 0.04, 0, 0, 320 / 512, 1 / 3).translate(0, -0.1, 0.0365),
+      tallyMaterial,
+    ),
+  );
+  world.add(register);
+  // The figure the wheels are turning toward, the figure they show, and the
+  // figure last drawn on the canvas (undefined before the first drawing).
+  let tallyGoal: number | null = null,
+    tallyShown: number | null = null,
+    tallyDrawn: number | null | undefined;
+  const tallyStale = () =>
+    tallyDrawn === undefined ||
+    (tallyShown === null) !== (tallyDrawn === null) ||
+    (tallyShown !== null && Math.abs(tallyShown - tallyDrawn!) >= 0.0005);
+  function drawTally() {
+    const c = tallyContext;
+    c.fillStyle = "#e3dccb";
+    c.fillRect(0, 0, 512, 128);
+    c.fillStyle = "#f1e9d7";
+    c.fillRect(0, 128, 320, 64);
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillStyle = "#2f3b38";
+    c.font = '600 40px "Helvetica Neue", Arial, sans-serif';
+    c.fillText("g CO₂e", 160, 162);
+    // A dot between the grams and the hundredths.
+    c.beginPath();
+    c.arc(303, 108, 9, 0, Math.PI * 2);
+    c.fill();
+    c.font = 'bold 96px "Helvetica Neue", Arial, sans-serif';
+    // In hundredths of a gram: 000.00 to 999.99. Wheel k = 0 is the last one.
+    // It turns with the figure; each wheel to its left turns only while the
+    // one to its right rolls from 9 to 0, like an odometer.
+    const value =
+      tallyShown === null ? null : Math.min(Math.max(tallyShown, 0), 999.99) * 100;
+    let carry = 0;
+    for (let k = 0; k < 5; k++) {
+      const i = 4 - k;
+      const x = 18 + i * 94 + (i >= 3 ? 16 : 0),
+        y = 10,
+        w = 84,
+        h = 108;
+      c.save();
+      c.beginPath();
+      c.rect(x, y, w, h);
+      c.clip();
+      // Red wheels for the decimals, as on an electricity meter.
+      c.fillStyle = k < 2 ? "#7e3326" : "#2f3b38";
+      c.fillRect(x, y, w, h);
+      c.fillStyle = "#fbf6ea";
+      if (value === null) c.fillText("–", x + w / 2, y + h / 2 + 4);
+      else {
+        const turn = k === 0 ? value % 10 : (Math.floor(value / 10 ** k) % 10) + carry;
+        carry = Math.max(0, turn - 9);
+        const at = Math.floor(turn);
+        for (let j = at - 1; j <= at + 2; j++)
+          c.fillText(String(((j % 10) + 10) % 10), x + w / 2, y + h / 2 + 4 + (j - turn) * h * 0.95);
+      }
+      // Shade the window's top and bottom so the wheel reads as round.
+      const shade = c.createLinearGradient(0, y, 0, y + h);
+      shade.addColorStop(0, "rgba(0, 0, 0, 0.4)");
+      shade.addColorStop(0.2, "rgba(0, 0, 0, 0)");
+      shade.addColorStop(0.8, "rgba(0, 0, 0, 0)");
+      shade.addColorStop(1, "rgba(0, 0, 0, 0.4)");
+      c.fillStyle = shade;
+      c.fillRect(x, y, w, h);
+      c.restore();
+    }
+    tallyDrawn = tallyShown;
+    tallyTexture.needsUpdate = true;
+  }
+  drawTally();
   // The path: one shared outline that moves to the highlighted level.
   const highlight = new T.Group();
   highlight.visible = false;
@@ -1640,7 +1756,12 @@ export async function createGarden(
       narration !== (narrating ? 1 : 0) ||
       pathGlow !== (pathStep === null ? 0 : 1) ||
       flagLift !== (postbox === "idle" ? 0 : 1) ||
-      letterTime >= 0
+      letterTime >= 0 ||
+      // The register's wheels, only while they are on show and still turning.
+      (built > 0.01 &&
+        tallyGoal !== null &&
+        tallyShown !== null &&
+        Math.abs(tallyGoal - tallyShown) >= 0.0005)
     );
   }
   function updateRooms(dt: number, solid: number, drawn: number, blue: number) {
@@ -1665,6 +1786,16 @@ export async function createGarden(
     needleMaterial.visible = solid > 0.01;
     paperMaterial.opacity = solid;
     paperMaterial.visible = solid > 0.01;
+    tallyMaterial.opacity = solid;
+    tallyMaterial.visible = solid > 0.01;
+    // The wheels turn toward a new figure; the first figure, a pause or
+    // reduced motion sets them at once.
+    if (tallyGoal === null || tallyShown === null || still) tallyShown = tallyGoal;
+    else {
+      tallyShown = lerp(tallyShown, tallyGoal, Math.min(dt * 3, 1));
+      if (Math.abs(tallyGoal - tallyShown) < 0.0002) tallyShown = tallyGoal;
+    }
+    if (solid > 0.01 && tallyStale()) drawTally();
     if (!still) {
       // The square root spreads the usual few milliseconds over the paper.
       const goal = lerp(-0.2, 0.2, Math.sqrt(Math.min(renderMs / 8, 1)));
@@ -2660,8 +2791,11 @@ export async function createGarden(
   let night = 0;
   const focusPoint = new T.Vector3(0, 2.4, 0);
   const focusTarget = new T.Vector3(0, 2.4, 0);
+  // focusZoom is how much closer the camera gets at full focus (0.4: 1.4x).
   let focusAmount = 0,
     focusGoal = 0,
+    focusZoom = 0.4,
+    focusZoomGoal = 0.4,
     shift = new T.Vector2(),
     shiftGoal = new T.Vector2();
   // The band the garden is framed in: top and bottom, as fractions.
@@ -2732,6 +2866,12 @@ export async function createGarden(
     about: new T.Vector3(0.1, 6.4, -1.62),
     contact: new T.Vector3(2.02, 2.5, 3.11),
   };
+  // A project's notes look into its room rather than at its label: the
+  // reading table under the open book, the drum, daemon and dial in the ring.
+  const rooms: Record<string, { at: T.Vector3; zoom: number }> = {
+    whisperbook: { at: new T.Vector3(3.4, 1.7, -0.55), zoom: 1.6 },
+    wattch: { at: new T.Vector3(-3.4, 1.45, 0.45), zoom: 1.8 },
+  };
   const lookDefault = new T.Vector3(0, 2.4, 0);
   const sunColor = new T.Color();
   function applyLight() {
@@ -2794,6 +2934,7 @@ export async function createGarden(
       Math.abs(targetProgress - progress) > 0.0001 ||
       Math.abs(rotationTarget - rotation) > 0.0001 ||
       Math.abs(focusGoal - focusAmount) > 0.0005 ||
+      Math.abs(focusZoomGoal - focusZoom) > 0.0005 ||
       Math.abs(fogTarget - fogAmount) > 0.002 ||
       shift.distanceTo(shiftGoal) > 0.0005 ||
       view.distanceTo(viewGoal) > 0.0005 ||
@@ -2815,6 +2956,7 @@ export async function createGarden(
     if (!paused) elapsed += dt;
     const ease = reduced ? 1 : Math.min(dt * 3.2, 1);
     focusAmount = lerp(focusAmount, focusGoal, ease);
+    focusZoom = lerp(focusZoom, focusZoomGoal, ease);
     shift.lerp(shiftGoal, ease);
     view.lerp(viewGoal, ease);
     focusPoint.lerp(focusTarget, ease);
@@ -2929,7 +3071,7 @@ export async function createGarden(
       : aspect < 0.9
         ? 15.3 / aspect
         : 15.6;
-    const half = span / 2 / (1 + focusAmount * 0.4);
+    const half = span / 2 / (1 + focusAmount * focusZoom);
     const full = half / band;
     camera.left = -half * aspect - shift.x * half * aspect * 2;
     camera.right = half * aspect - shift.x * half * aspect * 2;
@@ -3122,6 +3264,18 @@ export async function createGarden(
       mist.color.setHex(color);
       dirty = true;
     },
+    setTally(grams) {
+      tallyGoal = grams;
+      // A frame only when the register is on show and its figure would
+      // change visibly; after Bloom the loop is drawing anyway.
+      const drawn = tallyDrawn ?? null;
+      if (
+        built > 0.01 &&
+        ((grams === null) !== (drawn === null) ||
+          (grams !== null && Math.abs(grams - drawn!) >= 0.0005))
+      )
+        dirty = true;
+    },
     setWeather(cloud, precip) {
       weatherCloud = cloud;
       weatherPrecip = precip;
@@ -3137,16 +3291,15 @@ export async function createGarden(
     },
     focus(spot, shiftX = 0, shiftY = 0) {
       if (spot && points[spot]) {
+        const room = rooms[spot];
         focusTarget
-          .copy(points[spot])
+          .copy(room?.at ?? points[spot])
           .multiply(world.scale)
           .applyAxisAngle(new T.Vector3(0, 1, 0), rotation);
         focusGoal = 1;
-        shiftGoal.set(shiftX, shiftY);
-      } else {
-        focusGoal = 0;
-        shiftGoal.set(0, 0);
-      }
+        focusZoomGoal = room?.zoom ?? 0.4;
+      } else focusGoal = 0;
+      shiftGoal.set(shiftX, shiftY);
       dirty = true;
     },
     stats() {
@@ -3196,6 +3349,7 @@ export async function createGarden(
       geometries.forEach((g) => g.dispose());
       mats.forEach((m) => m.dispose());
       paperTexture.dispose();
+      tallyTexture.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     },

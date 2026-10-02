@@ -71,21 +71,22 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
       </div>
       <div class="stage-buttons" role="group" aria-label="Garden stages">${stages.map((s, i) => `<button type="button" data-go="${i}" aria-label="Go to ${s}">${s}</button>`).join("")}</div>
     </div>
+    <details class="tally">
+      <summary aria-describedby="carbon-label"><span class="tally-figure" aria-live="off" data-carbon-figure>—</span><span class="tally-note">this visit</span></summary>
+      <section class="tally-panel" aria-labelledby="carbon-label">
+        <p class="carbon-label" id="carbon-label">Estimated impact of this visit so far</p>
+        <dl class="carbon-split">
+          <div><dt>Data transfer</dt><dd data-carbon-transfer>—</dd></div>
+          <div><dt>Rendering</dt><dd data-carbon-compute>—</dd></div>
+        </dl>
+        <p class="widget-fine carbon-source" data-carbon-source></p>
+        <p class="widget-fine carbon-source" data-compute-source></p><details class="carbon-details"><summary>Details</summary><p class="widget-fine">Data transfer: reported bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, computed with co2.js using the Sustainable Web Design Model v4, which includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded, and cached resources add no reported network bytes.</p><p class="widget-fine">Rendering and animation: the main-thread time spent updating and drawing the garden and sky at an assumed ${CPU_WATTS} W, plus the GPU time of each garden frame at an assumed ${GPU_WATTS} W, × ${Math.round(GRID_INTENSITY)} g CO₂e/kWh, co2.js’s world average grid intensity. GPU time is counted only where the browser exposes GPU timers; elsewhere this part is a CPU-only lower bound. Browsers report time, not power, so the wattages are assumptions, and the model’s device share of transfer may overlap a little with this measured rendering.</p><a class="widget-fine" href="https://sustainablewebdesign.org/estimating-digital-emissions/" target="_blank" rel="noopener noreferrer">Read the transfer methodology ↗</a> <a class="widget-fine" href="https://developers.thegreenwebfoundation.org/co2js/overview/" target="_blank" rel="noopener noreferrer">About co2.js ↗</a></details>
+      </section>
+    </details>
     <button type="button" class="ruler-motion" id="motion-toggle" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>
   </div>
 
   <details class="dock"><summary>Garden controls</summary><div class="dock-body">
-    <section class="widget widget-carbon" data-from="0" aria-labelledby="carbon-label">
-      <p class="carbon-figure" aria-live="off" data-carbon-figure>—</p>
-      <p class="carbon-label" id="carbon-label">Estimated impact of this visit so far</p>
-      <dl class="carbon-split">
-        <div><dt>Data transfer</dt><dd data-carbon-transfer>—</dd></div>
-        <div><dt>Rendering</dt><dd data-carbon-compute>—</dd></div>
-      </dl>
-      <p class="widget-fine carbon-source" data-carbon-source></p>
-      <p class="widget-fine carbon-source" data-compute-source></p><details class="carbon-details"><summary>Details</summary><p class="widget-fine">Data transfer: reported bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, computed with co2.js using the Sustainable Web Design Model v4, which includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded, and cached resources add no reported network bytes.</p><p class="widget-fine">Rendering and animation: the main-thread time spent updating and drawing the garden and sky at an assumed ${CPU_WATTS} W, plus the GPU time of each garden frame at an assumed ${GPU_WATTS} W, × ${Math.round(GRID_INTENSITY)} g CO₂e/kWh, co2.js’s world average grid intensity. GPU time is counted only where the browser exposes GPU timers; elsewhere this part is a CPU-only lower bound. Browsers report time, not power, so the wattages are assumptions, and the model’s device share of transfer may overlap a little with this measured rendering.</p><a class="widget-fine" href="https://sustainablewebdesign.org/estimating-digital-emissions/" target="_blank" rel="noopener noreferrer">Read the transfer methodology ↗</a> <a class="widget-fine" href="https://developers.thegreenwebfoundation.org/co2js/overview/" target="_blank" rel="noopener noreferrer">About co2.js ↗</a></details>
-    </section>
-
     <section class="widget widget-sky" data-from="3" aria-labelledby="sky-title">
       <div class="widget-head">
         <h3 id="sky-title">Sky</h3>
@@ -244,16 +245,15 @@ function syncStory() {
   garden?.highlightPath(b?.path ?? null);
   if (b?.spot)
     garden?.focus(b.spot, narrow.matches ? 0 : 0.16, narrow.matches ? 0 : 0.04);
-  else garden?.focus(null);
+  // The whole garden sits right of centre, in the space the note leaves.
+  else garden?.focus(null, narrow.matches ? 0 : 0.12);
 }
 
-/* The dock's widgets come out with the stage. On narrow screens the dock is a
-   row along the bottom and, before Bloom, that space belongs to the note, so
-   every widget (the carbon card too) waits for Bloom. */
+/* The dock's widgets come out with the stage. The carbon counter is on the
+   ruler, so it is there at every stage. */
 function syncWidgets() {
   widgets.forEach((w) => {
-    const from = narrow.matches ? 3 : Number(w.dataset.from);
-    const show = reading ? previewEnabled : stage >= from;
+    const show = reading ? previewEnabled : stage >= Number(w.dataset.from);
     w.classList.toggle("shown", show);
     w.inert = !show;
   });
@@ -614,6 +614,18 @@ addEventListener("keydown", (e) => {
     setPlanting(false);
 });
 
+/* The carbon counter's slip closes like a popover: on Escape, or a press
+   anywhere else. */
+const tally = $<HTMLDetailsElement>(".tally");
+tally.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !tally.open) return;
+  tally.open = false;
+  tally.querySelector("summary")!.focus();
+});
+addEventListener("pointerdown", (e) => {
+  if (tally.open && !tally.contains(e.target as Node)) tally.open = false;
+});
+
 /* Drag to turn the garden; click to plant while planting. */
 const stageEl = $("#stage");
 let drag: { x: number; y: number; last: number; moved: boolean } | null = null;
@@ -664,7 +676,9 @@ function drawCarbon() {
   const moved = transfer.read();
   const drawn = estimateCompute(renderWork());
   const parts = [moved.grams, drawn.grams].filter((g): g is number => g !== null);
-  $("[data-carbon-figure]").textContent = parts.length ? formatGrams(parts.reduce((a, b) => a + b, 0)) : "Unavailable";
+  const total = parts.length ? parts.reduce((a, b) => a + b, 0) : null;
+  $("[data-carbon-figure]").textContent = total === null ? "Unavailable" : formatGrams(total);
+  garden?.setTally(total);
   $("[data-carbon-transfer]").textContent = moved.figure;
   $("[data-carbon-compute]").textContent = drawn.figure;
   $("[data-carbon-source]").textContent = `Transfer: ${moved.source}`;
