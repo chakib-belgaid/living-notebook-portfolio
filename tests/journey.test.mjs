@@ -11,17 +11,21 @@ test('the phone journey visits Sketch, Blueprint, Build and Bloom in order', () 
   assert.deepEqual(stops.map(s => s.label), ['Sketch', 'Blueprint · Background', 'Build', 'Build · Whisperbook', 'Build · Wattch Core', 'Bloom · Write to me']);
 });
 
-test('six phone stills exist as WebP within the data budget', async () => {
+test('day and night phone stills exist as WebP within the data budget', async () => {
   const dir = new URL('../public/assets/stills/', import.meta.url);
   const names = (await readdir(dir)).filter(n => n.endsWith('.webp')).sort();
-  assert.deepEqual(names, ['bloom', 'blueprint', 'build', 'sketch', 'wattch', 'whisperbook'].map(n => `${n}.webp`));
-  let total = 0;
-  for (const name of names) {
-    const file = await readFile(new URL(name, dir));
-    assert.equal(file.toString('ascii', 0, 4), 'RIFF', name);
-    assert.equal(file.toString('ascii', 8, 12), 'WEBP', name);
-    assert.ok(file.length <= 100 * 1024, `${name} is ${file.length} bytes`);
-    total += file.length;
+  const day = stops.map(s => `${s.name}.webp`), night = stops.map(s => `${s.name}-night.webp`);
+  assert.deepEqual(names, [...day, ...night].sort());
+  // A visitor loads one set, so each set keeps the budget.
+  for (const set of [day, night]) {
+    let total = 0;
+    for (const name of set) {
+      const file = await readFile(new URL(name, dir));
+      assert.equal(file.toString('ascii', 0, 4), 'RIFF', name);
+      assert.equal(file.toString('ascii', 8, 12), 'WEBP', name);
+      assert.ok(file.length <= 100 * 1024, `${name} is ${file.length} bytes`);
+      total += file.length;
+    }
+    assert.ok(total <= 600 * 1024, `stills total ${total} bytes`);
   }
-  assert.ok(total <= 600 * 1024, `stills total ${total} bytes`);
 });

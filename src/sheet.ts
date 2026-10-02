@@ -85,6 +85,8 @@ export function createSheet(): Sheet {
     if ((e.target as Element).closest("button")) return;
     drag = { y: e.clientY, t: performance.now(), dy: 0 };
     head.setPointerCapture(e.pointerId);
+    // Held by the finger, not eased after it.
+    dialog.classList.add("dragging");
   });
   head.addEventListener("pointermove", (e) => {
     if (!drag) return;
@@ -95,6 +97,7 @@ export function createSheet(): Sheet {
     if (!drag) return;
     const { dy, t } = drag;
     drag = null;
+    dialog.classList.remove("dragging");
     const flick = dy > 24 && dy / Math.max(1, performance.now() - t) > 0.6;
     if (dy > dialog.offsetHeight * 0.25 || flick) close();
     else dialog.style.removeProperty("--drag");

@@ -19,8 +19,11 @@ export type Journey = {
   /** The fixed layer behind the cards; main.ts puts the live garden in it. */
   readonly layer: HTMLElement;
   setActive: (on: boolean) => void;
-  /** A short message in the header for a few seconds. */
+  /** A short message in the header for a few seconds. It is only shown;
+      main.ts announces it on the page's live region. */
   notify: (text: string) => void;
+  /** Shows the stills of the garden by night or by day. */
+  setNight: (night: boolean) => void;
   /** Shows the motion state on the header's pause button. */
   setMotion: (stopped: boolean, systemReduced: boolean) => void;
 };
@@ -51,7 +54,7 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
 
   const bar = document.createElement("div");
   bar.className = "journey-bar";
-  bar.innerHTML = `<span class="journey-label"></span><span class="journey-toast" role="status"></span><button type="button" class="journey-pause" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>`;
+  bar.innerHTML = `<span class="journey-label"></span><span class="journey-toast" aria-hidden="true"></span><button type="button" class="journey-pause" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>`;
   const label = bar.querySelector<HTMLElement>(".journey-label")!;
   const toast = bar.querySelector<HTMLElement>(".journey-toast")!;
   const pause = bar.querySelector<HTMLButtonElement>(".journey-pause")!;
@@ -92,10 +95,18 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
   let current: Stop | undefined;
   let observer: IntersectionObserver | undefined;
   let toastTimer = 0;
+  let night = false;
 
   function load(i: number) {
     const img = stills[i];
-    if (img && !img.getAttribute("src")) img.src = `/assets/stills/${stops[i].name}.webp`;
+    if (img && !img.getAttribute("src")) img.src = `/assets/stills/${stops[i].name}${night ? "-night" : ""}.webp`;
+  }
+  function setNight(on: boolean) {
+    if (on === night) return;
+    night = on;
+    // The stills in view load again in their new light; the rest when reached.
+    stills.forEach((img) => img.removeAttribute("src"));
+    schedule();
   }
 
   function measure() {
@@ -163,6 +174,10 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
       schedule();
     } else {
       sheet.close(true);
+      // Focus on a card's More (the sheet gives it back there) or in the
+      // header would go with them, so it moves to that stop's heading.
+      const focused = document.activeElement;
+      const stranded = moreButtons.find(({ button }) => button === focused)?.stop ?? (bar.contains(focused) ? current?.name : undefined);
       delete root.dataset.journey;
       layer.remove();
       bar.remove();
@@ -174,6 +189,7 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
       document.querySelectorAll(".stop-card.seen").forEach((card) => card.classList.remove("seen"));
       removeEventListener("scroll", schedule);
       removeEventListener("resize", schedule);
+      if (stranded) $(`[data-stop="${stranded}"]`).querySelector<HTMLElement>("h1, h2, h3")!.focus({ preventScroll: true });
     }
   }
 
@@ -191,5 +207,6 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     setActive,
     notify,
     setMotion,
+    setNight,
   };
 }

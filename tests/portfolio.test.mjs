@@ -303,6 +303,7 @@ test('rotating to landscape with a sheet open restores the reading page intact',
     assert.equal(await p.locator('#wattch [data-detail="wattch"]').count(), 2);
     assert.equal(await p.locator('#wattch .project-tech').isVisible(), true);
     assert.deepEqual(await p.locator('#portfolio > section').evaluateAll(es=>es.map(e=>e.id)), ['intro','work','about','contact'], 'reading order is restored');
+    assert.equal(await p.evaluate(()=>document.activeElement?.id), 'wattch-title', 'focus moves to the stop’s heading');
     healthy(p);
   } finally { await p.context().close(); }
 });
@@ -326,6 +327,7 @@ test('a phone load fetches the first still, at most one ahead, and no preview im
   // A slow entry module: the page lays out well before the journey starts.
   await p.route('**/assets/index-*.js', async route => { await new Promise(f => setTimeout(f, 1000)); await route.continue(); });
   try {
+    await p.clock.setFixedTime(new Date(2026, 9, 2, 13));
     await ready(p);
     await p.waitForTimeout(800);
     const stills = urls.filter(u => u.includes('/assets/stills/'));
@@ -567,6 +569,7 @@ test('a deep link loads its own still, one either side, and none before', async 
   const urls = [];
   p.on('request', r => urls.push(r.url()));
   try {
+    await p.clock.setFixedTime(new Date(2026, 9, 2, 13));
     await ready(p, '#wattch');
     await p.waitForTimeout(800);
     const stills = urls.filter(u => u.includes('/assets/stills/')).map(u => u.split('/').pop()).sort();
@@ -583,6 +586,73 @@ test('200% text on the smallest phone does not scroll sideways', async () => {
     await p.addStyleTag({content:':root {font-size:200%;}'});
     await p.waitForTimeout(300);
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'no horizontal overflow');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('the live garden opened from the reading page closes back to the page', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await p.getByRole('link',{name:'Read as a page',exact:true}).click();
+    assert.equal(await p.locator('html').getAttribute('data-journey'), null);
+    await p.locator('.view-switch').click();
+    await p.waitForFunction(()=>!!document.querySelector('#scene canvas'));
+    assert.equal(await p.locator('html').getAttribute('data-journey'), null, 'the garden opens over the page');
+    assert.match(p.url(), /view=garden/);
+    await p.locator('.view-switch').click();
+    assert.equal(await p.locator('html').getAttribute('data-journey'), null, 'closing it returns to the page');
+    assert.match(p.url(), /view=read/);
+    assert.equal(await p.locator('#stage').isVisible(), false);
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('on phones a live garden that cannot be drawn leaves the address and is announced', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await p.addInitScript(()=>{
+      const original=HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext=function(type,...args) {return type.startsWith('webgl')?null:original.call(this,type,...args);};
+    });
+    await ready(p);
+    await p.locator('.view-switch').click();
+    await p.waitForFunction(()=>document.querySelector('#announce').textContent.includes('can’t be drawn'), undefined, {timeout:10000});
+    assert.doesNotMatch(p.url(), /view=/);
+    assert.equal(await p.locator('html').getAttribute('data-preview'), 'false');
+    assert.equal(await p.locator('.journey-toast').isVisible(), true, 'the header shows it too');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('the sheet follows the finger while dragged', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await go(p,'wattch');
+    await p.getByRole('button',{name:'More about Wattch Core',exact:true}).click();
+    const sheet = p.locator('dialog.sheet');
+    await settled(sheet);
+    const head = await sheet.locator('.sheet-handle').boundingBox();
+    await p.mouse.move(head.x + head.width / 2, head.y + 10);
+    await p.mouse.down();
+    await p.mouse.move(head.x + head.width / 2, head.y + 110);
+    assert.equal(await sheet.evaluate(d=>new DOMMatrix(getComputedStyle(d).transform).f), 100);
+    await p.mouse.up();
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('at night the journey shows the garden at night', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  const urls = [];
+  p.on('request', r => urls.push(r.url()));
+  try {
+    await p.clock.setFixedTime(new Date(2026, 9, 2, 22, 30));
+    await ready(p);
+    await p.waitForFunction(() => { const i = document.querySelector('.journey-still[data-still="sketch"]'); return i?.complete && i.naturalWidth > 0; });
+    const stills = urls.filter(u => u.includes('/assets/stills/')).map(u => u.split('/').pop());
+    assert.ok(stills.length && stills.every(n => n.endsWith('-night.webp')), stills.join());
     healthy(p);
   } finally { await p.context().close(); }
 });

@@ -103,6 +103,7 @@
     background: var(--paper); color: var(--ink);
     transform: translateY(var(--drag, 0px)); transition: transform 0.2s var(--ease);
   }
+  .sheet.dragging { transition: none; }
   .sheet[open] { display: flex; flex-direction: column; animation: sheet-up 0.28s var(--ease); }
   .sheet.closing { animation: sheet-down 0.22s ease-in forwards; }
   @keyframes sheet-up { from { transform: translateY(100%); } }

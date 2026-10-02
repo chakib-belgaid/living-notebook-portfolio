@@ -131,6 +131,9 @@ const compact = matchMedia("(max-width: 899px), (max-height: 599px)");
 let reading = true;
 let previewEnabled = false;
 let requestedView = new URL(location.href).searchParams.get("view");
+// On a phone, whether the visitor chose the reading page over the journey.
+// The live garden then opens over the page, and closing it returns there.
+let overPage = requestedView === "read";
 let gardenLoading: Promise<void> | undefined;
 const readingContact = widgetLifecycle();
 const illustration = widgetLifecycle();
@@ -493,6 +496,7 @@ function setHour(h: number) {
   if (isNight !== night > 0.5) {
     isNight = night > 0.5;
     $(".sky-body").innerHTML = isNight ? moonIcon : sunIcon;
+    journey.setNight(isNight);
   }
   garden?.setHour(h);
   sky?.setHour(h);
@@ -965,9 +969,11 @@ function syncPresentation() {
   const previous = reading;
   reading = compact.matches || requestedView === "read";
   root.dataset.view = reading ? "read" : "garden";
+  // The garden view keeps whichever the visitor opened it from.
+  if (requestedView !== "garden") overPage = requestedView === "read";
   // Found before the journey is torn down: the live garden may be in its layer.
   const stageElement = $("#stage");
-  const journeyOn = reading && phoneQuery.matches && requestedView !== "read";
+  const journeyOn = reading && phoneQuery.matches && !overPage;
   journey.setActive(journeyOn);
   root.dataset.preview = String(previewEnabled);
   $("#portfolio").hidden = !reading;
@@ -1046,6 +1052,19 @@ $$<HTMLDetailsElement>("[data-illustration]").forEach(details => details.addEven
   } else if (activeIllustration === details) { illustration.dispose(); activeIllustration = undefined; }
 }));
 
+/* In the journey, a live garden that can't be drawn gives way to the stills,
+   and the address no longer asks for it. */
+function leaveLiveGarden(message: string) {
+  previewEnabled = false;
+  requestedView = null;
+  const url = new URL(location.href);
+  url.searchParams.delete("view");
+  history.replaceState(null, "", url);
+  syncPresentation();
+  journey.notify(message);
+  announce(message);
+}
+
 async function loadGarden() {
   if (gardenLoading) return gardenLoading;
   performance.mark("notebook:scene-request");
@@ -1059,10 +1078,10 @@ async function loadGarden() {
     garden = await createGarden($("#scene"), hotspots, quality);
     $(".scene-fallback").hidden = true;
     $("#scene").addEventListener("garden-context-lost", () => {
-      if (journey.active) { previewEnabled = false; syncPresentation(); journey.notify("The live garden’s graphics were lost."); }
       $(".scene-fallback").hidden = false;
       $("[data-fallback-message]").textContent = "The garden’s graphics connection was lost. The portfolio and links still work.";
-      announce("Garden graphics unavailable. Portfolio navigation remains available.");
+      if (journey.active) leaveLiveGarden("The live garden’s graphics were lost.");
+      else announce("Garden graphics unavailable. Portfolio navigation remains available.");
     });
     $("#scene").addEventListener("garden-context-restored", () => $(".scene-fallback").hidden = true);
     syncTheme(); syncMotion(); setHour(Number(hourInput.value)); applyWeather(); applySeason();
@@ -1083,13 +1102,15 @@ async function loadGarden() {
     void startWeather();
   })().catch(error => {
     console.warn("The garden could not be drawn.", error);
+    const message = "The garden can’t be drawn in this browser. The portfolio and links still work.";
     $(".scene-fallback").hidden = false;
-    $("[data-fallback-message]").textContent = "The garden can’t be drawn in this browser. The portfolio and links still work.";
+    $("[data-fallback-message]").textContent = message;
     $("#scene").removeAttribute("role");
     $("#scene").removeAttribute("aria-label");
     $(".widget-garden").hidden = true;
     sky?.setMotion(true);
-    if (journey.active) { previewEnabled = false; syncPresentation(); journey.notify("The live garden can’t be drawn in this browser."); }
+    if (journey.active) leaveLiveGarden("The live garden can’t be drawn in this browser.");
+    else announce(message);
   });
   return gardenLoading;
 }
