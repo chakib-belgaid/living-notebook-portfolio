@@ -6,12 +6,18 @@ export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&am
 export function renderPortfolio() {
   const e = escapeHtml;
   const career = beats.filter(b => b.stage === 1 && b.path !== undefined).reverse();
+  // "Role, Organisation": the organisation reads as a second, quieter line.
+  const role = (title: string) => {
+    const [name, org] = title.split(/, (.+)/);
+    return org ? `${e(name)}<span class="career-comma">, </span><span class="career-org">${e(org)}</span>` : e(title);
+  };
   return `
     <a class="skip-link" href="#intro">Skip to portfolio</a>
     <header class="masthead">
       <a class="owner" href="#intro">Chakib Belgaid</a>
       <nav aria-label="Sections"><a href="#work">Work</a><a href="#about">About</a><a href="#contact">Contact</a></nav>
       <a class="view-switch script-only" href="?view=read" data-view="read">Read portfolio</a>
+      <div class="read-ruler script-only" aria-hidden="true"><span class="read-fill"></span>${["intro", "work", "about", "contact"].map(id => `<i data-at="${id}"></i>`).join("")}</div>
     </header>
     <main id="portfolio" class="portfolio">
       <section id="intro" class="reading-intro" aria-labelledby="intro-title">
@@ -30,14 +36,14 @@ export function renderPortfolio() {
       <section id="work" class="reading-section" aria-labelledby="work-title">
         <p class="eyebrow">Selected work</p><h2 id="work-title" tabindex="-1">The boundaries matter</h2>
         <p>${e(beats.find(b => b.stage === 2 && !b.spot)!.copy)}</p>
-        <nav class="project-shortcuts" aria-label="Selected projects"><a href="#whisperbook">Whisperbook</a><a href="#wattch">Wattch Core</a></nav>
+        <nav class="project-shortcuts project-index" aria-label="Selected projects">${Object.entries(projects).map(([id, p], i) => `<a href="#${id}"><span class="index-number">0${i + 1}</span><span class="index-title">${e(p.title)}</span><span class="index-field">${e(p.field)}</span></a>`).join("")}</nav>
         ${Object.entries(projects).map(([id, p]) => `
           <article class="reading-project" id="${id}" aria-labelledby="${id}-title">
             <div class="project-copy"><p class="eyebrow">${e(p.field)}</p><h3 id="${id}-title" tabindex="-1">${e(p.title)}</h3>
               <p class="reading-lede">${e(p.lede)}</p><p>${e(p.intro)}</p>
               <h4>What I built</h4><p>${e(p.built)}</p><h4>The decision that shaped it</h4><p>${e(p.decision)}</p>
               <p class="project-tech">${e(p.tech.join(" · "))}</p><a class="source-link" href="${p.url}" target="_blank" rel="noopener noreferrer">Read ${e(p.title)} on GitHub ↗</a>
-              <details class="reading-illustration script-only" data-illustration="${id}"><summary>A small browser illustration</summary><p>${e(id === "whisperbook" ? "Hear an excerpt in your browser’s local voice. Whisperbook uses its own on-device narration on Android." : "Watch what drawing this page costs your device: CPU and GPU time, and the estimated carbon of that work. Enable the garden preview to measure it.")}</p><div data-reading-widget="${id}"></div></details>
+              <details class="reading-illustration script-only" data-illustration="${id}"><summary>${id === "whisperbook" ? "Hear a passage in your browser" : "Measure what drawing this page costs"}</summary><p>${e(id === "whisperbook" ? "Hear an excerpt in your browser’s local voice. Whisperbook uses its own on-device narration on Android." : "Watch what drawing this page costs your device: CPU and GPU time, and the estimated carbon of that work. Enable the garden preview to measure it.")}</p><div data-reading-widget="${id}"></div></details>
             </div>
             <figure class="reading-proof proof-${id}"><a href="${p.image}" data-evidence="${id}" aria-label="View full screenshot of ${e(p.title)}"><img src="${p.image}" width="${p.size[0]}" height="${p.size[1]}" alt="${e(p.alt)}" loading="lazy" decoding="async" /></a>
               <figcaption>${e(p.caption)} <a href="${p.image}" data-evidence="${id}">View full screenshot</a></figcaption>
@@ -45,11 +51,12 @@ export function renderPortfolio() {
           </article>`).join("")}
       </section>
       <section class="reading-section" id="about" aria-labelledby="about-title"><p class="eyebrow">Current work and background</p><h2 id="about-title" tabindex="-1">${e(beats[1].title)}</h2><p>${e(beats[1].copy)}</p>
-        <ol class="career-list">${career.map(b => `<li><p class="eyebrow">${e(b.label!)}</p><h3>${e(b.title)}</h3><p>${e(b.copy)}</p></li>`).join("")}</ol>
+        <ol class="career-list">${career.map(b => `<li><p class="eyebrow">${e(b.label!)}</p><h3>${role(b.title)}</h3><p>${e(b.copy)}</p></li>`).join("")}</ol>
       </section>
       <section class="reading-section reading-contact" id="contact" aria-labelledby="contact-title"><p class="eyebrow">Write to me</p><h2 id="contact-title" tabindex="-1">I’d like to hear what you’re building.</h2>
         <p class="note-email"><a href="mailto:${email}">${email}</a></p><div class="note-widget script-only" data-contact-read></div>
-        <p class="note-links"><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> · <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a></p>
+        <p class="note-links"><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a></p>
+        <p class="sign-off"><a href="#intro">Back to the top ↑</a></p>
       </section>
     </main>`;
 }

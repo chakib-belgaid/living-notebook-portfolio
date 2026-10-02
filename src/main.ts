@@ -300,6 +300,7 @@ function measure() {
     }
     navigation.passive(current);
     root.style.setProperty("--grow", "1");
+    measureReadingRuler(current);
     return;
   }
   layoutRuler();
@@ -353,6 +354,28 @@ function measure() {
   });
   garden?.setProgress(growth, reduced || paused);
   sky?.setGrowth(growth);
+}
+
+/* The reading ruler along the masthead's lower edge: how far down the page
+   the visitor is, with a mark where each section starts. The masthead link
+   for the current section is marked too. */
+const readingRuler = $(".read-ruler");
+const sectionLinks = $$<HTMLAnchorElement>(".masthead nav a");
+function measureReadingRuler(current: SectionId) {
+  const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+  const clearance = $(".masthead").getBoundingClientRect().height;
+  readingRuler.style.setProperty("--read", Math.min(1, scrollY / max).toFixed(4));
+  $$<HTMLElement>(".read-ruler i").forEach(tick => {
+    const top = $("#" + tick.dataset.at).getBoundingClientRect().top + scrollY - clearance;
+    const at = Math.min(1, Math.max(0, top / max));
+    tick.style.setProperty("--at", at.toFixed(4));
+    tick.classList.toggle("passed", scrollY / max >= at - 0.001);
+  });
+  const group = current === "whisperbook" || current === "wattch" ? "work" : current;
+  sectionLinks.forEach(a => {
+    if (a.hash === "#" + group) a.setAttribute("aria-current", "location");
+    else a.removeAttribute("aria-current");
+  });
 }
 
 let queued = false;
@@ -940,6 +963,8 @@ function syncPresentation() {
   toggle.dataset.view = reading ? "garden" : "read";
   toggle.href = `?view=${toggle.dataset.view}${location.hash}`;
   toggle.textContent = reading ? (previewEnabled && compact.matches ? "Close garden" : "Explore garden") : "Read portfolio";
+  // On phones the switch shows only an icon, so its name is kept explicit.
+  toggle.setAttribute("aria-label", toggle.textContent);
   if (previous !== reading) {
     noteWidget.dispose();
     illustration.dispose();
