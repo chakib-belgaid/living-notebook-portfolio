@@ -9,10 +9,10 @@
 }
 .language-picker select {
   appearance: none; -webkit-appearance: none;
-  min-height: 2.75rem; max-width: 7rem; padding-block: 0.35rem; padding-inline: 0.65rem 1.55rem;
+  min-height: 1.75rem; max-width: 7rem; padding-block: 0.35rem; padding-inline: 1rem ;
   border: 1px solid var(--hairline); border-radius: 999px;
   background: var(--paper); color: var(--ink); font: inherit;
-  font-size: 0.875rem; cursor: pointer;
+  font-size: 0.875rem; text-align: left ; cursor: pointer;
 }
 .language-picker select option { background: var(--paper); color: var(--ink); }
 :root[lang="ar"] { font-family: Tahoma, "Geeza Pro", "Noto Naskh Arabic", Arial, sans-serif; }

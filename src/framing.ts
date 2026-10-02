@@ -6,7 +6,7 @@
 export function gardenSpan(aspect: number) {
   const stackedMobile = innerWidth <= 760 && innerHeight > 520;
   return stackedMobile
-    ? Math.max(12.8, 16.4 / aspect)
+    ? Math.max(12.8, 14.6 / aspect)
     : aspect < 0.9
       ? 16.4 / aspect
       : 15.6;
