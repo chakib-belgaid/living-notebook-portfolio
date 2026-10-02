@@ -515,3 +515,74 @@ test('phone motion pauses from the header, and reduced motion keeps the journey 
     healthy(r);
   } finally { await r.context().close(); }
 });
+
+test('a sheet opens on screen while motion is paused', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await go(p,'contact');
+    await p.getByRole('button',{name:'Pause motion',exact:true}).click();
+    await p.getByRole('button',{name:'Leave a note',exact:true}).click();
+    await p.waitForTimeout(400);
+    assert.ok(await p.locator('dialog.sheet').evaluate(d=>{const r=d.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1;}), 'the sheet is on screen');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('a second Escape while the sheet closes leaves the next sheet working', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await go(p,'wattch');
+    const more = p.getByRole('button',{name:'More about Wattch Core',exact:true});
+    await more.click();
+    await settled(p.locator('dialog.sheet'));
+    await p.keyboard.press('Escape');
+    await p.keyboard.press('Escape');
+    await p.waitForTimeout(600);
+    assert.equal(await p.locator('#wattch [data-detail="wattch"]').count(), 2);
+    await more.click();
+    await p.waitForTimeout(700);
+    assert.equal(await p.locator('dialog.sheet').evaluate(d=>d.open), true, 'the sheet stays open');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('the phone URL bar showing or hiding keeps the reader where they are', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p);
+    await p.evaluate(()=>scrollTo(0,2000));
+    await p.waitForTimeout(400);
+    await p.setViewportSize({width:390,height:788});
+    await p.waitForTimeout(400);
+    const y = await p.evaluate(()=>scrollY);
+    assert.ok(Math.abs(y-2000) < 100, `scrollY ${y}`);
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('a deep link loads its own still, one either side, and none before', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  const urls = [];
+  p.on('request', r => urls.push(r.url()));
+  try {
+    await ready(p, '#wattch');
+    await p.waitForTimeout(800);
+    const stills = urls.filter(u => u.includes('/assets/stills/')).map(u => u.split('/').pop()).sort();
+    assert.deepEqual(stills, ['bloom.webp', 'wattch.webp', 'whisperbook.webp']);
+    await p.waitForFunction(() => { const i = document.querySelector('.journey-still[data-still="wattch"]'); return i.complete && i.naturalWidth > 0; });
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('200% text on the smallest phone does not scroll sideways', async () => {
+  const p = await page({viewport:{width:320,height:568}});
+  try {
+    await ready(p);
+    await p.addStyleTag({content:':root {font-size:200%;}'});
+    await p.waitForTimeout(300);
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'no horizontal overflow');
+    healthy(p);
+  } finally { await p.context().close(); }
+});

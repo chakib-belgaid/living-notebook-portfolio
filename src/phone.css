@@ -63,7 +63,8 @@
   }
   :root[data-journey="true"] .stop-card.seen { opacity: 1; transform: none; }
   :root[data-journey="true"] .stop-card .eyebrow { margin: 0; }
-  :root[data-journey="true"] .stop-card h1 { font-size: 2.6rem; margin: 0.2rem 0 0.6rem; }
+  /* Capped by the width, so enlarged text can't push the name off a small screen. */
+  :root[data-journey="true"] .stop-card h1 { font-size: min(2.6rem, 14vw); margin: 0.2rem 0 0.6rem; }
   :root[data-journey="true"] .stop-card h2,
   :root[data-journey="true"] .stop-card h3 { font-size: 1.9rem; line-height: 1.12; margin: 0.15rem 0 0.5rem; }
   :root[data-journey="true"] .stop-card .reading-lede,
@@ -105,6 +106,8 @@
   .sheet[open] { display: flex; flex-direction: column; animation: sheet-up 0.28s var(--ease); }
   .sheet.closing { animation: sheet-down 0.22s ease-in forwards; }
   @keyframes sheet-up { from { transform: translateY(100%); } }
+  /* Paused motion would freeze the slide at its start, below the screen. */
+  :root[data-motion-paused="true"] .sheet { animation: none !important; }
   @keyframes sheet-down { to { transform: translateY(100%); } }
   .sheet::backdrop { background: rgb(6 22 38 / 0.55); }
   .sheet-head { position: relative; display: flex; align-items: center; gap: 0.75rem; padding: 1.1rem 0.75rem 0.5rem 1.25rem; touch-action: none; cursor: grab; }

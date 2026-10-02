@@ -401,10 +401,16 @@ function schedule() {
   });
 }
 addEventListener("scroll", schedule, { passive: true });
+let resizedFrom = innerWidth;
 addEventListener("resize", () => {
   const section = navigation.section;
-  if (reading !== (compact.matches || requestedView === "read")) syncPresentation();
+  const wider = innerWidth !== resizedFrom;
+  resizedFrom = innerWidth;
+  const changed = reading !== (compact.matches || requestedView === "read");
+  if (changed) syncPresentation();
   measureFrames();
+  // A phone's URL bar showing or hiding changes only the height: the reader stays put.
+  if (reading && !wider && !changed) return;
   navigation.go(section, false, false);
 });
 // A link's scroll that ends short of its beat (the visitor took over) drops

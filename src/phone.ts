@@ -105,6 +105,8 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     // The current stop is the last one whose top has passed the middle of the screen.
     let at = 0;
     tops.forEach((top, i) => { if (top <= h * 0.5) at = i; });
+    // Its own still, the next one, and the one before for scrolling back up.
+    load(at - 1);
     load(at);
     load(at + 1);
     let wiping = -1;
@@ -157,7 +159,8 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
       current = undefined;
       addEventListener("scroll", schedule, { passive: true });
       addEventListener("resize", schedule);
-      measure();
+      // Measured on the next frame, once the page has scrolled to a deep link's stop.
+      schedule();
     } else {
       sheet.close(true);
       delete root.dataset.journey;

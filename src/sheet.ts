@@ -29,9 +29,17 @@ export function createSheet(): Sheet {
     if (opener?.isConnected && !opener.closest("[hidden]")) opener.focus({ preventScroll: true });
     opener = null;
   }
-  function finish() {
+  // Only the sheet's own slide down ends a close; a child's animation bubbles here too.
+  function slidDown(e: AnimationEvent) {
+    if (e.target === dialog && e.animationName === "sheet-down") finish();
+  }
+  function settle() {
+    dialog.removeEventListener("animationend", slidDown);
     dialog.classList.remove("closing");
     dialog.style.removeProperty("--drag");
+  }
+  function finish() {
+    settle();
     if (dialog.open) dialog.close();
     restore();
   }
@@ -40,7 +48,7 @@ export function createSheet(): Sheet {
     const still = immediate || reducedQuery.matches || document.documentElement.dataset.motionPaused === "true";
     if (still) return finish();
     dialog.classList.add("closing");
-    dialog.addEventListener("animationend", finish, { once: true });
+    dialog.addEventListener("animationend", slidDown);
     // In case the animation never runs (a hidden tab), close anyway.
     window.setTimeout(() => { if (openKey && dialog.classList.contains("closing")) finish(); }, 400);
   }
@@ -62,7 +70,8 @@ export function createSheet(): Sheet {
 
   // Escape: close with the animation. If the browser closes it outright, still put the details back.
   dialog.addEventListener("cancel", (e) => { e.preventDefault(); close(); });
-  dialog.addEventListener("close", () => { if (openKey) restore(); });
+  // A second Escape (or a back gesture) can close it outright, mid-slide.
+  dialog.addEventListener("close", () => { settle(); if (openKey) restore(); });
   dialog.querySelector(".sheet-close")!.addEventListener("click", () => close());
   // A tap on the backdrop, outside the sheet's box.
   dialog.addEventListener("click", (e) => {
