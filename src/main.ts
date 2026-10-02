@@ -272,8 +272,8 @@ function measureFrames() {
 new ResizeObserver(() => measureFrames()).observe($(".masthead"));
 function frameGarden() {
   // In the journey the garden sits where the stills have it, above the cards.
-  if (journey.active) garden?.frame(0.06, 0.58);
-  else garden?.frame(reading ? 0.04 : 0.08, reading ? 0.96 : 0.95);
+  if (journey.active) garden?.frame(0.12, 0.64);
+  else garden?.frame(reading ? 0.04 : 0.02, reading ? 0.96 : 0.89);
 }
 /* In the journey the live garden shows each stop as its still does. */
 function driveLive(stop: Stop) {

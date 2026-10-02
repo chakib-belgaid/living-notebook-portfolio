@@ -416,7 +416,7 @@ button {
 }
 .note h1,
 .note h2 {
-  font-weight: calc(200 + 520 * var(--grow));
+  font-weight: 700;
   color: color-mix(
     in oklab,
     var(--ink) calc(45% + 55% * var(--grow)),
@@ -428,8 +428,7 @@ button {
   text-wrap: balance;
 }
 .note h1 {
-  font-size: clamp(2.75rem, 1.6rem + 3.6vw, 4.5rem);
-  letter-spacing: -0.035em;
+  font-size: clamp(2rem, 1.4rem + 2vw, 2.85rem);
 }
 .note h2 {
   font-size: clamp(2rem, 1.4rem + 2vw, 2.85rem);
@@ -1068,7 +1067,7 @@ button {
     padding: 1rem 1.1rem 0.8rem;
   }
   .note h1 {
-    font-size: 2.6rem;
+    font-size: 1.85rem;
   }
   .note h2 {
     font-size: 1.85rem;
@@ -1458,4 +1457,14 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 
 @media (min-width: 1200px) and (min-height: 600px) {
   :root[data-view="garden"] .ruler { left: calc(50% + 2rem); }
+}
+
+/* Leave a little more air between the garden and its desktop ruler. */
+@media (min-width: 761px) {
+  :root[data-view="garden"] .ruler { padding: 0.45rem 0.7rem; gap: 0.35rem; }
+  :root[data-view="garden"] .chapter-index a { min-height: 2.25rem; }
+  :root[data-view="garden"] .stage-buttons button { min-height: 2.4rem; }
+}
+@media (min-width: 1200px) {
+  :root[data-view="garden"] .ruler { width: min(32rem, calc(100vw - 2 * var(--edge))); }
 }
