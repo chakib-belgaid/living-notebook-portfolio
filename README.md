@@ -2,6 +2,8 @@
 
 A portfolio for Chakib Belgaid, retaining the procedural garden, blueprint paper, Newsreader typography, and verified project content.
 
+[Personal website](https://chakib-belgaid.github.io/) · [Source repository](https://github.com/chakib-belgaid/living-notebook-portfolio)
+
 Desktop opens the garden journey. **Read portfolio** switches to introduction → Whisperbook → Wattch Core → current work and background → contact. Below 900 px wide or 600 px high, the portfolio uses normal document flow. **Explore garden** adds an interactive preview in a bounded frame.
 
 ## Run locally
@@ -58,10 +60,25 @@ The display is **Estimated impact of this visit so far**, split into data transf
 The page has a descriptive title, description, social metadata, and the captured preview image. To generate canonical and absolute social URLs, supply the actual deployment origin when building:
 
 ```sh
-SITE_ORIGIN=https://your-domain.example npm run build
+SITE_ORIGIN=https://chakib-belgaid.github.io npm run build
 ```
 
-That example is a placeholder. Without a configured origin, unknown canonical and absolute social URLs are omitted. Public hosting and deployed previews have not been checked.
+Without a configured origin, canonical and absolute social URLs are omitted.
+
+## Publishing
+
+This repository contains the source. The production build is published at the root of the existing [GitHub Pages repository](https://github.com/chakib-belgaid/chakib-belgaid.github.io), which serves `main` from `/`. Source pushes alone do not deploy the site.
+
+After building, testing, and inspecting the production preview, copy `dist/` into a clean, up-to-date checkout of the Pages repository, review the diff, then commit and push there:
+
+```sh
+SITE_ORIGIN=https://chakib-belgaid.github.io npm run build
+rsync -av dist/ /path/to/chakib-belgaid.github.io/
+```
+
+Do not use `--delete`: the Pages repository retains existing case studies, project evidence assets, and résumé URLs for incoming links. Its Git history retains the previous homepage for rollback. `.nojekyll` keeps the build as static files. `sw.js` retires the former Systems Garden service worker and removes only its named caches. The notebook does not register an offline worker.
+
+Wait for the Pages deployment to succeed, then verify the public homepage and assets in a browser. The production origin above is also used for canonical and social-image metadata.
 
 ## Content provenance
 
@@ -82,4 +99,4 @@ PLAYWRIGHT_CHANNEL=chrome npm run test:performance
 PLAYWRIGHT_CHANNEL=chrome node tests/visuals.mjs
 ```
 
-The scripts target port 5199 by default. Override `TEST_URL` and `QA_OUTPUT` as needed. The Browser plugin was unavailable, so validation used Playwright with installed Chrome and native Mac UI checks. Physical phones, Safari/Firefox, deployed previews, and VoiceOver acceptance remain unverified. Historical presentation documentation is retained in `docs/garden-presentation-before-quality-review.md` and `docs/validation-2026-09-08.md`.
+The scripts target port 5199 by default. Override `TEST_URL` and `QA_OUTPUT` as needed. The October 1 validation used Playwright with installed Chrome and native Mac UI checks. Physical phones, Safari/Firefox, share previews, and VoiceOver acceptance remain unverified. Historical presentation documentation is retained in `docs/garden-presentation-before-quality-review.md` and `docs/validation-2026-09-08.md`.

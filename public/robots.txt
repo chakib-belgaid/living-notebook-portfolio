@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://chakib-belgaid.github.io/sitemap.xml
