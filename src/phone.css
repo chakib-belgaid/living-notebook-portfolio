@@ -152,3 +152,8 @@
     .journey-edge, .journey-clouds, .journey-leaves { display: none; }
   }
 }
+
+@media (max-width: 599px) and (orientation: portrait) {
+  :root[data-journey="true"] .project-summary { margin: 0.6rem 0 0; font-size: 1rem; line-height: 1.4; }
+  :root[data-journey="true"] .journey-hint { margin: 0.6rem 0 0; font-size: 0.8125rem; color: var(--muted); }
+}

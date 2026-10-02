@@ -29,9 +29,9 @@ export type Journey = {
 };
 
 const details: Partial<Record<StopName, { key: string; title: string; text: string; label?: string }>> = {
-  blueprint: { key: "about", title: "Background", text: "More", label: "More about my background" },
-  whisperbook: { key: "whisperbook", title: "Whisperbook", text: "More", label: "More about Whisperbook" },
-  wattch: { key: "wattch", title: "Wattch Core", text: "More", label: "More about Wattch Core" },
+  blueprint: { key: "about", title: "Background", text: "View background", label: "View details about my background" },
+  whisperbook: { key: "whisperbook", title: "Whisperbook", text: "View project", label: "View details about Whisperbook" },
+  wattch: { key: "wattch", title: "Wattch Core", text: "View project", label: "View details about Wattch Core" },
   bloom: { key: "contact", title: "Leave a note", text: "Leave a note" },
 };
 const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");

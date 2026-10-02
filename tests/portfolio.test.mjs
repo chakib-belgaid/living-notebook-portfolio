@@ -265,14 +265,14 @@ test('landscape phones keep the reading page', async () => {
   } finally { await p.context().close(); }
 });
 
-test('a card’s More opens its details in a sheet and puts them back', async () => {
+test('a card’s View project opens its details in a sheet and puts them back', async () => {
   const p = await page({viewport:{width:390,height:844}});
   try {
     await ready(p);
     await go(p,'whisperbook');
     assert.equal(await p.locator('.journey-label').textContent(), 'Build · Whisperbook');
     assert.ok(await p.locator('#whisperbook .stop-card').evaluate(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}), 'the card is on screen at its stop');
-    const more = p.getByRole('button',{name:'More about Whisperbook',exact:true});
+    const more = p.getByRole('button',{name:'View details about Whisperbook',exact:true});
     await more.click();
     const sheet = p.locator('dialog.sheet');
     await sheet.waitFor({state:'visible'});
@@ -294,7 +294,7 @@ test('rotating to landscape with a sheet open restores the reading page intact',
   try {
     await ready(p);
     await go(p,'wattch');
-    await p.getByRole('button',{name:'More about Wattch Core',exact:true}).click();
+    await p.getByRole('button',{name:'View details about Wattch Core',exact:true}).click();
     await p.locator('dialog.sheet').waitFor({state:'visible'});
     await p.setViewportSize({width:844,height:390});
     await p.waitForTimeout(400);
@@ -454,7 +454,7 @@ test('missing local speech voices and clipboard rejection have useful fallback s
     assert.match(await p.locator('#whisperbook .player-voice').innerText(),/no on-device voice/);
     await go(p,'contact');
     await p.locator('#contact [data-copy]').click();
-    assert.match(await p.locator('#contact [data-copy-status]').innerText(),/Copy isn’t available/);
+    assert.match(await p.locator('#contact [data-copy-status]').innerText(),/Copy is unavailable/);
     healthy(p);
   } finally {await p.context().close();}
 });
@@ -508,7 +508,7 @@ test('phone motion pauses from the header, and reduced motion keeps the journey 
     assert.equal(await running(r), 0);
     const wipes = await r.locator('.journey-still').evaluateAll(es=>es.map(e=>getComputedStyle(e).getPropertyValue('--wipe').trim()));
     assert.ok(wipes.every(w=>w==='0.000'||w==='1.000'), wipes.join());
-    const more = r.getByRole('button',{name:'More about Wattch Core',exact:true});
+    const more = r.getByRole('button',{name:'View details about Wattch Core',exact:true});
     await more.click();
     assert.equal(await r.locator('dialog.sheet').evaluate(d=>d.open), true);
     await r.keyboard.press('Escape');
@@ -536,7 +536,7 @@ test('a second Escape while the sheet closes leaves the next sheet working', asy
   try {
     await ready(p);
     await go(p,'wattch');
-    const more = p.getByRole('button',{name:'More about Wattch Core',exact:true});
+    const more = p.getByRole('button',{name:'View details about Wattch Core',exact:true});
     await more.click();
     await settled(p.locator('dialog.sheet'));
     await p.keyboard.press('Escape');
@@ -630,7 +630,7 @@ test('the sheet follows the finger while dragged', async () => {
   try {
     await ready(p);
     await go(p,'wattch');
-    await p.getByRole('button',{name:'More about Wattch Core',exact:true}).click();
+    await p.getByRole('button',{name:'View details about Wattch Core',exact:true}).click();
     const sheet = p.locator('dialog.sheet');
     await settled(sheet);
     const head = await sheet.locator('.sheet-handle').boundingBox();
@@ -655,4 +655,48 @@ test('at night the journey shows the garden at night', async () => {
     assert.ok(stills.length && stills.every(n => n.endsWith('-night.webp')), stills.join());
     healthy(p);
   } finally { await p.context().close(); }
+});
+
+
+test('contact copying and email draft handoff preserve the note on desktop and in the phone sheet', async () => {
+  for (const width of [1440, 390]) {
+    const p = await page({viewport:{width,height:844}});
+    try {
+      await ready(p, '#contact');
+      const phone = width === 390;
+      if (phone) {
+        await p.getByRole('button',{name:'Leave a note',exact:true}).click();
+        await settled(p.locator('.sheet'));
+      }
+      const form = p.locator(phone ? '.sheet' : '.chapter.active');
+      const value = 'A draft with café & مرحبًا';
+      await form.locator('textarea').fill(value);
+      await p.evaluate(() => Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.copiedNote=value;}}}));
+      await form.locator('[data-copy-note]').click();
+      assert.equal(await p.evaluate(()=>window.copiedNote),value);
+      assert.match(await form.locator('[data-copy-status]').innerText(),/Note copied/);
+      await p.evaluate(() => Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw new Error('Denied');}}}));
+      await form.locator('[data-copy]').click();
+      assert.equal(await p.evaluate(()=>getSelection().toString()),'chakib.belgaid@gmail.com');
+      assert.ok(await form.locator('.contact-address a').isVisible());
+      await form.locator('[data-copy-note]').click();
+      assert.equal(await form.locator('textarea').evaluate(e=>e.value.slice(e.selectionStart,e.selectionEnd)),value);
+      await form.locator('[data-send]').evaluate(button=>{
+        const click = HTMLAnchorElement.prototype.click;
+        HTMLAnchorElement.prototype.click = function(){window.draftHref=this.href;};
+        try {button.click();} finally {HTMLAnchorElement.prototype.click=click;}
+      });
+      const href = await p.evaluate(()=>window.draftHref);
+      assert.equal(new URLSearchParams(href.split('?')[1]).get('body'),value);
+      assert.match(await form.locator('[data-copy-status]').innerText(),/Email draft requested/);
+      assert.equal(await form.locator('textarea').inputValue(),value);
+      if (phone) {
+        await p.keyboard.press('Escape');
+        await p.locator('.sheet').waitFor({state:'hidden'});
+        await p.getByRole('button',{name:'Leave a note',exact:true}).click();
+        assert.equal(await form.locator('textarea').inputValue(),value);
+      }
+      healthy(p);
+    } finally {await p.context().close();}
+  }
 });

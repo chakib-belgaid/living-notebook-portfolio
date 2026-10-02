@@ -40,7 +40,7 @@ test('language precedence is URL, saved choice, supported browser language, then
 test('both translations cover portfolio narratives and retain every message placeholder', () => {
   for (const locale of ['fr', 'ar']) {
     for (const p of Object.values(projects)) {
-      for (const key of ['place', 'field', 'lede', 'intro', 'built', 'decision', 'alt', 'caption']) {
+      for (const key of ['place', 'field', 'lede', 'intro', 'built', 'decision', 'alt', 'caption', 'summary', 'status', 'outcome', 'limits']) {
         assert.notEqual(translate(p[key], locale), p[key], `${locale}: ${p.title}.${key}`);
       }
     }
@@ -70,7 +70,7 @@ test('switching in place keeps drafts, link targets and history; the preference 
     assert.equal(await p.locator('html').getAttribute('dir'), 'rtl');
     assert.equal(await p.locator('#contact textarea').inputValue(), 'Bonjour — مرحبًا');
     assert.ok(await p.locator('#contact textarea').evaluate(el => el === window.draftNode));
-    assert.equal(await p.locator('#contact [data-send]').innerText(), 'أرسل بالبريد الإلكتروني');
+    assert.equal(await p.locator('#contact [data-send]').innerText(), 'فتح مسودة بريد');
     assert.equal(await p.locator('#whisperbook .source-link').getAttribute('href'), projects.whisperbook.url);
     assert.match(await p.locator('.view-switch').getAttribute('href'), /lang=ar/);
     await p.goBack();
@@ -107,7 +107,7 @@ test('the Arabic phone journey opens translated details and all languages reflow
     const letters = await p.locator('#intro-title .word').first().locator('.char').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().x));
     assert.ok(letters.every((x, i) => i === 0 || x > letters[i - 1]), 'Latin name letters retain their order in RTL');
     await p.locator('.masthead a[href="#about"]').click();
-    await p.getByRole('button', { name: 'المزيد عن مسيرتي', exact: true }).click();
+    await p.getByRole('button', { name: 'عرض تفاصيل مساري المهني', exact: true }).click();
     assert.equal(await p.locator('#sheet-title').innerText(), 'المسيرة');
     assert.match(await p.locator('.sheet-body').innerText(), /مهندس ذكاء اصطناعي رئيسي/);
     await p.getByRole('button', { name: 'أغلق', exact: true }).click();

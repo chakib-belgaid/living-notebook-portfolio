@@ -56,6 +56,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
   </main>
 
   <div class="ruler">
+    <nav class="chapter-index" aria-label="Journey chapters"><span class="chapter-current" aria-live="off"></span><div>${[["intro","Start"],["about","Background"],["work","Work"],["whisperbook","Whisperbook"],["wattch","Wattch Core"],["contact","Contact"]].map(([id,label]) => `<a href="#${id}">${label}</a>`).join("")}</div></nav>
     <div class="ruler-track">
       <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Story" />
       <div class="ruler-ticks" aria-hidden="true">
@@ -322,6 +323,7 @@ function measure() {
     measureReadingRuler(current);
     return;
   }
+  updateChapterIndex(sectionForBeat(Math.max(0, storyAt(scrollY).beat)));
   layoutRuler();
   const now = storyAt(scrollY);
   const s = now.stage;
@@ -390,6 +392,7 @@ function measureReadingRuler(current: SectionId) {
     tick.style.setProperty("--at", at.toFixed(4));
     tick.classList.toggle("passed", scrollY / max >= at - 0.001);
   });
+  updateChapterIndex(current);
   const group = current === "whisperbook" || current === "wattch" ? "work" : current;
   sectionLinks.forEach(a => {
     if (a.hash === "#" + group) a.setAttribute("aria-current", "location");
@@ -397,6 +400,14 @@ function measureReadingRuler(current: SectionId) {
   });
 }
 
+function updateChapterIndex(current: SectionId) {
+  const links = $$<HTMLAnchorElement>(".chapter-index a");
+  links.forEach(a => {
+    if (a.hash === "#" + current) a.setAttribute("aria-current", "location");
+    else a.removeAttribute("aria-current");
+  });
+  $(".chapter-current").textContent = links.find(a => a.hash === "#" + current)?.textContent ?? "Start";
+}
 let queued = false;
 function schedule() {
   if (queued) return;

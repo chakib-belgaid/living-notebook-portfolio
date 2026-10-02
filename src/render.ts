@@ -28,6 +28,7 @@ export function renderPortfolio() {
           <p class="reading-lede">${e(beats[0].copy)}</p>
           <p class="stop-line">Product engineer, Ph.D. AI products, developer tools, and how we measure the energy software uses.</p>
           <div class="entry-actions"><a class="primary-action" href="#work">Selected work</a><a class="script-only journey-hidden" href="?view=garden" data-view="garden">Explore the garden</a><a class="script-only journey-only" href="?view=read" data-view="read">Read as a page</a></div>
+          <p class="journey-only journey-hint">Scroll to explore the garden and projects.</p>
           <p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a></p>
         </div>
         <div class="garden-preview" id="garden-preview">
@@ -48,8 +49,9 @@ export function renderPortfolio() {
           <article class="reading-project" id="${id}" data-stop="${id}" aria-labelledby="${id}-title">
             <div class="project-copy">
               <div class="stop-card"><p class="eyebrow">${e(p.field)}</p><h3 id="${id}-title" tabindex="-1">${e(p.title)}</h3>
-                <p class="reading-lede">${e(p.lede)}</p></div>
+                <p class="reading-lede">${e(p.lede)}</p><p class="journey-only project-summary">${e(p.summary)}</p></div>
               <div class="stop-detail" data-detail="${id}"><p>${e(p.intro)}</p>
+                <h4>Project status</h4><p>${e(p.status)}</p><h4>Outcome</h4><p>${e(p.outcome)}</p><h4>Scope and limits</h4><p>${e(p.limits)}</p>
                 <h4>What I built</h4><p>${e(p.built)}</p><h4>The decision that shaped it</h4><p>${e(p.decision)}</p>
                 <p class="project-tech">${e(p.tech.join(" · "))}</p><a class="source-link" href="${p.url}" target="_blank" rel="noopener noreferrer">Read ${e(p.title)} on GitHub ↗</a>
                 <details class="reading-illustration script-only" data-illustration="${id}"><summary>${id === "whisperbook" ? "Hear a passage in your browser" : "Measure what drawing this page costs"}</summary><p>${e(id === "whisperbook" ? "Hear an excerpt in your browser’s local voice. Whisperbook uses its own on-device narration on Android." : "Watch what drawing this page costs your device: CPU and GPU time, and the estimated carbon of that work. Enable the garden preview to measure it.")}</p><div data-reading-widget="${id}"></div></details>

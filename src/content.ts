@@ -6,6 +6,10 @@ export const projects = {
     place: "The reading pavilion",
     field: "Local AI on Android",
     lede: "A book can stay yours, even when it speaks.",
+    summary: "An Android app that narrates your EPUBs and PDFs on the device.",
+    status: "Source code and an Android player screenshot are linked here. Release availability is not documented on this page.",
+    outcome: "Book import, chapter playback, local narration, and MP3 export in one reading flow.",
+    limits: "The browser passage is an illustration using your device’s voices; it is not the Android app’s narration engine.",
     intro:
       "I built Whisperbook so you can listen to your own EPUBs and PDFs on Android, follow the text as it plays, and give different speakers different voices. The book and its audio stay on the device.",
     built:
@@ -24,6 +28,10 @@ export const projects = {
     place: "The drum-recorder observatory",
     field: "Systems and energy",
     lede: "Know what you measured before you optimize it.",
+    summary: "Linux energy traces for command-line, Python, and VS Code workflows.",
+    status: "Source code and a VS Code screenshot are linked here. Release availability is not documented on this page.",
+    outcome: "A measurement daemon and clients that capture, validate, and replay raw energy traces.",
+    limits: "The screenshot uses synthetic test data. The garden meter estimates this page’s rendering cost; it is not a Wattch hardware measurement.",
     intro:
       "Wattch Core helps developers bring machine energy data into their workflow. A Rust daemon reads Linux hardware counters and makes the raw trace available to command-line, Python, and VS Code tools.",
     built:
@@ -86,6 +94,9 @@ function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
       body: `<dl class="note-facts">
           <div><dt>Field</dt><dd>${p.field}</dd></div>
           <div><dt>Built with</dt><dd>${p.tech.join(", ")}</dd></div>
+          <div><dt>Project status</dt><dd>${p.status}</dd></div>
+          <div><dt>Outcome</dt><dd>${p.outcome}</dd></div>
+          <div><dt>Scope and limits</dt><dd>${p.limits}</dd></div>
           <div><dt>Source</dt><dd><a href="${p.url}" target="_blank" rel="noopener noreferrer">Read it on GitHub</a></dd></div>
         </dl>`,
       spot,
