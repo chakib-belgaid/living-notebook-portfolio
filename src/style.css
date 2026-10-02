@@ -1363,9 +1363,10 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 :root[data-view="read"] .tally-panel { top: calc(100% + 0.5rem); bottom: auto; max-height: min(26rem, 70svh); background: var(--paper); }
 :root[data-view="read"] .widget { width: auto; flex: auto; }
 :root[data-view="read"] .mist { display: none; }
-.scene-fallback { padding: 0; display: flex; flex-direction: column; background: #24486e; }
-.scene-fallback img { width: 100%; min-height: 0; flex: 1; object-fit: contain; }
-.scene-fallback p { padding: 0.6rem; margin: 0; font-size: 1rem; background: var(--paper); }
+.scene-fallback { padding: 0; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+/* Placed by main.ts where the camera frames the garden. */
+.scene-fallback img { position: absolute; left: 50%; top: 50%; width: 100%; height: auto; max-width: none; transform: translate(-50%, -50%); }
+.scene-fallback p { position: relative; padding: 0.6rem; margin: 0; font-size: 1rem; background: var(--paper); }
 :root[data-weather="fog"] .note, :root[data-weather="fog"] .widget, :root[data-weather="fog"] .ruler, :root[data-weather="fog"] .tally-panel { background: color-mix(in srgb, var(--paper) 96%, transparent); }
 :root[data-motion-paused="true"] *, :root[data-motion-paused="true"] *::before, :root[data-motion-paused="true"] *::after { animation-play-state: paused !important; transition: none !important; }
 :root[data-motion-paused="true"] .char, :root[data-motion-paused="true"] .note-copy, :root[data-motion-paused="true"] .note-lede, :root[data-motion-paused="true"] .note-body, :root[data-motion-paused="true"] .note-hint { animation: none !important; }

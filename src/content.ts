@@ -184,7 +184,7 @@ export const beats: Beat[] = [
     copy: "I’d like to hear what you’re building.",
     body: `<p class="note-email"><a href="mailto:${email}">${email}</a></p>
       <section class="note-widget" data-widget></section>
-      <p class="note-links"><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> and <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a></p>`,
+      <p class="note-links"><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a> <a href="https://www.instagram.com/chakib.med" target="_blank" rel="noopener noreferrer">Instagram</a> <a href="https://x.com/chakib_med" target="_blank" rel="noopener noreferrer">X</a></p>`,
     widget: "contact",
   },
 ];

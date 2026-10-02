@@ -19,6 +19,7 @@ import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY, estimateCompute, type ComputeWork
 import { initEvidence } from "./evidence";
 import { lettered } from "./lettered";
 import { createPhoneJourney } from "./phone";
+import { gardenSpan, loadingStill } from "./framing";
 import { initLocalization, getLocale, onLocaleChange, translate } from "./i18n";
 
 const disposeLocalization = initLocalization();
@@ -31,7 +32,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
   <div class="stage" id="stage">
     <canvas class="sky sky-back" aria-hidden="true"></canvas>
     <div id="scene" role="img" aria-label="A garden of stone terraces, pavilions, and water. It is drawn first as pencil lines, then as a blue engineering drawing, then built and planted."></div>
-    <div class="scene-fallback"><img src="/assets/garden-preview.png" width="1440" height="900" loading="lazy" alt="The notebook garden, with a reading pavilion and energy observatory." /><p data-fallback-message>Preparing the garden. The portfolio is ready to read.</p></div>
+    <div class="scene-fallback"><img src="/assets/garden-loading.webp" width="1440" height="900" loading="lazy" alt="The notebook garden, with a reading pavilion and energy observatory." /><p data-fallback-message>Preparing the garden. The portfolio is ready to read.</p></div>
     <p class="garden-loading" role="status" hidden>Growing the garden… The trees are getting dressed. One little moment.</p>
     <canvas class="sky sky-front" aria-hidden="true"></canvas>
     ${spotOrder.map((s) => `<div class="hotspot" data-spot="${s}"><a href="#${s}" class="hotspot-title" tabindex="-1">${spotNames[s]}</a></div>`).join("")}
@@ -280,8 +281,7 @@ function syncStory() {
   garden?.highlightPath(b?.path ?? null);
   if (b?.spot)
     garden?.focus(b.spot, narrow.matches ? 0 : 0.16, narrow.matches ? 0 : 0.04);
-  // The whole garden sits right of centre, in the space the note leaves.
-  else garden?.focus(null, narrow.matches ? 0 : 0.12);
+  else garden?.focus(null, wholeShift());
 }
 
 /* The dock's widgets come out with the stage. The carbon counter is on the
@@ -300,11 +300,31 @@ function measureFrames() {
   frameGarden();
 }
 new ResizeObserver(() => measureFrames()).observe($(".masthead"));
-function frameGarden() {
+function gardenBand(): [number, number] {
   // In the journey the garden fills the screen above the small cards.
-  if (journey.exploring) garden?.frame(0.08, 0.84);
-  else if (journey.active) garden?.frame(0.1, 0.7);
-  else garden?.frame(reading ? 0.04 : 0.02, reading ? 0.96 : 0.89);
+  if (journey.exploring) return [0.08, 0.84];
+  if (journey.active) return [0.1, 0.7];
+  return reading ? [0.04, 0.96] : [0.02, 0.89];
+}
+// The whole garden sits right of centre, in the space the note leaves.
+const wholeShift = () => (reading || narrow.matches ? 0 : 0.12);
+function frameGarden() {
+  garden?.frame(...gardenBand());
+  placeStill();
+}
+/* The still shown while the scene loads is placed and scaled as the camera
+   will frame the whole garden, so the drawing starts where it was. */
+function placeStill() {
+  const stage = $("#stage");
+  const width = stage.clientWidth, height = stage.clientHeight;
+  if (!width || !height) return;
+  const [top, bottom] = gardenBand();
+  const band = bottom - top;
+  const scale = (height * band / gardenSpan(width / (height * band))) / (loadingStill.height / gardenSpan(loadingStill.width / loadingStill.height));
+  const still = $<HTMLImageElement>(".scene-fallback img");
+  still.style.width = `${loadingStill.width * scale}px`;
+  still.style.left = `${(0.5 + wholeShift()) * width}px`;
+  still.style.top = `${(top + bottom) / 2 * height}px`;
 }
 /* In the journey the live garden grows with the scroll, as on the desktop,
    and the camera visits each stop as its still does. */

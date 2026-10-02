@@ -1,6 +1,7 @@
 import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { phase, yieldTask } from "./performance";
+import { gardenSpan } from "./framing";
 
 export type Season = "spring" | "summer" | "autumn" | "winter";
 
@@ -3370,6 +3371,12 @@ export async function createGarden(
     );
     if (!paused) elapsed += dt;
     const ease = reduced ? 1 : Math.min(dt * 3.2, 1);
+    // The drawing starts in its frame, where the loading still was, rather
+    // than sliding over from the centre.
+    if (firstRender) {
+      shift.copy(shiftGoal);
+      view.copy(viewGoal);
+    }
     focusAmount = lerp(focusAmount, focusGoal, ease);
     focusZoom = lerp(focusZoom, focusZoomGoal, ease);
     shift.lerp(shiftGoal, ease);
@@ -3483,12 +3490,7 @@ export async function createGarden(
     // view; the rest of the view shows more of the same scene around it.
     const band = Math.max(0.05, view.y - view.x);
     const aspect = width / (height * band);
-    const stackedMobile = innerWidth <= 760 && innerHeight > 520;
-    const span = stackedMobile
-      ? Math.max(12.8, 16.4 / aspect)
-      : aspect < 0.9
-        ? 16.4 / aspect
-        : 15.6;
+    const span = gardenSpan(aspect);
     const half = span / 2 / (1 + focusAmount * focusZoom) / userZoom;
     const full = half / band;
     camera.left = -half * aspect - (shift.x * half + pan.x * half) * aspect * 2;

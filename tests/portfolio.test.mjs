@@ -332,7 +332,7 @@ test('a phone load fetches the first still, at most one ahead, and no preview im
     const stills = urls.filter(u => u.includes('/assets/stills/'));
     assert.ok(stills.some(u => u.endsWith('/sketch.webp')), stills.join());
     assert.ok(stills.length <= 2, stills.join());
-    assert.equal(urls.filter(u => u.includes('garden-preview.png')).length, 0);
+    assert.equal(urls.filter(u => u.includes('garden-preview.png') || u.includes('garden-loading.webp')).length, 0);
     healthy(p);
   } finally { await p.context().close(); }
 });
