@@ -4,7 +4,7 @@ A portfolio for Chakib Belgaid, retaining the procedural garden, blueprint paper
 
 [Personal website](https://chakib-belgaid.github.io/) · [Source repository](https://github.com/chakib-belgaid/living-notebook-portfolio)
 
-Desktop opens the garden journey. **Read portfolio** switches to introduction → Whisperbook → Wattch Core → current work and background → contact. Below 900 px wide or 600 px high, the portfolio uses normal document flow. **Explore garden** adds an interactive preview in a bounded frame.
+Desktop opens the garden journey. **Read portfolio** switches to introduction → Whisperbook → Wattch Core → current work and background → contact. Phones in portrait (below 900 px wide, at least 500 px high) get the garden journey: short cards over stills of the garden that wipe from Sketch to Bloom as you scroll, with each section's details in a bottom sheet (**More**, or **Leave a note**). The sprout swaps the stills for the live garden, which follows the same stops. Landscape phones, short windows and **Read as a page** (`?view=read`) use normal document flow.
 
 ## Run locally
 
@@ -24,6 +24,8 @@ Development: http://127.0.0.1:5198. Production preview: http://127.0.0.1:5199. S
 Both projects are linked on entry. Stable fragments are `#work`, `#whisperbook`, `#wattch`, `#about`, and `#contact`. Explicit navigation adds a history entry and focuses the destination heading. Passive scrolling replaces the current fragment without moving focus. Refresh and Back/Forward restore the section; resizing preserves it.
 
 Explicit view choices use `?view=read` or `?view=garden`. Compact windows always retain flowing content. The header wraps; the garden ruler provides four evenly spaced stage buttons and a separate progress slider. Optional weather, planting, and transfer information sit under **Garden controls**.
+
+The journey (`src/phone.ts`, `src/sheet.ts`, `src/phone.css`) is laid over the reading page rather than replacing it: each stop is a section marked `data-stop`, and the nodes marked `data-detail` move into the sheet and back, keeping the contact draft and any playing voice. The six stills in `public/assets/stills/` are captured from the real garden by `npm run stills` (dev server on port 5198; needs `cwebp`), within a 100 KB-each, 600 KB-total budget. A phone fetches the current still and one ahead. Clouds and leaves are CSS animation, paused by the header's pause button and absent with reduced motion, where wipes also cut instead of sweeping.
 
 Each reading project groups its purpose, contribution, decision, screenshot, and source repository. **View full screenshot** works as an ordinary image link and gains a native dialog when JavaScript is available: caption, source link, fit/actual size, Escape dismissal, and restored focus. Wattch's screenshot remains explicitly synthetic workflow evidence. Browser illustrations remain separately labeled: local browser speech for Whisperbook, and this page's measured CPU and GPU rendering cost, with its estimated carbon, for Wattch.
 
