@@ -1,4 +1,5 @@
 import { email } from "./content";
+import { translate } from "./i18n";
 import type { Garden } from "./scene";
 
 // The draft lives only in this document's memory, never browser storage.
@@ -27,7 +28,7 @@ export function mountContact(el: HTMLElement, getGarden: () => Garden | undefine
   send.addEventListener("click", () => {
     if (!draft.trim()) return;
     const link = document.createElement("a");
-    link.href = `mailto:${email}?subject=From%20the%20garden&body=${encodeURIComponent(draft)}`;
+    link.href = `mailto:${email}?subject=${encodeURIComponent(translate("From the garden"))}&body=${encodeURIComponent(draft)}`;
     link.click();
     getGarden()?.setPostbox("sent");
   });

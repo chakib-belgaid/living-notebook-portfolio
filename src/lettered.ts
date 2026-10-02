@@ -8,5 +8,7 @@ export function lettered(text: string) {
         `<span class="word">${[...w].map((c) => `<span class="char" style="--i:${i++}">${c}</span>`).join("")}</span>`,
     )
     .join(" ");
-  return `<span class="sr-only">${text}</span><span aria-hidden="true">${words}</span>`;
+  // Isolate the phrase before splitting it into letters, so an RTL page
+  // cannot reverse Latin names or break the ordering of its words.
+  return `<span class="sr-only">${text}</span><span aria-hidden="true" dir="auto">${words}</span>`;
 }

@@ -18,6 +18,7 @@ export function renderPortfolio() {
       <a class="owner" href="#intro">Chakib Belgaid</a>
       <nav aria-label="Sections"><a href="#work">Work</a><a href="#about">About</a><a href="#contact">Contact</a></nav>
       <a class="view-switch script-only" href="?view=read" data-view="read">Read portfolio</a>
+      <label class="language-picker script-only"><span class="sr-only">Language</span><select data-language aria-label="Language"><option value="en" lang="en" data-no-translate>EN</option><option value="fr" lang="fr" data-no-translate>FR</option><option value="ar" lang="ar" data-no-translate>العربية</option></select></label>
       <div class="read-ruler script-only" aria-hidden="true"><span class="read-fill"></span>${["intro", "work", "about", "contact"].map(id => `<i data-at="${id}"></i>`).join("")}</div>
     </header>
     <main id="portfolio" class="portfolio">

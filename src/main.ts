@@ -19,6 +19,9 @@ import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY, estimateCompute, type ComputeWork
 import { initEvidence } from "./evidence";
 import { lettered } from "./lettered";
 import { createPhoneJourney } from "./phone";
+import { initLocalization, getLocale, onLocaleChange, translate } from "./i18n";
+
+const disposeLocalization = initLocalization();
 
 const sunIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>`;
 const moonIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.8A8 8 0 0 1 9.2 4.5a8 8 0 1 0 10.3 10.3Z"/></svg>`;
@@ -452,8 +455,8 @@ function clockHour() {
 function formatHour(h: number) {
   const hh = Math.floor(h),
     mm = Math.round((h - hh) * 60);
-  const twelve = hh % 12 === 0 ? 12 : hh % 12;
-  return `${twelve}:${String(mm).padStart(2, "0")} ${hh >= 12 ? "pm" : "am"}`;
+  return new Intl.DateTimeFormat(getLocale(), { hour: "numeric", minute: "2-digit" })
+    .format(new Date(2000, 0, 1, hh, mm));
 }
 const smoothstep = (a: number, b: number, v: number) => {
   const t = Math.min(Math.max((v - a) / (b - a), 0), 1);
@@ -827,8 +830,7 @@ function localVoices(): Promise<SpeechSynthesisVoice[]> {
   if (!("speechSynthesis" in window)) return Promise.resolve([]);
   const pick = () => {
     const local = speechSynthesis.getVoices().filter((v) => v.localService);
-    const english = local.filter((v) => v.lang.toLowerCase().startsWith("en"));
-    return english.length ? english : local;
+    return local.filter((v) => v.lang.toLowerCase().split(/[-_]/)[0] === getLocale());
   };
   if (speechSynthesis.getVoices().length) return Promise.resolve(pick());
   // Chrome fills the list late: wait for it once before deciding.
@@ -868,6 +870,7 @@ function mountPlayer(el: HTMLElement) {
   const setPlaying = (on: boolean) => {
     if (playing === on) return;
     playing = on;
+    button.dataset.playing = String(on);
     button.innerHTML = `<span aria-hidden="true">${on ? "■" : "▶"}</span>`;
     button.setAttribute("aria-label", on ? "Stop" : "Play");
     garden?.setNarrating(on);
@@ -886,7 +889,7 @@ function mountPlayer(el: HTMLElement) {
     const narrator = voices[0],
       alice = voices[1] ?? voices[0];
     excerpt.forEach((part, i) => {
-      const u = new SpeechSynthesisUtterance(part.text);
+      const u = new SpeechSynthesisUtterance(translate(part.text));
       u.voice = i === 0 ? narrator : alice;
       u.lang = u.voice.lang;
       // With a single voice, Alice speaks higher than the narrator.
@@ -902,10 +905,14 @@ function mountPlayer(el: HTMLElement) {
     if (document.hidden) stop();
   };
   document.addEventListener("visibilitychange", onHidden);
-  localVoices().then((found) => {
+  const findVoices = async () => {
+    const language = getLocale();
+    const found = await localVoices();
+    if (language !== getLocale()) return;
     if (!mounted) return;
     voices = found.slice(0, 2);
     if (!voices.length) {
+      button.disabled = true;
       voiceLabel.textContent = "This browser has no on-device voice.";
       return;
     }
@@ -915,9 +922,12 @@ function mountPlayer(el: HTMLElement) {
       voices.length === 1
         ? "One voice on this device. Read by your device. Nothing leaves this page."
         : "Read by your device. Nothing leaves this page.";
-  });
+  };
+  void findVoices();
+  const offLocale = onLocaleChange(() => { stop(); show(0); note.textContent = ""; button.disabled = true; void findVoices(); });
   return () => {
     mounted = false;
+    offLocale();
     stop();
     document.removeEventListener("visibilitychange", onHidden);
   };
@@ -989,7 +999,10 @@ function syncPresentation() {
   $(".static-garden").hidden = reading && previewEnabled;
   const toggle = $<HTMLAnchorElement>(".view-switch");
   toggle.dataset.view = reading ? "garden" : "read";
-  toggle.href = `?view=${toggle.dataset.view}${location.hash}`;
+  const viewUrl = new URL(location.href);
+  viewUrl.searchParams.set("view", toggle.dataset.view);
+  viewUrl.searchParams.set("lang", getLocale());
+  toggle.href = viewUrl.search + viewUrl.hash;
   toggle.textContent = reading ? (previewEnabled && compact.matches ? "Close garden" : "Explore garden") : "Read portfolio";
   // On phones the switch shows only an icon, so its name is kept explicit.
   toggle.setAttribute("aria-label", toggle.textContent);
@@ -1097,7 +1110,7 @@ async function loadGarden() {
     }
     const draftField = document.querySelector<HTMLTextAreaElement>(reading ? "[data-contact-read] textarea" : ".chapter.active textarea");
     garden.setPostbox(draftField?.value.trim() ? "writing" : "idle");
-    garden.setNarrating(!!document.querySelector('.play[aria-label="Stop"]'));
+    garden.setNarrating(!!document.querySelector('.play[data-playing="true"]'));
     measureFrames();
     void startWeather();
   })().catch(error => {
@@ -1126,5 +1139,10 @@ navigation.go(navigation.section, false, false);
 measure();
 if (!reading || requestedView === "garden") { previewEnabled = reading; syncPresentation(); void loadGarden(); }
 document.fonts?.ready.then(schedule);
+const offLocale = onLocaleChange(() => {
+  setHour(Number(hourInput.value));
+  measureFrames();
+  schedule();
+});
 
-if (import.meta.hot) import.meta.hot.dispose(() => { garden?.dispose(); sky?.dispose(); transfer.dispose(); noteWidget.dispose(); readingContact.dispose(); illustration.dispose(); });
+if (import.meta.hot) import.meta.hot.dispose(() => { offLocale(); disposeLocalization(); garden?.dispose(); sky?.dispose(); transfer.dispose(); noteWidget.dispose(); readingContact.dispose(); illustration.dispose(); });

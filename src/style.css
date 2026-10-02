@@ -1,5 +1,38 @@
 @import "./fonts.css";
 
+/* Native language names stay readable in either writing direction. */
+.language-picker { display: inline-flex; flex: none; align-items: center; }
+.language-picker select {
+  min-height: 2.75rem; max-width: 7rem; padding: 0.35rem 0.5rem;
+  border: 1px solid var(--hairline); border-radius: 999px;
+  background: var(--paper); color: var(--ink); font: inherit;
+  font-size: 0.875rem; cursor: pointer;
+}
+.language-picker select option { background: var(--paper); color: var(--ink); }
+:root[lang="ar"] { font-family: Tahoma, "Geeza Pro", "Noto Naskh Arabic", Arial, sans-serif; }
+:root[lang="ar"] h1, :root[lang="ar"] h2, :root[lang="ar"] h3 { line-height: 1.5; }
+:root[lang="ar"] #intro-title, :root[lang="ar"] #chapter-0 { font-family: "Newsreader", Georgia, serif; line-height: 1.08; }
+:root[lang="ar"] .eyebrow, :root[lang="ar"] .note-stage,
+:root[lang="ar"] .journey-bar { letter-spacing: normal; }
+:root[dir="rtl"] .reading-proof figcaption { text-align: start; }
+:root[dir="rtl"] .career-list li { border-left: 0; border-right: 1px solid var(--hairline); padding: 0 1.25rem 1.75rem 0; }
+:root[dir="rtl"] .career-list li::before { left: auto; right: calc(-0.3rem - 0.5px); }
+:root[dir="rtl"] .mini-line { transform-origin: right; }
+:root[dir="rtl"] .mini-year::before { left: auto; right: 0; }
+:root[dir="rtl"] .mini-year:last-child::before { left: 0; right: auto; }
+:root[dir="rtl"] .note-email a, :root[dir="rtl"] .project-tech,
+:root[dir="rtl"] .meter-readout, :root[dir="rtl"] .index-title { unicode-bidi: plaintext; }
+.note-email a { display: inline-block; direction: ltr; unicode-bidi: isolate; }
+.tally-figure { direction: ltr; unicode-bidi: isolate; }
+/* Keep the physical scene and scrubber aligned with their increasing values. */
+.ruler-track, .sky-arc, #hour { direction: ltr; }
+@media (max-width: 899px), (max-height: 599px) {
+  .masthead .language-picker { order: 1; }
+  .masthead nav { order: 2; flex-basis: 100%; justify-content: space-between; }
+  :root[dir="rtl"] .owner { margin-right: 0; margin-left: auto; }
+  .masthead .language-picker select { max-width: 6rem; }
+}
+
 /* The garden fills the screen; everything else is a slip of notebook paper
    laid over it. main.ts sets --grow (0–1) from scroll, which also sets the
    weight and ink of every headline: thin graphite while sketched, full ink in

@@ -21,6 +21,12 @@ Development: http://127.0.0.1:5198. Production preview: http://127.0.0.1:5199. S
 
 ## Navigation and reading
 
+The header language selector supports English, French, and Arabic in the reading page, phone journey, garden, and dialogs. Arabic uses right-to-left document flow and a system font that preserves joined Arabic letters. Language changes retain the current scene, mounted controls, and contact draft. Only the language preference is saved (`notebook:locale`); drafts remain in page memory.
+
+Share a specific language with `?lang=en`, `?lang=fr`, or `?lang=ar`, combined with a view and fragment, for example `?view=read&lang=fr#whisperbook`. The URL takes priority over a saved choice, then the browser’s first supported language, then English. Back/Forward restores the URL’s language. Local browser narration uses a voice in the selected language when available; it never falls back to an unrelated language or a network voice.
+
+`src/translations.ts` holds the French and Arabic source-message catalog, including named placeholders for live measurements. `src/i18n.ts` binds English text and accessibility attributes to translations without replacing interactive DOM nodes; newly mounted widgets are localized too. Add catalog entries when editing English copy. The generated HTML remains readable in English when JavaScript is unavailable; translated titles and descriptions are applied during enhancement. `tests/localization.test.mjs` checks content coverage, language precedence, switching, drafts, RTL reflow, and narration.
+
 Both projects are linked on entry. Stable fragments are `#work`, `#whisperbook`, `#wattch`, `#about`, and `#contact`. Explicit navigation adds a history entry and focuses the destination heading. Passive scrolling replaces the current fragment without moving focus. Refresh and Back/Forward restore the section; resizing preserves it.
 
 Explicit view choices use `?view=read` or `?view=garden`. Compact windows always retain flowing content. The header wraps; the garden ruler provides four evenly spaced stage buttons and a separate progress slider. Optional weather, planting, and transfer information sit under **Garden controls**.
