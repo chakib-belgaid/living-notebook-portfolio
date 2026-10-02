@@ -1303,6 +1303,34 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 
 :root[data-view="garden"] .masthead { position: fixed; background: transparent; }
 :root[data-view="garden"] .masthead .view-switch { background: var(--slip); }
+/* Keep the desktop pills on one shared rhythm, including scene callouts. */
+@media (min-width: 900px) and (min-height: 600px) {
+  :root { --pill-height: 2.75rem; }
+  .masthead { align-items: center; }
+  .masthead .owner,
+  .masthead nav,
+  .masthead .view-switch,
+  .masthead .language-picker select,
+  .hotspot {
+    box-sizing: border-box;
+    height: var(--pill-height);
+    min-height: var(--pill-height);
+    padding-block: 0;
+  }
+  .masthead .owner,
+  .masthead .view-switch,
+  .masthead nav,
+  .hotspot-title {
+    display: flex;
+    align-items: center;
+  }
+  .hotspot-title {
+    box-sizing: border-box;
+    height: 100%;
+    min-height: 0;
+    padding-block: 0;
+  }
+}
 .ruler { border-radius: 1rem; width: min(34rem, calc(100vw - 2 * var(--edge))); padding: 0.6rem 0.8rem; align-items: center; }
 .ruler-ticks { height: 0.35rem; }
 .stage-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.15rem; }

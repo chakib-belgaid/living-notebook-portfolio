@@ -383,7 +383,7 @@ test('no JavaScript, blocked entry module, and print still expose the portfolio'
   } finally { await phone.context().close(); }
 });
 
-test('on phones the live garden grows with the scroll, and the sprout swaps it for the stills', async () => {
+test('on phones the live garden grows with the scroll, and ?view=stills keeps the stills', async () => {
   const p=await page({viewport:{width:390,height:844}});
   try {
     await ready(p);
@@ -401,16 +401,6 @@ test('on phones the live garden grows with the scroll, and the sprout swaps it f
     await p.waitForTimeout(300);
     assert.equal(await p.locator('#scrub').inputValue(),'330');
     assert.deepEqual(await p.locator('.stop-card.current').evaluateAll(es=>es.map(e=>e.closest('[data-stop]').dataset.stop)), ['blueprint']);
-    await p.locator('.view-switch').click();
-    assert.equal(await p.locator('#stage').isVisible(),false);
-    assert.equal(await p.locator('.journey').getAttribute('data-live'),null);
-    assert.match(p.url(),/view=stills/);
-    await p.reload();
-    await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
-    assert.equal(await p.locator('#stage').isVisible(),false,'the stills stay chosen');
-    await p.goBack();
-    await p.waitForTimeout(300);
-    assert.equal(await p.locator('#stage').isVisible(),true);
     await go(p,'wattch');
     await p.waitForTimeout(500);
     assert.equal(await p.locator('#scrub').inputValue(),'660');
@@ -590,6 +580,68 @@ test('200% text on the smallest phone does not scroll sideways', async () => {
     await p.addStyleTag({content:':root {font-size:200%;}'});
     await p.waitForTimeout(300);
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'no horizontal overflow');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('on phones the header has no garden switch, and Bloom explores the garden', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p, '?view=stills');
+    assert.equal(await p.locator('.masthead .view-switch').isVisible(), false);
+    assert.equal(await p.locator('#stage').isVisible(), false, 'the stills are chosen');
+    assert.equal(await p.locator('.journey').getAttribute('data-live'), null);
+    await go(p,'contact');
+    const explore = p.getByRole('button',{name:'Explore the garden',exact:true});
+    await explore.click();
+    await p.waitForFunction(()=>!!document.querySelector('.journey[data-live] #scene canvas'), undefined, {timeout:15000});
+    assert.equal(await p.locator('html').getAttribute('data-exploring'), 'true');
+    const done = p.getByRole('button',{name:'Done',exact:true});
+    assert.equal(await done.evaluate(e=>e===document.activeElement), true, 'focus moves to Done');
+    assert.equal(await p.locator('#portfolio').evaluate(e=>e.inert), true);
+    const box = await p.locator('#scene').boundingBox();
+    await p.mouse.move(box.x + 120, box.y + 300);
+    await p.mouse.down();
+    await p.mouse.move(box.x + 260, box.y + 300, {steps: 5});
+    assert.equal(await p.locator('html').evaluate(e=>e.classList.contains('turning')), true, 'a drag turns the garden');
+    await p.mouse.up();
+    await p.screenshot({path:output+'/explore-390x844.png'});
+    await p.keyboard.press('Escape');
+    assert.equal(await p.locator('html').getAttribute('data-exploring'), null);
+    assert.equal(await p.locator('#portfolio').evaluate(e=>e.inert), false);
+    assert.equal(await explore.evaluate(e=>e===document.activeElement), true, 'focus returns to Explore');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('exploring on a phone, a pinch and the zoom buttons zoom the garden, not the page', async () => {
+  const p = await page({viewport:{width:390,height:844}, isMobile:true, hasTouch:true, deviceScaleFactor:2});
+  try {
+    await ready(p, '#contact');
+    await p.getByRole('button',{name:'Explore the garden',exact:true}).click();
+    await p.waitForFunction(()=>!!document.querySelector('.journey[data-live] #scene canvas'), undefined, {timeout:15000});
+    await p.waitForTimeout(1500);
+    const shot = () => p.locator('#scene').screenshot();
+    const before = await shot();
+    const cdp = await p.context().newCDPSession(p);
+    const touch = (type, points) => cdp.send('Input.dispatchTouchEvent', {type, touchPoints: points.map(([x,y],id)=>({x,y,id}))});
+    await touch('touchStart', [[170,420],[220,420]]);
+    for (let i = 1; i <= 8; i++) await touch('touchMove', [[170-i*12,420],[220+i*12,420]]);
+    await touch('touchEnd', []);
+    await p.waitForTimeout(800);
+    assert.equal(await p.evaluate(()=>visualViewport.scale), 1, 'the page itself does not zoom');
+    const pinched = await shot();
+    assert.notDeepEqual(pinched, before, 'the garden zooms');
+    await p.getByRole('button',{name:'Zoom out',exact:true}).click();
+    await p.getByRole('button',{name:'Zoom out',exact:true}).click();
+    await p.getByRole('button',{name:'Zoom out',exact:true}).click();
+    await p.waitForTimeout(800);
+    await p.getByRole('button',{name:'Zoom in',exact:true}).click();
+    await p.waitForTimeout(800);
+    assert.notDeepEqual(await shot(), pinched);
+    await p.screenshot({path:output+'/explore-zoomed-390x844.png'});
+    await p.getByRole('button',{name:'Done',exact:true}).click();
+    assert.equal(await p.locator('html').getAttribute('data-exploring'), null);
     healthy(p);
   } finally { await p.context().close(); }
 });

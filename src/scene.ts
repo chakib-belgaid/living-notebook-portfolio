@@ -27,6 +27,12 @@ export interface Garden {
   focus: (spot: string | null, shiftX?: number, shiftY?: number) => void;
   /** The band of the view the garden is framed in, top and bottom as fractions of the container's height (0–1). The camera eases to a new frame. */
   frame: (top: number, bottom: number) => void;
+  /** The visitor's own zoom, 1–4x, multiplied by `factor`. A point (relative to the container) stays under the fingers; without one the view zooms about its centre. */
+  zoomBy: (factor: number, x?: number, y?: number) => void;
+  /** Moves the garden on screen with the visitor's fingers, in pixels. */
+  panBy: (dx: number, dy: number) => void;
+  /** Back to the framed garden: no zoom or pan of the visitor's own. */
+  resetView: () => void;
   /** `ms` is the smoothed CPU time to submit a frame; the totals cover every frame drawn so far. `gpuMs` is null without GPU timers. */
   stats: () => { triangles: number; calls: number; ms: number; gpuFrameMs: number | null; cpuMs: number; gpuMs: number | null; frames: number };
   /** Recolours foliage, flowers, fallen leaves, and drifting petals for the season. */
@@ -3191,6 +3197,17 @@ export async function createGarden(
   // The band the garden is framed in: top and bottom, as fractions.
   const view = new T.Vector2(0, 1),
     viewGoal = new T.Vector2(0, 1);
+  // The visitor's zoom, and how far they have moved the garden, as
+  // fractions of the view. They follow the fingers closely.
+  let userZoom = 1,
+    userZoomGoal = 1;
+  const pan = new T.Vector2(),
+    panGoal = new T.Vector2();
+  function clampPan() {
+    // Enough to bring any edge of the garden to the middle, no further.
+    const limit = 0.15 + 0.5 * (userZoomGoal - 1);
+    panGoal.clampScalar(-limit, limit);
+  }
   let renderMs = 0;
   /* What drawing costs the visitor's device: main-thread time for every frame
      drawn (animation updates included) and, where the browser exposes GPU
@@ -3253,7 +3270,8 @@ export async function createGarden(
   const points: Record<string, T.Vector3> = {
     wattch: new T.Vector3(-3.65, 2.65, 0.2),
     whisperbook: new T.Vector3(3.35, 3.55, -0.65),
-    about: new T.Vector3(0.1, 6.4, -1.62),
+    // About me belongs to Mansourah, Chakib's home city.
+    about: new T.Vector3(minX, minY + minH, front),
     contact: new T.Vector3(2.02, 2.5, 3.11),
   };
   // A project's notes look into its room rather than at its label: the
@@ -3332,6 +3350,8 @@ export async function createGarden(
       Math.abs(fogTarget - fogAmount) > 0.002 ||
       shift.distanceTo(shiftGoal) > 0.0005 ||
       view.distanceTo(viewGoal) > 0.0005 ||
+      Math.abs(userZoomGoal - userZoom) > 0.0005 ||
+      pan.distanceTo(panGoal) > 0.0005 ||
       roomsSettling() ||
       growing;
     if ((paused || progress < 0.5) && !changed && !dirty) return;
@@ -3354,6 +3374,9 @@ export async function createGarden(
     focusZoom = lerp(focusZoom, focusZoomGoal, ease);
     shift.lerp(shiftGoal, ease);
     view.lerp(viewGoal, ease);
+    const quick = reduced ? 1 : Math.min(dt * 14, 1);
+    userZoom = lerp(userZoom, userZoomGoal, quick);
+    pan.lerp(panGoal, quick);
     focusPoint.lerp(focusTarget, ease);
     const drawn = drawIn * drawIn * (3 - 2 * drawIn);
     const count = outlines.geometry.attributes.position.count;
@@ -3466,11 +3489,11 @@ export async function createGarden(
       : aspect < 0.9
         ? 16.4 / aspect
         : 15.6;
-    const half = span / 2 / (1 + focusAmount * focusZoom);
+    const half = span / 2 / (1 + focusAmount * focusZoom) / userZoom;
     const full = half / band;
-    camera.left = -half * aspect - shift.x * half * aspect * 2;
-    camera.right = half * aspect - shift.x * half * aspect * 2;
-    camera.top = (view.x + view.y) * full - shift.y * half * 2;
+    camera.left = -half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
+    camera.right = half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
+    camera.top = (view.x + view.y) * full - shift.y * half * 2 + pan.y * full * 2;
     camera.bottom = camera.top - 2 * full;
     // Leaves and petals keep the same size relative to the garden.
     fallSize.value = (height / (2 * full)) * 0.2 * renderer.getPixelRatio();
@@ -3682,6 +3705,31 @@ export async function createGarden(
     },
     frame(top, bottom) {
       viewGoal.set(top, bottom);
+      dirty = true;
+    },
+    zoomBy(factor, x, y) {
+      const zoom = T.MathUtils.clamp(userZoomGoal * factor, 1, 4);
+      const f = zoom / userZoomGoal;
+      if (x !== undefined && y !== undefined) {
+        // The view zooms about the middle of its band; the pan is adjusted
+        // so the point under the fingers stays there.
+        const sx = x / width - 0.5,
+          sy = y / height - (viewGoal.x + viewGoal.y) / 2;
+        panGoal.set(sx - (sx - panGoal.x) * f, sy - (sy - panGoal.y) * f);
+      } else panGoal.multiplyScalar(f);
+      userZoomGoal = zoom;
+      clampPan();
+      dirty = true;
+    },
+    panBy(dx, dy) {
+      panGoal.x += dx / width;
+      panGoal.y += dy / height;
+      clampPan();
+      dirty = true;
+    },
+    resetView() {
+      userZoomGoal = 1;
+      panGoal.set(0, 0);
       dirty = true;
     },
     focus(spot, shiftX = 0, shiftY = 0) {

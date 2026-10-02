@@ -8,7 +8,8 @@ import { createSheet } from "./sheet";
    as a short card over the garden. As on the desktop, the live garden grows
    with the scroll; its stills stand in while it loads, or when it is off.
    Only the current stop's card shows, and none while the garden moves
-   between stops. Details open in a sheet. */
+   between stops. Details open in a sheet. At the last stop the visitor
+   can explore the finished garden, turning it with a finger. */
 export type JourneyOptions = {
   /** The visitor reached a new stop. */
   onStop: (stop: Stop) => void;
@@ -16,12 +17,19 @@ export type JourneyOptions = {
   onGrowth: (growth: number) => void;
   /** The header's pause button was pressed. */
   onTogglePause: () => void;
+  /** The visitor started or stopped exploring the garden. Resolves false
+      when the live garden can't be drawn to explore. */
+  onExplore: (on: boolean) => Promise<boolean> | void;
+  /** A zoom button or key while exploring: zoom the garden by `factor`. */
+  onZoom: (factor: number) => void;
 };
 export type Journey = {
   readonly active: boolean;
   readonly stop: Stop;
   /** The garden's growth at the current scroll. */
   readonly growth: number;
+  /** The visitor is exploring the garden full screen. */
+  readonly exploring: boolean;
   /** The fixed layer behind the cards; main.ts puts the live garden in it. */
   readonly layer: HTMLElement;
   setActive: (on: boolean) => void;
@@ -94,6 +102,49 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     if (d.label) button.setAttribute("aria-label", d.label);
     button.addEventListener("click", () => sheet.open(d.key, d.title, button));
     return [{ stop: s.name, button }];
+  });
+
+  // Bloom's card opens the finished garden; Done, or Escape, closes it.
+  const explore = document.createElement("button");
+  explore.type = "button";
+  explore.className = "stop-more stop-explore";
+  explore.textContent = "Explore the garden";
+  const exploreBar = document.createElement("div");
+  exploreBar.className = "explore-bar";
+  const zoomIcon = (d: string) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+  exploreBar.innerHTML = `<p class="explore-hint">Drag to turn the garden. Pinch to zoom.</p>
+    <div class="explore-controls"><button type="button" class="explore-zoom" data-zoom="out" aria-label="Zoom out" title="Zoom out">${zoomIcon("M6 12h12")}</button><button type="button" class="explore-done">Done</button><button type="button" class="explore-zoom" data-zoom="in" aria-label="Zoom in" title="Zoom in">${zoomIcon("M6 12h12M12 6v12")}</button></div>`;
+  const done = exploreBar.querySelector<HTMLButtonElement>(".explore-done")!;
+  exploreBar.querySelectorAll<HTMLButtonElement>("[data-zoom]").forEach((b) =>
+    b.addEventListener("click", () => options.onZoom(b.dataset.zoom === "in" ? 1.4 : 1 / 1.4)));
+  let exploring = false;
+  async function setExploring(on: boolean) {
+    if (on === exploring) return;
+    exploring = on;
+    if (on) {
+      root.dataset.exploring = "true";
+      for (const el of [portfolio, $(".masthead")]) el.inert = true;
+      document.body.append(exploreBar);
+      done.focus();
+      if ((await options.onExplore(true)) === false && exploring) void setExploring(false);
+    } else {
+      delete root.dataset.exploring;
+      for (const el of [portfolio, $(".masthead")]) el.inert = false;
+      exploreBar.remove();
+      void options.onExplore(false);
+      if (active) explore.focus({ preventScroll: true });
+    }
+  }
+  explore.addEventListener("click", () => void setExploring(true));
+  done.addEventListener("click", () => void setExploring(false));
+  addEventListener("keydown", (e) => {
+    if (!exploring) return;
+    if (e.key === "Escape") void setExploring(false);
+    // The browser's own zoom keys zoom the garden instead of the page.
+    else if (["+", "=", "-"].includes(e.key) && !e.altKey) {
+      e.preventDefault();
+      options.onZoom(e.key === "-" ? 1 / 1.4 : 1.4);
+    }
   });
 
   const portfolio = $("#portfolio"), about = $("#about"), work = $("#work"), contact = $("#contact");
@@ -190,6 +241,7 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
       portfolio.insertBefore(about, work);
       $('[data-stop="blueprint"] .stop-card').append(timeline);
       for (const { stop, button } of moreButtons) $(`[data-stop="${stop}"] .stop-card`).append(button);
+      $('[data-stop="bloom"] .stop-card').append(explore);
       title.innerHTML = lettered(titleText);
       current = undefined;
       growth = -1;
@@ -199,15 +251,19 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
       schedule();
     } else {
       sheet.close(true);
-      // Focus on a card's More (the sheet gives it back there) or in the
-      // header would go with them, so it moves to that stop's heading.
+      // Focus on a card's More (the sheet gives it back there), on the
+      // explore controls or in the header would go with them, so it moves
+      // to that stop's heading.
       const focused = document.activeElement;
-      const stranded = moreButtons.find(({ button }) => button === focused)?.stop ?? (bar.contains(focused) ? current?.name : undefined);
+      const stranded = moreButtons.find(({ button }) => button === focused)?.stop
+        ?? (focused === explore || exploreBar.contains(focused) ? "bloom" : bar.contains(focused) ? current?.name : undefined);
+      void setExploring(false);
       delete root.dataset.journey;
       layer.remove();
       bar.remove();
       timeline.remove();
       moreButtons.forEach(({ button }) => button.remove());
+      explore.remove();
       portfolio.insertBefore(about, contact);
       title.textContent = titleText;
       document.querySelectorAll(".stop-card.current").forEach((card) => card.classList.remove("current"));
@@ -228,6 +284,7 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     get active() { return active; },
     get stop() { return current ?? stops[0]; },
     get growth() { return Math.max(0, growth); },
+    get exploring() { return exploring; },
     layer,
     setActive,
     notify,

@@ -105,6 +105,51 @@
   .journey-bar.toasting .journey-label { display: none; }
   .journey-bar.toasting .journey-toast { display: block; }
 
+  /* The garden is live in the journey, so the header has no switch for it;
+     Bloom's card opens it to explore instead. */
+  :root[data-journey] .masthead .view-switch { display: none !important; }
+
+  /* Exploring: the finished garden alone, full screen, turned with a finger.
+     The page is inert and doesn't scroll under it. */
+  :root[data-exploring="true"] { overflow: hidden; }
+  :root[data-exploring="true"] .masthead,
+  :root[data-exploring="true"] .portfolio { opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+  :root[data-exploring="true"] .journey,
+  :root[data-exploring="true"] .journey .stage { pointer-events: auto; touch-action: none; }
+  .explore-bar {
+    position: fixed; z-index: 5; left: 0; right: 0; bottom: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+    padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
+    touch-action: none;
+    animation: explore-in 0.4s var(--ease) both;
+  }
+  .explore-controls { display: flex; align-items: center; gap: 0.75rem; }
+  .explore-zoom {
+    display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0;
+    border: 1px solid var(--hairline); border-radius: 50%;
+    background: color-mix(in srgb, var(--paper) 72%, transparent); backdrop-filter: blur(8px);
+    color: var(--ink); cursor: pointer;
+  }
+  .explore-zoom svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  @keyframes explore-in { from { opacity: 0; transform: translateY(16px); } }
+  /* Paused motion would hold it at its start, unseen. */
+  :root[data-motion-paused="true"] .explore-bar { animation: none !important; }
+  .explore-hint {
+    margin: 0; padding: 0.3rem 0.8rem; border-radius: 999px;
+    background: color-mix(in srgb, var(--paper) 72%, transparent); backdrop-filter: blur(8px);
+    font-size: 0.875rem; color: var(--ink);
+  }
+  .explore-done {
+    min-width: 8rem; min-height: 2.75rem; padding: 0 1.4rem; border: 0; border-radius: 999px;
+    background: var(--ink); color: var(--paper); font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+  .stop-explore { margin-inline-start: 0.4rem; }
+  .stop-explore::after { content: none; }
+  .stop-explore::before {
+    content: ""; width: 1rem; height: 1rem; background: var(--blueprint);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21v-9M12 12c0-4 3-6.5 7.5-6.5 0 4.2-3 6.5-7.5 6.5zM12 15.5c0-3.2-2.4-5.5-6.5-5.5 0 3.3 2.4 5.5 6.5 5.5zM8 21h8'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
   /* The sheet. */
   .sheet {
     position: fixed; inset: auto 0 0; width: 100%; max-width: none; max-height: calc(100% - 3rem); margin: 0; padding: 0;

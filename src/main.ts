@@ -156,6 +156,30 @@ const journey = createPhoneJourney({
   onGrowth: () => { if (previewEnabled) growLive(); },
   // The journey's own button stands in for the ruler's, which phones don't show.
   onTogglePause: () => motionButton.click(),
+  onExplore: async (on) => {
+    if (on && liveFailed) {
+      const message = "The live garden can’t be drawn in this browser.";
+      journey.notify(message);
+      announce(message);
+      return false;
+    }
+    if (on && !previewEnabled) {
+      // Asked for, so the live garden draws even with the stills chosen.
+      previewEnabled = true;
+      requestedView = "garden";
+      syncPresentation();
+      await loadGarden();
+    }
+    if (on && !garden) return false;
+    fingers.clear();
+    pinch = null;
+    garden?.resetView();
+    frameGarden();
+    if (on) garden?.focus(null, 0, 0);
+    else driveLive(journey.stop);
+    return true;
+  },
+  onZoom: (factor) => garden?.zoomBy(factor),
 });
 
 /* The notebook is always drawn on blueprint paper. */
@@ -278,7 +302,8 @@ function measureFrames() {
 new ResizeObserver(() => measureFrames()).observe($(".masthead"));
 function frameGarden() {
   // In the journey the garden fills the screen above the small cards.
-  if (journey.active) garden?.frame(0.1, 0.7);
+  if (journey.exploring) garden?.frame(0.08, 0.84);
+  else if (journey.active) garden?.frame(0.1, 0.7);
   else garden?.frame(reading ? 0.04 : 0.02, reading ? 0.96 : 0.89);
 }
 /* In the journey the live garden grows with the scroll, as on the desktop,
@@ -696,14 +721,38 @@ addEventListener("pointerdown", (e) => {
   if (tally.open && !tally.contains(e.target as Node)) tally.open = false;
 });
 
-/* Drag to turn the garden; click to plant while planting. */
+/* Drag to turn the garden; click to plant while planting. Exploring on a
+   phone, two fingers zoom and move the garden instead of the page. */
 const stageEl = $("#stage");
 let drag: { x: number; y: number; last: number; moved: boolean } | null = null;
+const fingers = new Map<number, { x: number; y: number }>();
+let pinch: { distance: number; x: number; y: number } | null = null;
+function pinchNow() {
+  const [a, b] = [...fingers.values()];
+  return { distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
 stageEl.addEventListener("pointerdown", (e) => {
   if ((e.target as HTMLElement).closest(".hotspot")) return;
-  drag = { x: e.clientX, y: e.clientY, last: e.clientX, moved: false };
+  fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (journey.exploring && fingers.size === 2) {
+    // The second finger turns a drag into a pinch.
+    pinch = pinchNow();
+    drag = null;
+    root.classList.remove("turning");
+    return;
+  }
+  if (!pinch) drag = { x: e.clientX, y: e.clientY, last: e.clientX, moved: false };
 });
 stageEl.addEventListener("pointermove", (e) => {
+  if (fingers.has(e.pointerId)) fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && fingers.size === 2) {
+    const now = pinchNow();
+    const r = $("#scene").getBoundingClientRect();
+    garden?.zoomBy(now.distance / pinch.distance, now.x - r.left, now.y - r.top);
+    garden?.panBy(now.x - pinch.x, now.y - pinch.y);
+    pinch = now;
+    return;
+  }
   if (!drag) return;
   if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5) {
     drag.moved = true;
@@ -729,6 +778,22 @@ stageEl.addEventListener("pointercancel", () => {
   drag = null;
   root.classList.remove("turning");
 });
+// A finger lifted from a pinch doesn't start a drag; the next touch does.
+for (const type of ["pointerup", "pointercancel"] as const)
+  stageEl.addEventListener(type, (e) => {
+    fingers.delete(e.pointerId);
+    if (fingers.size === 0) pinch = null;
+  });
+// A trackpad pinch (a wheel with Ctrl) or the wheel zooms the garden.
+stageEl.addEventListener("wheel", (e) => {
+  if (!journey.exploring) return;
+  e.preventDefault();
+  const r = $("#scene").getBoundingClientRect();
+  garden?.zoomBy(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.002)), e.clientX - r.left, e.clientY - r.top);
+}, { passive: false });
+// Safari zooms the page on its own gesture events, whatever touch-action says.
+for (const type of ["gesturestart", "gesturechange"])
+  document.addEventListener(type, (e) => { if (journey.exploring) e.preventDefault(); }, { passive: false });
 
 const transfer = createTransferEstimate();
 /* All the drawing done so far: the garden's frames on the CPU and GPU, and
