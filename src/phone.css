@@ -120,8 +120,6 @@
   .sheet-body h4 { font-size: 1.125rem; font-weight: 650; margin: 1.5rem 0 0.35rem; }
   .sheet-body .reading-proof { margin-top: 1.5rem; }
   .sheet-body .note-widget[data-contact-read] { max-width: none; margin: 0; padding: 0; border: 0; }
-  .sheet-body .note-widget[data-contact-read] h3 { display: none; }
-  .sheet-body .note-widget[data-contact-read] .note-label { position: static; width: auto; height: auto; clip-path: none; }
 
   /* Ambient motion: two sketched clouds, and leaves falling in Bloom. Paused
      with the rest of the page, and off with reduced motion. */

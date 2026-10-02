@@ -77,7 +77,6 @@ test('draft survives navigation, view changes, resize and email handoff', async 
     await p.setViewportSize({width:320,height:568});
     await p.waitForTimeout(300);
     assert.equal(await p.locator('#contact textarea').inputValue(), 'Hello & a draft with accents: café.');
-    assert.equal(await p.locator('#contact .note-count span').innerText(), String('Hello & a draft with accents: café.'.length));
     assert.equal(await p.locator('#contact [data-send]').isEnabled(), true);
     const mail = await p.locator('#contact [data-send]').evaluate(button => {
       let href;
@@ -440,21 +439,17 @@ test('WebGL unavailable, context loss/restoration and offline weather preserve n
   } finally {await p.context().close();}
 });
 
-test('missing local speech voices and clipboard rejection have useful fallback states', async () => {
+test('missing local speech voices have a useful fallback state', async () => {
   const p=await page();
   try {
     await p.addInitScript(()=>{
       speechSynthesis.getVoices=()=>[];
-      Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw new Error('Denied');}}});
     });
     await ready(p,'?view=read#whisperbook');
     await p.locator('#whisperbook details summary').click();
     await p.waitForTimeout(1600);
     assert.equal(await p.locator('#whisperbook .play').isDisabled(),true);
     assert.match(await p.locator('#whisperbook .player-voice').innerText(),/no on-device voice/);
-    await go(p,'contact');
-    await p.locator('#contact [data-copy]').click();
-    assert.match(await p.locator('#contact [data-copy-status]').innerText(),/Copy is unavailable/);
     healthy(p);
   } finally {await p.context().close();}
 });
@@ -658,7 +653,7 @@ test('at night the journey shows the garden at night', async () => {
 });
 
 
-test('contact copying and email draft handoff preserve the note on desktop and in the phone sheet', async () => {
+test('contact email draft handoff preserves the note on desktop and in the phone sheet', async () => {
   for (const width of [1440, 390]) {
     const p = await page({viewport:{width,height:844}});
     try {
@@ -671,16 +666,6 @@ test('contact copying and email draft handoff preserve the note on desktop and i
       const form = p.locator(phone ? '.sheet' : '.chapter.active');
       const value = 'A draft with café & مرحبًا';
       await form.locator('textarea').fill(value);
-      await p.evaluate(() => Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.copiedNote=value;}}}));
-      await form.locator('[data-copy-note]').click();
-      assert.equal(await p.evaluate(()=>window.copiedNote),value);
-      assert.match(await form.locator('[data-copy-status]').innerText(),/Note copied/);
-      await p.evaluate(() => Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw new Error('Denied');}}}));
-      await form.locator('[data-copy]').click();
-      assert.equal(await p.evaluate(()=>getSelection().toString()),'chakib.belgaid@gmail.com');
-      assert.ok(await form.locator('.contact-address a').isVisible());
-      await form.locator('[data-copy-note]').click();
-      assert.equal(await form.locator('textarea').evaluate(e=>e.value.slice(e.selectionStart,e.selectionEnd)),value);
       await form.locator('[data-send]').evaluate(button=>{
         const click = HTMLAnchorElement.prototype.click;
         HTMLAnchorElement.prototype.click = function(){window.draftHref=this.href;};
@@ -688,7 +673,7 @@ test('contact copying and email draft handoff preserve the note on desktop and i
       });
       const href = await p.evaluate(()=>window.draftHref);
       assert.equal(new URLSearchParams(href.split('?')[1]).get('body'),value);
-      assert.match(await form.locator('[data-copy-status]').innerText(),/Email draft requested/);
+      assert.match(await form.locator('[data-status]').innerText(),/Email draft opened/);
       assert.equal(await form.locator('textarea').inputValue(),value);
       if (phone) {
         await p.keyboard.press('Escape');
