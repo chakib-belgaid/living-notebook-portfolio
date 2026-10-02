@@ -592,40 +592,14 @@ button {
   font-size: 0.8125rem;
   color: var(--muted);
 }
-.note-email {
-  margin-bottom: 0.9rem;
-  font-size: clamp(1.25rem, 1rem + 0.8vw, 1.5rem);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-/* The placeholder shows the purpose; the label stays for screen readers. */
-.note-widget .note-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-.note-widget textarea {
-  display: block;
-  width: 100%;
-  padding: 0.5rem 0.7rem;
-  border: 1px solid var(--hairline);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--paper) 85%, var(--ink) 4%);
-  color: var(--ink);
-  font: inherit;
-  font-size: 1rem;
-  resize: none;
-}
-.note-widget textarea:focus-visible {
-  outline-offset: 1px;
-}
-.note-links {
-  margin: 0.8rem 0 0;
-  font-size: 0.9375rem;
-}
+.note-email { margin: 0.9rem 0 0; font-size: 1rem; font-weight: 600; }
+.note-email a { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 0.65rem; min-height: 2.75rem; direction: ltr; unicode-bidi: isolate; }
+.note-email svg { width: 1.25rem; height: 1.25rem; flex: none; }
+.note-email .email-address { font-weight: 400; overflow-wrap: anywhere; }
+.note-links { display: flex; align-items: center; gap: 0.4rem; margin: 0.35rem 0 0; }
+.note-links a { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border: 1px solid var(--hairline); border-radius: 50%; color: var(--muted); transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease; }
+.note-links a:hover { color: var(--ink); border-color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.note-links svg { display: block; width: 1.15rem; height: 1.15rem; }
 .note-hint {
   margin: 0;
   padding-top: 0.75rem;
@@ -695,6 +669,18 @@ button {
 }
 .ruler-motion[aria-pressed="true"] .icon-play {
   display: inline;
+}
+/* The sound button sits before the pause button; its speaker shows waves
+   while the garden plays and a cross while it is quiet. */
+.ruler-sound {
+  margin-right: 0;
+}
+.ruler-sound[hidden] {
+  display: none;
+}
+:is(.ruler-sound, .journey-sound)[aria-pressed="false"] .icon-waves,
+:is(.ruler-sound, .journey-sound)[aria-pressed="true"] .icon-mute {
+  display: none;
 }
 #scrub {
   -webkit-appearance: none;
@@ -1150,10 +1136,7 @@ button {
     bottom: 14.5rem;
     max-height: calc(100svh - 17.75rem);
   }
-  .note-email {
-    margin-bottom: 0.6rem;
-    font-size: 1.1875rem;
-  }
+  .note-email { margin-top: 0.45rem; font-size: 1rem; }
   .note-widget {
     padding: 0.55rem 0.8rem 0.6rem;
   }
@@ -1167,12 +1150,6 @@ button {
   }
   .note-widget[data-widget] .widget-actions {
     margin-top: 0.45rem;
-  }
-  .note-widget textarea {
-    height: 3.6rem;
-  }
-  .note-links {
-    margin-top: 0.6rem;
   }
   .widget-sky .widget-head {
     display: none;
@@ -1275,15 +1252,7 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 .career-comma { position: absolute; opacity: 0; pointer-events: none; }
 .career-org { display: block; margin-top: 0.1rem; font-size: 1rem; font-weight: 400; font-style: italic; color: var(--muted); }
 .career-list p { font-size: 1.0625rem; }
-.note-widget[data-contact-read] { max-width: 38rem; padding: 0; border: 0; margin-top: 2rem; }
-[data-contact-read] textarea { min-height: 7rem; resize: vertical; }
-[data-contact-read] .widget-actions { margin-top: 0.75rem; }
 .note-email a { overflow-wrap: anywhere; }
-/* Send is the main action; until there is a note it waits, dashed, rather than fading out. */
-[data-contact-read] [data-send] { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 600; }
-[data-contact-read] [data-send]:disabled { opacity: 1; background: transparent; border: 1px dashed color-mix(in srgb, var(--ink) 35%, transparent); color: var(--muted); font-weight: 400; }
-.reading-contact .note-links { display: flex; flex-wrap: wrap; gap: 0 1.5rem; margin-top: 0.25rem; }
-.reading-contact .note-links a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .sign-off { margin: 2.5rem 0 0; padding-top: 0.75rem; border-top: 1px solid var(--hairline); font-size: 0.9375rem; }
 .sign-off a { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--muted); }
 
@@ -1345,6 +1314,8 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 .carbon-details { font-size: 0.875rem; margin-top: 0.5rem; }
 /* The note rests just above the ruler rather than on its top edge. */
 :root[data-view="garden"] .note { bottom: 7.25rem; max-height: calc(100svh - 11.75rem); }
+/* Bloom's shorter contact card clears the fixed journey dock. */
+:root[data-view="garden"] .chapter:last-child .note { bottom: 10.75rem; max-height: calc(100svh - 15.25rem); }
 /* Where the centred ruler would run into the dock, it sits beside the dock,
    and the counter's slip opens up and to the right, clear of the note. */
 @media (max-width: 1199px) {
@@ -1368,6 +1339,10 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 .scene-fallback img { position: absolute; left: 50%; top: 50%; width: 100%; height: auto; max-width: none; transform: translate(-50%, -50%); }
 .scene-fallback p { position: relative; padding: 0.6rem; margin: 0; font-size: 1rem; background: var(--paper); }
 :root[data-weather="fog"] .note, :root[data-weather="fog"] .widget, :root[data-weather="fog"] .ruler, :root[data-weather="fog"] .tally-panel { background: color-mix(in srgb, var(--paper) 96%, transparent); }
+/* Idle: the controls step back and leave the garden and the note. They come
+   back at once with any movement. */
+:root[data-view="garden"][data-idle="true"] :is(.masthead, .ruler, .dock, .hotspot) { opacity: 0; pointer-events: none; transition: opacity 1.6s ease; }
+:root[data-view="garden"][data-idle="true"] .stage { cursor: none; }
 :root[data-motion-paused="true"] *, :root[data-motion-paused="true"] *::before, :root[data-motion-paused="true"] *::after { animation-play-state: paused !important; transition: none !important; }
 :root[data-motion-paused="true"] .char, :root[data-motion-paused="true"] .note-copy, :root[data-motion-paused="true"] .note-lede, :root[data-motion-paused="true"] .note-body, :root[data-motion-paused="true"] .note-hint { animation: none !important; }
 .chapter:not(:first-child) .note-copy, .chapter:not(:first-child) .note-lede, .chapter:not(:first-child) .note-body, .chapter:not(:first-child) .note-hint { animation: none; }
@@ -1412,7 +1387,7 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
   .reading-proof { padding: 1rem; }
   .reading-proof.proof-whisperbook img { max-width: 15rem; }
   .reading-contact { padding-bottom: 0; }
-  .reading-contact .note-email { font-size: 1.1rem; }
+  .reading-contact .note-email { font-size: 1rem; }
   .stage-buttons button { font-size: 0.875rem; }
   .dock { left: auto; right: auto; bottom: auto; padding: 0; scrollbar-width: auto; }
   .dock .widget { width: auto; }

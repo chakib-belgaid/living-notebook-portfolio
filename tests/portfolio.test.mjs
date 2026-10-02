@@ -614,6 +614,33 @@ test('on phones the header has no garden switch, and Bloom explores the garden',
   } finally { await p.context().close(); }
 });
 
+test('on phones the header opens the garden controls: time, weather and season', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(p, '?view=stills');
+    const opener = p.getByRole('button',{name:'Garden controls',exact:true});
+    await opener.click();
+    const sheet = p.locator('dialog.sheet[open]');
+    await settled(sheet);
+    assert.equal(await sheet.getByRole('heading',{name:'Garden controls'}).isVisible(), true);
+    await p.waitForFunction(()=>!!document.querySelector('.journey[data-live] #scene canvas'), undefined, {timeout:15000});
+    await sheet.getByRole('button',{name:'Rain',exact:true}).click();
+    assert.equal(await p.locator('html').getAttribute('data-weather'), 'rain');
+    await sheet.getByRole('button',{name:'Winter',exact:true}).click();
+    assert.equal(await p.locator('html').getAttribute('data-season'), 'winter');
+    await sheet.getByRole('slider',{name:'Time of day'}).fill('22');
+    assert.match(await p.locator('#hour-readout').textContent(), /10:00/);
+    const box = await sheet.boundingBox();
+    assert.ok(box.y > 844 * 0.3, 'the garden stays in view above the controls');
+    await p.screenshot({path:output+'/controls-390x844.png'});
+    await p.keyboard.press('Escape');
+    await p.waitForFunction(()=>!document.querySelector('dialog.sheet[open]'));
+    assert.equal(await opener.evaluate(e=>e===document.activeElement), true, 'focus returns to the opener');
+    assert.equal(await p.locator('#preview-tools .dock-body').count(), 1, 'the controls go back to the page');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
 test('exploring on a phone, a pinch and the zoom buttons zoom the garden, not the page', async () => {
   const p = await page({viewport:{width:390,height:844}, isMobile:true, hasTouch:true, deviceScaleFactor:2});
   try {
@@ -744,4 +771,95 @@ test('contact email draft handoff preserves the note on desktop and in the phone
       healthy(p);
     } finally {await p.context().close();}
   }
+});
+
+// Counts every audio context the page makes.
+const countAudio = () => {
+  window.audioContexts = [];
+  const Base = window.AudioContext;
+  window.AudioContext = class extends Base { constructor(...a) { super(...a); window.audioContexts.push(this); } };
+};
+const audioState = p => p.evaluate(() => window.audioContexts.map(c => c.state));
+
+test('garden sound is off until asked for, follows the pause, and sleeps when silent', async () => {
+  const p = await page();
+  try {
+    await p.addInitScript(countAudio);
+    await ready(p, '#contact');
+    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
+    assert.deepEqual(await audioState(p), [], 'no audio engine before the visitor asks');
+    assert.equal(await p.locator('html').getAttribute('data-sound'), 'off');
+    const play = p.getByRole('button',{name:'Play garden sounds',exact:true});
+    assert.equal(await play.getAttribute('aria-pressed'), 'false');
+    await play.click();
+    assert.equal(await p.locator('html').getAttribute('data-sound'), 'playing');
+    await p.waitForFunction(() => window.audioContexts[0]?.state === 'running');
+    const stop = p.getByRole('button',{name:'Stop garden sounds',exact:true});
+    assert.equal(await stop.getAttribute('aria-pressed'), 'true');
+    await p.getByRole('button',{name:'Pause motion',exact:true}).click();
+    assert.equal(await p.locator('html').getAttribute('data-sound'), 'paused');
+    await p.waitForFunction(() => window.audioContexts[0].state === 'suspended', undefined, {timeout: 5000});
+    await p.getByRole('button',{name:'Resume motion',exact:true}).click();
+    await p.waitForFunction(() => window.audioContexts[0].state === 'running');
+    await stop.click();
+    assert.equal(await p.locator('html').getAttribute('data-sound'), 'off');
+    await p.waitForFunction(() => window.audioContexts[0].state === 'suspended', undefined, {timeout: 5000});
+    assert.equal((await audioState(p)).length, 1, 'one engine, reused');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('garden sound plays in the phone journey, and the reading page is silent', async () => {
+  const p = await page({viewport:{width:390,height:844}});
+  try {
+    await p.addInitScript(countAudio);
+    await ready(p, '?view=stills');
+    await p.locator('.journey-bar').getByRole('button',{name:'Play garden sounds',exact:true}).click();
+    await p.waitForFunction(() => window.audioContexts[0]?.state === 'running');
+    assert.equal(await p.locator('html').getAttribute('data-sound'), 'playing');
+    healthy(p);
+  } finally { await p.context().close(); }
+  const r = await page();
+  try {
+    await r.addInitScript(countAudio);
+    await ready(r, '?view=read');
+    assert.equal(await r.getByRole('button',{name:'Play garden sounds',exact:true}).isVisible(), false);
+    assert.deepEqual(await audioState(r), []);
+    healthy(r);
+  } finally { await r.context().close(); }
+});
+
+test('left alone, the garden view quiets its controls, and Bloom slowly turns', async () => {
+  const p = await page();
+  try {
+    await ready(p, '#contact');
+    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
+    await p.mouse.move(700, 300);
+    const turned = Number(await p.locator('#scene').getAttribute('data-rotation'));
+    await p.waitForFunction(() => document.documentElement.dataset.idle === 'true', undefined, {timeout: 25000});
+    await p.waitForTimeout(2500);
+    assert.equal(await p.locator('.ruler').evaluate(e => getComputedStyle(e).opacity), '0');
+    assert.equal(await p.locator('.chapter.active .note').evaluate(e => getComputedStyle(e).opacity), '1', 'the note stays to read');
+    assert.ok(Number(await p.locator('#scene').getAttribute('data-rotation')) > turned + 0.02, 'the garden drifts');
+    await p.mouse.move(720, 320);
+    assert.equal(await p.locator('html').getAttribute('data-idle'), 'false');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
+test('a visitor writing a note, or with motion paused, keeps the garden still and the controls', async () => {
+  const p = await page();
+  try {
+    await ready(p, '#contact');
+    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
+    await p.getByRole('button',{name:'Pause motion',exact:true}).click();
+    const turned = await p.locator('#scene').getAttribute('data-rotation');
+    await p.waitForFunction(() => document.documentElement.dataset.idle === 'true', undefined, {timeout: 25000});
+    await p.waitForTimeout(1000);
+    assert.equal(await p.locator('#scene').getAttribute('data-rotation'), turned, 'paused motion does not drift');
+    await p.locator('.chapter.active textarea').click();
+    await p.waitForTimeout(21000);
+    assert.equal(await p.locator('html').getAttribute('data-idle'), 'false', 'writing is not idle');
+    healthy(p);
+  } finally { await p.context().close(); }
 });

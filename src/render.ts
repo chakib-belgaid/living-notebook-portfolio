@@ -1,4 +1,4 @@
-import { beats, projects, email } from "./content";
+import { beats, projects, contactMarkup } from "./content";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -70,10 +70,8 @@ export function renderPortfolio() {
       </section>
       <section class="reading-section reading-contact" id="contact" data-stop="bloom" aria-labelledby="contact-title">
         <div class="stop-card"><p class="eyebrow">Write to me</p><h2 id="contact-title" tabindex="-1">I’d like to hear what you’re building.</h2>
-          <p class="note-email"><a href="mailto:${email}">${email}</a></p>
-          <p class="note-links"><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a> <a href="https://www.instagram.com/chakib.med" target="_blank" rel="noopener noreferrer">Instagram</a> <a href="https://x.com/chakib_med" target="_blank" rel="noopener noreferrer">X</a></p>
+          ${contactMarkup}
         </div>
-        <div class="note-widget script-only" data-contact-read data-detail="contact"></div>
         <p class="sign-off"><a href="#intro">Back to the top ↑</a></p>
       </section>
     </main>`;

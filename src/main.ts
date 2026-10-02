@@ -12,13 +12,13 @@ import {
 
 import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, type Spot, type WidgetSpot, type Stop } from "./content";
 import { createNavigation, type SectionId } from "./navigation";
-import { mountContact } from "./contact";
 import { widgetLifecycle } from "./widgets";
 import { createTransferEstimate, formatGrams } from "./transfer";
 import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY, estimateCompute, type ComputeWork } from "./compute";
 import { initEvidence } from "./evidence";
 import { lettered } from "./lettered";
-import { createPhoneJourney } from "./phone";
+import { createPhoneJourney, speaker } from "./phone";
+import { createSoundscape, soundSupported } from "./soundscape";
 import { gardenSpan, loadingStill } from "./framing";
 import { initLocalization, getLocale, onLocaleChange, translate } from "./i18n";
 
@@ -75,13 +75,14 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
           <div><dt>Rendering</dt><dd data-carbon-compute>—</dd></div>
         </dl>
         <p class="widget-fine carbon-source" data-carbon-source></p>
-        <p class="widget-fine carbon-source" data-compute-source></p><details class="carbon-details"><summary>Details</summary><p class="widget-fine">Data transfer: reported bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, computed with co2.js using the Sustainable Web Design Model v4, which includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded, and cached resources add no reported network bytes.</p><p class="widget-fine">Rendering and animation: the main-thread time spent updating and drawing the garden and sky at an assumed ${CPU_WATTS} W, plus the GPU time of each garden frame at an assumed ${GPU_WATTS} W, × ${Math.round(GRID_INTENSITY)} g CO₂e/kWh, co2.js’s world average grid intensity. GPU time is counted only where the browser exposes GPU timers; elsewhere this part is a CPU-only lower bound. Browsers report time, not power, so the wattages are assumptions, and the model’s device share of transfer may overlap a little with this measured rendering.</p><a class="widget-fine" href="https://sustainablewebdesign.org/estimating-digital-emissions/" target="_blank" rel="noopener noreferrer">Read the transfer methodology ↗</a> <a class="widget-fine" href="https://developers.thegreenwebfoundation.org/co2js/overview/" target="_blank" rel="noopener noreferrer">About co2.js ↗</a></details>
+        <p class="widget-fine carbon-source" data-compute-source></p><details class="carbon-details"><summary>Details</summary><p class="widget-fine">Data transfer: reported bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, computed with co2.js using the Sustainable Web Design Model v4, which includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded, and cached resources add no reported network bytes.</p><p class="widget-fine">Rendering and animation: the main-thread time spent updating and drawing the garden and sky at an assumed ${CPU_WATTS} W, plus the GPU time of each garden frame at an assumed ${GPU_WATTS} W, × ${Math.round(GRID_INTENSITY)} g CO₂e/kWh, co2.js’s world average grid intensity. GPU time is counted only where the browser exposes GPU timers; elsewhere this part is a CPU-only lower bound. Browsers report time, not power, so the wattages are assumptions, and the model’s device share of transfer may overlap a little with this measured rendering.</p><p class="widget-fine">Garden sounds, when on, are made by the browser’s audio engine. Their small cost isn’t measured here.</p><a class="widget-fine" href="https://sustainablewebdesign.org/estimating-digital-emissions/" target="_blank" rel="noopener noreferrer">Read the transfer methodology ↗</a> <a class="widget-fine" href="https://developers.thegreenwebfoundation.org/co2js/overview/" target="_blank" rel="noopener noreferrer">About co2.js ↗</a></details>
       </section>
     </details>
+    <button type="button" class="ruler-motion ruler-sound" id="sound-toggle" aria-pressed="false" aria-label="Play garden sounds" title="Play garden sounds">${speaker}</button>
     <button type="button" class="ruler-motion" id="motion-toggle" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>
   </div>
 
-  <details class="dock"><summary>Garden controls</summary><div class="dock-body">
+  <details class="dock"><summary>Garden controls</summary><div class="dock-body" data-detail="controls">
     <section class="widget widget-sky" data-from="3" aria-labelledby="sky-title">
       <div class="widget-head">
         <h3 id="sky-title">Sky</h3>
@@ -133,6 +134,14 @@ let garden: Garden | undefined;
 // 0–1 mist over the garden and the page, set by the weather.
 let fog = 0;
 let sky: ReturnType<typeof createSky> | undefined;
+// What the garden shows, for its sound: growth (0–1), the hour and night (0–1).
+let growthNow = 0;
+let hourNow = 13;
+let nightNow = 0;
+function setGrowth(growth: number) {
+  growthNow = growth;
+  sky?.setGrowth(growth);
+}
 const compact = matchMedia("(max-width: 899px), (max-height: 599px)");
 let reading = true;
 let previewEnabled = false;
@@ -145,7 +154,6 @@ const saveData = () => !!(navigator as Navigator & { connection?: { saveData?: b
 // The live garden then opens over the page, and closing it returns there.
 let overPage = requestedView === "read";
 let gardenLoading: Promise<void> | undefined;
-const readingContact = widgetLifecycle();
 const illustration = widgetLifecycle();
 let activeIllustration: HTMLDetailsElement | undefined;
 const announce = (text: string) => ($("#announce").textContent = text);
@@ -157,6 +165,13 @@ const journey = createPhoneJourney({
   onGrowth: () => { if (previewEnabled) growLive(); },
   // The journey's own button stands in for the ruler's, which phones don't show.
   onTogglePause: () => motionButton.click(),
+  onToggleSound: () => soundButton.click(),
+  // The controls change the live garden, so it draws to show them, in the
+  // space left above them.
+  onControls: (open) => {
+    if (open && !liveFailed) void drawLiveGarden().then(frameGarden);
+    frameGarden();
+  },
   onExplore: async (on) => {
     if (on && liveFailed) {
       const message = "The live garden can’t be drawn in this browser.";
@@ -164,13 +179,7 @@ const journey = createPhoneJourney({
       announce(message);
       return false;
     }
-    if (on && !previewEnabled) {
-      // Asked for, so the live garden draws even with the stills chosen.
-      previewEnabled = true;
-      requestedView = "garden";
-      syncPresentation();
-      await loadGarden();
-    }
+    if (on) await drawLiveGarden();
     if (on && !garden) return false;
     fingers.clear();
     pinch = null;
@@ -182,6 +191,15 @@ const journey = createPhoneJourney({
   },
   onZoom: (factor) => garden?.zoomBy(factor),
 });
+// Asked for, so the live garden draws even with the stills chosen.
+async function drawLiveGarden() {
+  if (!previewEnabled) {
+    previewEnabled = true;
+    requestedView = "garden";
+    syncPresentation();
+  }
+  await loadGarden();
+}
 
 /* The notebook is always drawn on blueprint paper. */
 function syncTheme() {
@@ -206,6 +224,7 @@ function syncMotion() {
   journey.setMotion(stopped, reduced);
   garden?.setMotion(stopped || (reading && !previewEnabled));
   sky?.setMotion(stopped || (reading && !previewEnabled));
+  syncSound();
 }
 motionButton.addEventListener("click", () => {
   paused = !paused;
@@ -220,6 +239,41 @@ reducedQuery.addEventListener("change", (e) => {
   if (reading) garden?.setProgress(Number(scrub.value) / 1000, reduced || paused);
   measure();
 });
+
+/* Sound: the garden is silent until the visitor asks. It then plays while
+   the garden is on screen, and the visitor's own pause silences it with the
+   motion. Reduced motion doesn't: sound isn't motion, and it is off anyway
+   until chosen. */
+let soundOn = false;
+let narrating = false;
+const soundButton = $<HTMLButtonElement>("#sound-toggle");
+soundButton.hidden = !soundSupported();
+const soundscape = createSoundscape(() => ({
+  growth: journey.active ? (reduced ? stageProgress[journey.stop.stage] : journey.growth) : growthNow,
+  hour: hourNow,
+  night: nightNow,
+  weather: currentWeatherState(),
+  season: (root.dataset.season as Season | undefined) ?? "summer",
+  spot: journey.active ? journey.stop.spot : reading ? null : (beats[beat]?.spot ?? null),
+  narrating,
+}));
+function syncSound() {
+  const showing = !reading || previewEnabled || journey.active;
+  const silenced = (paused && !reduced) || !showing || document.hidden;
+  const state = !soundOn ? "off" : silenced ? "paused" : "playing";
+  root.dataset.sound = state;
+  const name = soundOn ? "Stop garden sounds" : "Play garden sounds";
+  soundButton.setAttribute("aria-pressed", String(soundOn));
+  soundButton.setAttribute("aria-label", name);
+  soundButton.title = name;
+  journey.setSound(soundSupported() ? soundOn : null);
+  soundscape.setAudible(state === "playing");
+}
+soundButton.addEventListener("click", () => {
+  soundOn = !soundOn;
+  syncSound();
+});
+document.addEventListener("visibilitychange", syncSound);
 syncMotion();
 
 /* Scroll → story. Each beat's section is a stretch where the garden holds
@@ -285,10 +339,11 @@ function syncStory() {
 }
 
 /* The dock's widgets come out with the stage. The carbon counter is on the
-   ruler, so it is there at every stage. */
+   ruler, so it is there at every stage. In the phone journey they wait in
+   the header's controls sheet. */
 function syncWidgets() {
   widgets.forEach((w) => {
-    const show = reading ? previewEnabled : stage >= Number(w.dataset.from);
+    const show = reading ? previewEnabled || journey.active : stage >= Number(w.dataset.from);
     w.classList.toggle("shown", show);
     w.inert = !show;
   });
@@ -303,6 +358,11 @@ new ResizeObserver(() => measureFrames()).observe($(".masthead"));
 function gardenBand(): [number, number] {
   // In the journey the garden fills the screen above the small cards.
   if (journey.exploring) return [0.08, 0.84];
+  // With the controls open, between the header and the sheet.
+  if (journey.controlsTop) {
+    const top = $(".masthead").getBoundingClientRect().bottom / innerHeight;
+    return [top, Math.max(top + 0.2, journey.controlsTop / innerHeight - 0.01)];
+  }
   if (journey.active) return [0.1, 0.7];
   return reading ? [0.04, 0.96] : [0.02, 0.89];
 }
@@ -332,7 +392,7 @@ function growLive() {
   const growth = reduced ? stageProgress[journey.stop.stage] : journey.growth;
   scrub.value = String(Math.round(growth * 1000));
   garden?.setProgress(growth, reduced || paused);
-  sky?.setGrowth(growth);
+  setGrowth(growth);
 }
 function driveLive(stop: Stop) {
   growLive();
@@ -429,7 +489,7 @@ function measure() {
     h.inert = !live;
   });
   garden?.setProgress(growth, reduced || paused);
-  sky?.setGrowth(growth);
+  setGrowth(growth);
 }
 
 /* The reading ruler along the masthead's lower edge: how far down the page
@@ -496,7 +556,7 @@ addEventListener("scrollend", () => {
 scrub.addEventListener("input", () => {
   if (reading) {
     const growth = Number(scrub.value) / 1000;
-    garden?.setProgress(growth, reduced || paused); sky?.setGrowth(growth);
+    garden?.setProgress(growth, reduced || paused); setGrowth(growth);
     scrub.setAttribute("aria-valuetext", `${Math.round(growth * 100)}% garden growth`);
   } else scrollTo({top: (Number(scrub.value) / 1000) * maxScroll(), behavior: "instant"});
 });
@@ -504,7 +564,7 @@ $$<HTMLButtonElement>("[data-go]").forEach((button) => button.addEventListener("
   const s = Number(button.dataset.go);
   if (reading) {
     garden?.setProgress(stageProgress[s], reduced || paused);
-    sky?.setGrowth(stageProgress[s]);
+    setGrowth(stageProgress[s]);
     scrub.value = String(stageProgress[s] * 1000);
     scrub.setAttribute("aria-valuetext", stages[s]);
     $$<HTMLButtonElement>("[data-go]").forEach((b, i) => { if (i === s) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
@@ -557,6 +617,8 @@ function setHour(h: number) {
     smoothstep(19.2, 21.5, h) + (1 - smoothstep(5, 6.6, h)),
   );
   root.style.setProperty("--night", night.toFixed(3));
+  nightNow = night;
+  hourNow = h;
   setPaper(night);
   root.style.setProperty(
     "--arc",
@@ -740,6 +802,49 @@ tally.addEventListener("keydown", (e) => {
 addEventListener("pointerdown", (e) => {
   if (tally.open && !tally.contains(e.target as Node)) tally.open = false;
 });
+
+/* Left alone in the garden view, the controls step back and leave the garden
+   and the note; any movement brings them back. At Bloom, with nothing in
+   focus, the garden slowly turns, in frames it draws anyway. Writing,
+   planting, or an open slip or dialog is never idle. */
+const IDLE_AFTER = 20000;
+let idle = false;
+let idleTimer = 0;
+let drift = 0;
+let wokeAt = 0;
+function busy() {
+  return reading || document.hidden || root.classList.contains("planting") || tally.open ||
+    !!document.querySelector("dialog[open]") ||
+    !!document.activeElement?.matches("textarea, select, input:not([type=range])");
+}
+function setIdle(on: boolean) {
+  if (idle === on) return;
+  idle = on;
+  root.dataset.idle = String(on);
+  cancelAnimationFrame(drift);
+  if (on && !(paused || reduced) && stage === 3 && !beats[beat]?.spot) {
+    let last = performance.now();
+    const turn = (now: number) => {
+      garden?.rotateBy(((now - last) / 1000) * 0.03);
+      last = now;
+      drift = requestAnimationFrame(turn);
+    };
+    drift = requestAnimationFrame(turn);
+  }
+}
+function wake() {
+  setIdle(false);
+  // Pointer moves come many to a frame; the timer is reset at most every 200 ms.
+  const now = performance.now();
+  if (now - wokeAt < 200) return;
+  wokeAt = now;
+  clearTimeout(idleTimer);
+  idleTimer = window.setTimeout(() => (busy() ? wake() : setIdle(true)), IDLE_AFTER);
+}
+for (const type of ["pointermove", "pointerdown", "keydown", "wheel", "scroll", "focusin"])
+  addEventListener(type, wake, { passive: true, capture: true });
+root.dataset.idle = "false";
+wake();
 
 /* Drag to turn the garden; click to plant while planting. Exploring on a
    phone, two fingers zoom and move the garden instead of the page. */
@@ -980,6 +1085,7 @@ function mountPlayer(el: HTMLElement) {
     button.innerHTML = `<span aria-hidden="true">${on ? "■" : "▶"}</span>`;
     button.setAttribute("aria-label", on ? "Stop" : "Play");
     garden?.setNarrating(on);
+    narrating = on;
   };
   const stop = () => {
     if (!playing) return;
@@ -1039,13 +1145,10 @@ function mountPlayer(el: HTMLElement) {
   };
 }
 
-const mountNote = (el: HTMLElement) => mountContact(el, () => garden);
-
 function mountProjectWidget(spot: WidgetSpot, container: HTMLElement) {
   const cleanup = {
     whisperbook: mountPlayer,
     wattch: mountMeter,
-    contact: mountNote,
   }[spot](container);
   return () => {
     cleanup();
@@ -1119,7 +1222,6 @@ function syncPresentation() {
     illustration.dispose();
     if (activeIllustration) activeIllustration.open = false;
     activeIllustration = undefined;
-    readingContact.replace(reading ? () => mountNote($("[data-contact-read]")) : undefined);
     if (!reading) { beat = -1; stage = -1; rulerFor = ""; }
   }
   syncMotion();
@@ -1127,7 +1229,7 @@ function syncPresentation() {
   measureFrames();
   if (reading && previewEnabled && journeyOn) driveLive(journey.stop);
   else if (reading && previewEnabled) {
-    garden?.setProgress(1, reduced || paused); garden?.focus(null); sky?.setGrowth(1);
+    garden?.setProgress(1, reduced || paused); garden?.focus(null); setGrowth(1);
     scrub.value = "1000";
     scrub.setAttribute("aria-valuetext", "Bloom");
     $$<HTMLButtonElement>("[data-go]").forEach((b, i) => { if (i === 3) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
@@ -1211,7 +1313,7 @@ async function loadGarden() {
     $("#scene").addEventListener("garden-context-restored", () => $(".scene-fallback").hidden = true);
     syncTheme(); syncMotion(); setHour(Number(hourInput.value)); applyWeather(); applySeason();
     if (journey.active) { driveLive(journey.stop); journey.setLive(previewEnabled); }
-    else if (reading) { garden.setProgress(1, reduced || paused); sky.setGrowth(1); }
+    else if (reading) { garden.setProgress(1, reduced || paused); setGrowth(1); }
     else {
       // The meter needs a renderer; contact and speech already work while loading.
       if (beats[beat]?.widget === "wattch") mountNoteWidget();
@@ -1220,8 +1322,7 @@ async function loadGarden() {
     if (activeIllustration?.open && activeIllustration.dataset.illustration === "wattch") {
       illustration.replace(() => mountProjectWidget("wattch", activeIllustration!.querySelector<HTMLElement>("[data-reading-widget]")!));
     }
-    const draftField = document.querySelector<HTMLTextAreaElement>(reading ? "[data-contact-read] textarea" : ".chapter.active textarea");
-    garden.setPostbox(draftField?.value.trim() ? "writing" : "idle");
+    garden.setPostbox("idle");
     garden.setNarrating(!!document.querySelector('.play[data-playing="true"]'));
     measureFrames();
     void startWeather();
@@ -1246,7 +1347,6 @@ if (import.meta.env.DEV) Object.assign(window, { __notebook: { get garden() { re
 // Commit enhancement only after the controllers have initialized.
 initEvidence();
 root.classList.add("enhanced");
-readingContact.replace(() => mountNote($("[data-contact-read]")));
 syncPresentation();
 navigation.go(navigation.section, false, false);
 measure();
@@ -1259,4 +1359,4 @@ const offLocale = onLocaleChange(() => {
   schedule();
 });
 
-if (import.meta.hot) import.meta.hot.dispose(() => { offLocale(); disposeLocalization(); garden?.dispose(); sky?.dispose(); transfer.dispose(); noteWidget.dispose(); readingContact.dispose(); illustration.dispose(); });
+if (import.meta.hot) import.meta.hot.dispose(() => { offLocale(); disposeLocalization(); garden?.dispose(); sky?.dispose(); soundscape.dispose(); transfer.dispose(); noteWidget.dispose(); illustration.dispose(); });

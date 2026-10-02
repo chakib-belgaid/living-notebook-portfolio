@@ -9,7 +9,8 @@ export type Sheet = {
   readonly openKey: string | null;
 };
 
-export function createSheet(): Sheet {
+/** `onChange` hears the key of the details that opened, or null once they are back. */
+export function createSheet(onChange?: (key: string | null) => void): Sheet {
   const dialog = document.createElement("dialog");
   dialog.className = "sheet";
   dialog.setAttribute("aria-labelledby", "sheet-title");
@@ -26,6 +27,8 @@ export function createSheet(): Sheet {
     moved.forEach(({ node, marker }) => marker.replaceWith(node));
     moved = [];
     openKey = null;
+    delete dialog.dataset.key;
+    onChange?.(null);
     if (opener?.isConnected && !opener.closest("[hidden]")) opener.focus({ preventScroll: true });
     opener = null;
   }
@@ -56,6 +59,7 @@ export function createSheet(): Sheet {
     if (openKey) close(true);
     openKey = key;
     opener = from;
+    dialog.dataset.key = key;
     title.textContent = heading;
     moved = [...document.querySelectorAll(`[data-detail="${key}"]`)].map((node) => {
       const marker = document.createComment(`detail ${key}`);
@@ -66,6 +70,7 @@ export function createSheet(): Sheet {
     body.scrollTop = 0;
     dialog.showModal();
     title.focus({ preventScroll: true });
+    onChange?.(key);
   }
 
   // Escape: close with the animation. If the browser closes it outright, still put the details back.

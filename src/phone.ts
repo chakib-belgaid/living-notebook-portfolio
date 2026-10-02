@@ -17,6 +17,10 @@ export type JourneyOptions = {
   onGrowth: (growth: number) => void;
   /** The header's pause button was pressed. */
   onTogglePause: () => void;
+  /** The header's sound button was pressed. */
+  onToggleSound: () => void;
+  /** The sky and garden controls opened in the sheet, or closed. */
+  onControls: (open: boolean) => void;
   /** The visitor started or stopped exploring the garden. Resolves false
       when the live garden can't be drawn to explore. */
   onExplore: (on: boolean) => Promise<boolean> | void;
@@ -30,6 +34,8 @@ export type Journey = {
   readonly growth: number;
   /** The visitor is exploring the garden full screen. */
   readonly exploring: boolean;
+  /** The sky and garden controls are open: the screen's height above them, or 0. */
+  readonly controlsTop: number;
   /** The fixed layer behind the cards; main.ts puts the live garden in it. */
   readonly layer: HTMLElement;
   setActive: (on: boolean) => void;
@@ -40,6 +46,8 @@ export type Journey = {
   setNight: (night: boolean) => void;
   /** Shows the motion state on the header's pause button. */
   setMotion: (stopped: boolean, systemReduced: boolean) => void;
+  /** Shows whether the visitor asked for sound; null hides the button. */
+  setSound: (on: boolean | null) => void;
   /** The live garden is drawing in the layer: stills no longer load. */
   setLive: (on: boolean) => void;
 };
@@ -57,6 +65,12 @@ const smoothstep = (t: number) => t * t * (3 - 2 * t);
 // Outlined like the sketched clouds on the desktop sky.
 const cloud = `<svg viewBox="0 0 120 50" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 44h94c9 0 13-7 10-13-2-5-8-7-13-5 0-10-9-16-18-13-4-9-15-13-24-9-7 3-11 10-10 17-6-3-15 0-17 7-8-1-14 4-13 10 1 4 5 6 11 6z"/></svg>`;
 
+// A speaker: waves while the garden plays, a cross while it is quiet.
+export const speaker = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="icon-speaker" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path class="icon-waves" d="M15.5 9.2a4 4 0 0 1 0 5.6M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/><path class="icon-mute" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>`;
+
+// Two sliders: the time, weather and season of the garden.
+const sliders = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg>`;
+
 export function createPhoneJourney(options: JourneyOptions): Journey {
   const root = document.documentElement;
   const $ = <E extends HTMLElement>(s: string) => document.querySelector<E>(s)!;
@@ -71,11 +85,20 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
 
   const bar = document.createElement("div");
   bar.className = "journey-bar";
-  bar.innerHTML = `<span class="journey-label"></span><span class="journey-toast" aria-hidden="true"></span><button type="button" class="journey-pause" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>`;
+  bar.innerHTML = `<span class="journey-label"></span><span class="journey-toast" aria-hidden="true"></span><button type="button" class="journey-controls" aria-haspopup="dialog" aria-label="Garden controls" title="Garden controls">${sliders}</button><button type="button" class="journey-sound" aria-pressed="false" aria-label="Play garden sounds" title="Play garden sounds">${speaker}</button><button type="button" class="journey-pause" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>`;
   const label = bar.querySelector<HTMLElement>(".journey-label")!;
   const toast = bar.querySelector<HTMLElement>(".journey-toast")!;
   const pause = bar.querySelector<HTMLButtonElement>(".journey-pause")!;
   pause.addEventListener("click", () => options.onTogglePause());
+  const sound = bar.querySelector<HTMLButtonElement>(".journey-sound")!;
+  sound.addEventListener("click", () => options.onToggleSound());
+  function setSound(on: boolean | null) {
+    sound.hidden = on === null;
+    const name = on ? "Stop garden sounds" : "Play garden sounds";
+    sound.setAttribute("aria-pressed", String(!!on));
+    sound.setAttribute("aria-label", name);
+    sound.title = name;
+  }
   function setMotion(stopped: boolean, systemReduced: boolean) {
     const name = systemReduced ? "Motion paused by your system preference" : stopped ? "Resume motion" : "Pause motion";
     pause.setAttribute("aria-pressed", String(stopped));
@@ -91,7 +114,15 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
   timeline.setAttribute("aria-hidden", "true");
   timeline.innerHTML = `<span class="mini-line"></span>${[...years, "now"].map((y) => `<span class="mini-year">${y}</span>`).join("")}`;
 
-  const sheet = createSheet();
+  let controlsOpen = false;
+  const sheet = createSheet((key) => {
+    if ((key === "controls") === controlsOpen) return;
+    controlsOpen = !controlsOpen;
+    options.onControls(controlsOpen);
+  });
+  // The desktop's dock opens in the sheet, over the garden it changes.
+  const controls = bar.querySelector<HTMLButtonElement>(".journey-controls")!;
+  controls.addEventListener("click", () => sheet.open("controls", "Garden controls", controls));
   const moreButtons = stops.flatMap((s) => {
     const d = details[s.name];
     if (!d) return [];
@@ -285,10 +316,15 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     get stop() { return current ?? stops[0]; },
     get growth() { return Math.max(0, growth); },
     get exploring() { return exploring; },
+    get controlsTop() {
+      const d = document.querySelector<HTMLElement>("dialog.sheet");
+      return controlsOpen && d ? innerHeight - d.offsetHeight : 0;
+    },
     layer,
     setActive,
     notify,
     setMotion,
+    setSound,
     setNight,
     setLive(on: boolean) {
       if (on === live) return;

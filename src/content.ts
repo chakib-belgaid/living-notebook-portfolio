@@ -62,7 +62,7 @@ export const spotNames: Record<Spot, string> = {
    to write. */
 export const stages = ["Sketch", "Blueprint", "Build", "Bloom"];
 export const stageProgress = [0, 0.33, 0.66, 1];
-export type WidgetSpot = Exclude<Spot, "about">;
+export type WidgetSpot = Exclude<Spot, "about" | "contact">;
 export type Beat = {
   stage: number;
   title: string;
@@ -127,6 +127,16 @@ function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
   ];
 }
 export const email = "chakib.belgaid@gmail.com";
+const envelopeIcon = `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3.5 6.5h17v11h-17zM4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+const socialIcons = {
+  github: `<svg aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.53v-2.08c-3.1.68-3.76-1.31-3.76-1.31-.5-1.29-1.23-1.63-1.23-1.63-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15.99 1.7 2.6 1.21 3.23.93.1-.72.39-1.21.71-1.49-2.48-.28-5.09-1.24-5.09-5.52 0-1.22.44-2.21 1.15-2.99-.12-.28-.5-1.42.11-2.95 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.11-1.44 3.05-1.14 3.05-1.14.61 1.53.23 2.67.11 2.95.72.78 1.15 1.77 1.15 2.99 0 4.29-2.62 5.24-5.11 5.52.4.35.76 1.03.76 2.08V22c0 .29.2.63.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg>`,
+  linkedin: `<svg aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="M5.2 7.8a2.1 2.1 0 1 0 0-4.2 2.1 2.1 0 0 0 0 4.2ZM3.4 9.4H7v11.2H3.4zM9.2 9.4h3.4v1.5h.05a3.73 3.73 0 0 1 3.36-1.85c3.6 0 4.27 2.37 4.27 5.45v6.1h-3.55v-5.41c0-1.29-.02-2.94-1.79-2.94-1.8 0-2.07 1.4-2.07 2.85v5.5H9.2z"/></svg>`,
+  instagram: `<svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.1" y="3.1" width="17.8" height="17.8" rx="5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4.1" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="17.8" cy="6.5" r="1.15" fill="currentColor"/></svg>`,
+  x: `<svg aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="M18.9 3h2.8l-6.1 7 7.2 11h-5.6l-4.4-6.7L7 21H4.2l6.5-7.5L3.8 3h5.8l4 6.1L18.9 3Zm-1 16h1.5L8.7 4.9H7.1L17.9 19Z"/></svg>`,
+};
+const socialLink = (name: string, href: string, icon: string) => `<a href="${href}" target="_blank" rel="noopener noreferrer" aria-label="${name}" title="${name}">${icon}</a>`;
+export const contactMarkup = `<p class="note-email"><a href="mailto:${email}">${envelopeIcon}<span>Email me</span><span class="email-address">${email}</span></a></p>
+  <nav class="note-links" aria-label="Social links">${socialLink("GitHub", "https://github.com/chakib-belgaid", socialIcons.github)}${socialLink("LinkedIn", "https://www.linkedin.com/in/chakib-belgaid", socialIcons.linkedin)}${socialLink("Instagram", "https://www.instagram.com/chakib.med", socialIcons.instagram)}${socialLink("X", "https://x.com/chakib_med", socialIcons.x)}</nav>`;
 export const beats: Beat[] = [
   {
     stage: 0,
@@ -182,10 +192,7 @@ export const beats: Beat[] = [
     label: "The greenhouse",
     title: "Write to me",
     copy: "I’d like to hear what you’re building.",
-    body: `<p class="note-email"><a href="mailto:${email}">${email}</a></p>
-      <section class="note-widget" data-widget></section>
-      <p class="note-links"><a href="https://github.com/chakib-belgaid" target="_blank" rel="noopener noreferrer">GitHub</a> <a href="https://www.linkedin.com/in/chakib-belgaid" target="_blank" rel="noopener noreferrer">LinkedIn</a> <a href="https://www.instagram.com/chakib.med" target="_blank" rel="noopener noreferrer">Instagram</a> <a href="https://x.com/chakib_med" target="_blank" rel="noopener noreferrer">X</a></p>`,
-    widget: "contact",
+    body: contactMarkup,
   },
 ];
 // The first beat of each stage, where the ruler's stage ticks point.

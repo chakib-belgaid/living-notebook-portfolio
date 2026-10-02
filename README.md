@@ -43,6 +43,10 @@ The original terraces, canal, waterfall, drones, reading pavilion, drum-recorder
 
 One pause state stops CSS effects, mist, marker pulses, sky, and garden motion. Reduced motion keeps the scene still and the stage changes immediate. The motion button reports its current action and honors the system preference.
 
+The garden has sound, off until the visitor turns it on with the speaker beside the pause button (on phones, in the journey's header). `src/soundscape.ts` makes it in the browser with Web Audio, so nothing is downloaded: water once the stone is built, wind that follows the weather, rain, birds by day (a chorus of trills and calls on a sunny morning) and crickets by night at Bloom, distant thunder in a storm, and piano: a slow loop in D major for the rain and autumn's falling leaves, and a lilting waltz in G major for sunny mornings, which takes over from the leaves' piece in the morning. One piece plays at a time, changing at a bar line. The water is louder beside the canal, and the garden steps back while Whisperbook reads. `soundMix` turns the garden's state into a level per layer; the engine's loudness table is the place to tune by ear. No audio context exists before the visitor asks. The pause button silences sound with the motion, and so do a hidden tab and the reading page; reduced motion doesn't, since sound isn't motion. Once silent, the engine is suspended. Its processing isn't part of the carbon estimate, which says so.
+
+Left alone for 20 seconds in the garden view, the header, ruler, controls and building labels fade, leaving the garden and the note; any movement or key brings them back. At Bloom, the garden slowly turns, unless motion is paused. Writing a note, planting, or an open slip or dialog keeps the controls.
+
 Contact builds an email-app handoff only. The draft, character count, and button state survive navigation, resizing, view changes, and the handoff. The draft lives in page memory and clears on reload. The page neither sends email nor persists a draft. Clipboard rejection and missing local speech voices have readable fallback states.
 
 ## Architecture and performance

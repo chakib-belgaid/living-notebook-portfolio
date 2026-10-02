@@ -101,6 +101,8 @@
   :root[data-journey="true"] .masthead { background: color-mix(in srgb, var(--paper) 78%, transparent); backdrop-filter: blur(12px); }
   .journey-bar { order: 3; flex-basis: 100%; display: flex; align-items: center; justify-content: space-between; min-height: 2rem; margin-top: -0.35rem; font-size: 0.8125rem; letter-spacing: 0.06em; color: var(--muted); }
   .journey-label { text-transform: uppercase; }
+  /* The label gives way to the two buttons, wrapping in enlarged text. */
+  .journey-label, .journey-toast { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
   .journey-toast { display: none; color: var(--ink); }
   .journey-bar.toasting .journey-label { display: none; }
   .journey-bar.toasting .journey-toast { display: block; }
@@ -173,7 +175,28 @@
   .sheet-body p { max-width: 65ch; }
   .sheet-body h4 { font-size: 1.125rem; font-weight: 650; margin: 1.5rem 0 0.35rem; }
   .sheet-body .reading-proof { margin-top: 1.5rem; }
-  .sheet-body .note-widget[data-contact-read] { max-width: none; margin: 0; padding: 0; border: 0; }
+  /* The garden controls: the dock's widgets, unboxed, with the garden left
+     in view above them so each change shows as it is made. Planting by
+     tapping the garden is left to the garden view. */
+  .sheet[data-key="controls"]::backdrop { background: transparent; }
+  .sheet[data-key="controls"] { box-shadow: 0 -18px 40px -28px rgb(0 0 0 / 0.6); }
+  .sheet[data-key="controls"] .sheet-body { padding-top: 0; }
+  .sheet .dock-body { display: flex; flex-direction: column; gap: 1rem; }
+  .sheet .widget { width: auto; padding: 0; border: 0; background: none; backdrop-filter: none; box-shadow: none; opacity: 1; transform: none; }
+  .sheet .widget-sky .widget-head { display: flex; }
+  .sheet .widget-sky .sky-arc { display: none; }
+  .sheet .widget-sky .widget-foot { display: flex; gap: 0 1rem; justify-content: flex-start; }
+  .sheet .widget-sky .widget-foot.credit { margin-top: 0.25rem; }
+  /* Each set of chips is one row, swiped sideways, to keep the sheet low. */
+  .sheet .weather-chips, .sheet .widget-actions {
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+    margin-inline: -1.25rem; padding-inline: 1.25rem;
+  }
+  .sheet .weather-chips::-webkit-scrollbar, .sheet .widget-actions::-webkit-scrollbar { display: none; }
+  .sheet .chip { flex: none; white-space: nowrap; }
+  .sheet .sky-report, .sheet .season-report { margin: 0; }
+  .sheet #plant-mode { display: none; }
+  .sheet #hour { width: 100%; }
 
   /* Ambient motion: two sketched clouds, and leaves falling in Bloom. Paused
      with the rest of the page, and off with reduced motion. */
@@ -192,9 +215,13 @@
   .journey-leaves i:nth-child(4n) { background: #e8b84a; }
   .journey:not([data-at="bloom"]) .journey-leaves i { animation-play-state: paused; }
   @keyframes leaf-fall { to { transform: translate(-3rem, 72vh) rotate(540deg); } }
-  .journey-pause { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: -0.4rem -0.6rem -0.4rem 0; border: 0; background: none; color: var(--ink); cursor: pointer; }
+  .journey-pause, .journey-sound, .journey-controls { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: -0.4rem -0.6rem -0.4rem 0; border: 0; background: none; color: var(--ink); cursor: pointer; }
   .journey-pause:disabled { color: var(--muted); cursor: default; }
-  .journey-pause svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .journey-pause svg, .journey-sound svg, .journey-controls svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  /* The three buttons sit together at the end of the bar. */
+  .journey-controls { margin-block: -0.4rem; margin-inline: auto 0; }
+  .journey-sound { margin-block: -0.4rem; margin-inline: 0; }
+  .journey-sound[hidden] { display: none; }
   .journey-pause .icon-play { display: none; }
   .journey-pause[aria-pressed="true"] .icon-pause { display: none; }
   .journey-pause[aria-pressed="true"] .icon-play { display: inline; fill: currentColor; }
