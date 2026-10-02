@@ -122,6 +122,8 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
   });
   // The desktop's dock opens in the sheet, over the garden it changes.
   const controls = bar.querySelector<HTMLButtonElement>(".journey-controls")!;
+  // Like the desktop's dock, the controls wait for Bloom.
+  controls.hidden = true;
   controls.addEventListener("click", () => sheet.open("controls", "Garden controls", controls));
   const moreButtons = stops.flatMap((s) => {
     const d = details[s.name];
@@ -248,6 +250,7 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
       current = stops[at];
       layer.dataset.at = current.name;
       label.textContent = current.label;
+      controls.hidden = current.name !== "bloom";
       options.onStop(current);
     }
   }

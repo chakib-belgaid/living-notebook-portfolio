@@ -618,6 +618,8 @@ test('on phones the header opens the garden controls: time, weather and season',
   const p = await page({viewport:{width:390,height:844}});
   try {
     await ready(p, '?view=stills');
+    // The controls wait for Bloom.
+    await go(p,'contact');
     const opener = p.getByRole('button',{name:'Garden controls',exact:true});
     await opener.click();
     const sheet = p.locator('dialog.sheet[open]');
@@ -862,4 +864,38 @@ test('a visitor writing a note, or with motion paused, keeps the garden still an
     assert.equal(await p.locator('html').getAttribute('data-idle'), 'false', 'writing is not idle');
     healthy(p);
   } finally { await p.context().close(); }
+});
+
+test('the garden controls wait for Bloom, on the desktop and in the phone journey', async () => {
+  const visit = async (p, hash) => { await p.evaluate(h => { location.hash = h; }, hash); await p.waitForTimeout(1500); };
+  const p = await page();
+  try {
+    await ready(p);
+    const dock = p.getByText('Garden controls', { exact: true });
+    for (const hash of ['intro', 'about', 'work', 'whisperbook', 'wattch']) {
+      await visit(p, hash);
+      assert.equal(await dock.isVisible(), false, `hidden at ${hash}`);
+    }
+    assert.equal(await p.locator('.dock').evaluate(e => e.inert), true, 'out of the tab order before Bloom');
+    await visit(p, 'contact');
+    await p.waitForFunction(() => getComputedStyle(document.querySelector('.dock')).opacity === '1');
+    assert.equal(await dock.isVisible(), true);
+    await dock.click();
+    await visit(p, 'work');
+    assert.equal(await p.locator('.dock').evaluate(e => e.open), false, 'closed on leaving Bloom');
+    assert.equal(await dock.isVisible(), false);
+    healthy(p);
+  } finally { await p.context().close(); }
+  const phone = await page({viewport:{width:390,height:844}});
+  try {
+    await ready(phone, '?view=stills');
+    const controls = phone.locator('.journey-bar').getByRole('button', { name: 'Garden controls', exact: true });
+    for (const hash of ['about', 'wattch']) {
+      await visit(phone, hash);
+      assert.equal(await controls.isVisible(), false, `hidden at ${hash}`);
+    }
+    await visit(phone, 'contact');
+    assert.equal(await controls.isVisible(), true);
+    healthy(phone);
+  } finally { await phone.context().close(); }
 });

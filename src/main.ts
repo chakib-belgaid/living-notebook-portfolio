@@ -78,7 +78,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
         <p class="widget-fine carbon-source" data-compute-source></p><details class="carbon-details"><summary>Details</summary><p class="widget-fine">Data transfer: reported bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, computed with co2.js using the Sustainable Web Design Model v4, which includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded, and cached resources add no reported network bytes.</p><p class="widget-fine">Rendering and animation: the main-thread time spent updating and drawing the garden and sky at an assumed ${CPU_WATTS} W, plus the GPU time of each garden frame at an assumed ${GPU_WATTS} W, × ${Math.round(GRID_INTENSITY)} g CO₂e/kWh, co2.js’s world average grid intensity. GPU time is counted only where the browser exposes GPU timers; elsewhere this part is a CPU-only lower bound. Browsers report time, not power, so the wattages are assumptions, and the model’s device share of transfer may overlap a little with this measured rendering.</p><p class="widget-fine">Garden sounds, when on, are made by the browser’s audio engine. Their small cost isn’t measured here.</p><a class="widget-fine" href="https://sustainablewebdesign.org/estimating-digital-emissions/" target="_blank" rel="noopener noreferrer">Read the transfer methodology ↗</a> <a class="widget-fine" href="https://developers.thegreenwebfoundation.org/co2js/overview/" target="_blank" rel="noopener noreferrer">About co2.js ↗</a></details>
       </section>
     </details>
-    <button type="button" class="ruler-motion ruler-sound" id="sound-toggle" aria-pressed="false" aria-label="Play garden sounds" title="Play garden sounds">${speaker}</button>
+    <button type="button" class="ruler-motion ruler-sound" id="sound-toggle" aria-pressed="true" aria-label="Stop garden sounds" title="Stop garden sounds">${speaker}</button>
     <button type="button" class="ruler-motion" id="motion-toggle" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>
   </div>
 
@@ -240,11 +240,12 @@ reducedQuery.addEventListener("change", (e) => {
   measure();
 });
 
-/* Sound: the garden is silent until the visitor asks. It then plays while
-   the garden is on screen, and the visitor's own pause silences it with the
-   motion. Reduced motion doesn't: sound isn't motion, and it is off anyway
-   until chosen. */
-let soundOn = false;
+/* Sound is enabled by default and plays while the garden is on screen. Browsers
+   require a user gesture before starting audio, so wait for the first
+   interaction before creating the audio engine. The visitor's pause silences
+   it with the motion; reduced motion doesn't affect sound. */
+let soundOn = true;
+let soundStarted = false;
 let narrating = false;
 const soundButton = $<HTMLButtonElement>("#sound-toggle");
 soundButton.hidden = !soundSupported();
@@ -267,11 +268,25 @@ function syncSound() {
   soundButton.setAttribute("aria-label", name);
   soundButton.title = name;
   journey.setSound(soundSupported() ? soundOn : null);
-  soundscape.setAudible(state === "playing");
+  if (soundStarted) soundscape.setAudible(state === "playing");
 }
 soundButton.addEventListener("click", () => {
   soundOn = !soundOn;
+  // A click that unmutes is itself the gesture browsers require.
+  if (soundOn) soundStarted = true;
   syncSound();
+});
+document.addEventListener("pointerdown", (event) => {
+  if (!soundStarted && soundOn && !(event.target instanceof Element && event.target.closest("#sound-toggle, .journey-sound"))) {
+    soundStarted = true;
+    syncSound();
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (!soundStarted && soundOn && !(event.target instanceof Element && event.target.closest("#sound-toggle, .journey-sound"))) {
+    soundStarted = true;
+    syncSound();
+  }
 });
 document.addEventListener("visibilitychange", syncSound);
 syncMotion();
@@ -347,6 +362,12 @@ function syncWidgets() {
     w.classList.toggle("shown", show);
     w.inert = !show;
   });
+  // The controls change the finished garden, so they wait for Bloom.
+  const dock = $<HTMLDetailsElement>(".dock");
+  const bloom = reading || stage >= 3;
+  dock.classList.toggle("waiting", !bloom);
+  dock.inert = !bloom;
+  if (!bloom) dock.open = false;
 }
 
 /* Compact layouts keep the garden in a separate, predictable frame. */

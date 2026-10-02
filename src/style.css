@@ -1339,6 +1339,9 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 .scene-fallback img { position: absolute; left: 50%; top: 50%; width: 100%; height: auto; max-width: none; transform: translate(-50%, -50%); }
 .scene-fallback p { position: relative; padding: 0.6rem; margin: 0; font-size: 1rem; background: var(--paper); }
 :root[data-weather="fog"] .note, :root[data-weather="fog"] .widget, :root[data-weather="fog"] .ruler, :root[data-weather="fog"] .tally-panel { background: color-mix(in srgb, var(--paper) 96%, transparent); }
+/* Before Bloom the dock waits, unseen; it fades in with the finished garden. */
+.dock { transition: opacity 0.5s ease, visibility 0.5s; }
+.dock.waiting { opacity: 0; visibility: hidden; pointer-events: none; }
 /* Idle: the controls step back and leave the garden and the note. They come
    back at once with any movement. */
 :root[data-view="garden"][data-idle="true"] :is(.masthead, .ruler, .dock, .hotspot) { opacity: 0; pointer-events: none; transition: opacity 1.6s ease; }
