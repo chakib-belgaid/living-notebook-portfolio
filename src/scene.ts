@@ -2290,45 +2290,78 @@ export async function createGarden(
     return duck;
   });
 
-  // Rabbits hop between spots on the same terrace, then sit for a while.
-  const rabbitFur = mat(0x9c7a5a),
-    rabbitTail = mat(0xf4f1ea);
+  // Fennecs trot between spots on the same terrace, then sit for a while.
+  const fennecFur = mat(0xd9b98a),
+    fennecPale = mat(0xf3e6cf),
+    fennecDark = mat(0x4a3426);
   const groundSpots = await surfaceSpots(70, onGround);
-  const rabbits = Array.from({ length: 3 }, () => {
-    const rabbit = new T.Group();
+  const fennecs = Array.from({ length: 3 }, () => {
+    const fennec = new T.Group();
     const body = new T.Mesh(
-      new T.SphereGeometry(0.1, 10, 8).scale(0.8, 0.8, 1.1),
-      rabbitFur,
+      new T.SphereGeometry(0.09, 10, 8).scale(0.7, 0.7, 1.3),
+      fennecFur,
     );
-    body.position.y = 0.08;
-    const head = new T.Mesh(new T.SphereGeometry(0.06, 9, 7), rabbitFur);
-    head.position.set(0, 0.17, 0.09);
+    body.position.y = 0.12;
+    const head = new T.Mesh(new T.SphereGeometry(0.05, 9, 7), fennecFur);
+    head.position.set(0, 0.175, 0.12);
+    const snout = new T.Mesh(new T.ConeGeometry(0.024, 0.07, 6), fennecPale);
+    snout.position.set(0, 0.165, 0.175);
+    snout.rotation.x = Math.PI / 2;
+    const nose = new T.Mesh(new T.SphereGeometry(0.009, 6, 4), fennecDark);
+    nose.position.set(0, 0.165, 0.21);
+    // The big ears, splayed outward, with pale insides.
     const ears = [-1, 1].map((s) => {
-      const ear = new T.Mesh(
-        new T.CapsuleGeometry(0.014, 0.08, 2, 6),
-        rabbitFur,
+      const ear = new T.Mesh(new T.ConeGeometry(0.04, 0.13, 8), fennecFur);
+      const inner = new T.Mesh(
+        new T.ConeGeometry(0.028, 0.095, 8).scale(1, 1, 0.4),
+        fennecPale,
       );
-      ear.position.set(s * 0.025, 0.27, 0.07);
-      ear.rotation.set(-0.25, 0, s * 0.18);
+      inner.position.set(0, -0.01, 0.022);
+      ear.add(inner);
+      ear.position.set(s * 0.055, 0.265, 0.105);
+      ear.rotation.set(-0.15, 0, -s * 0.4);
       return ear;
     });
-    const tail = new T.Mesh(new T.SphereGeometry(0.03, 7, 5), rabbitTail);
-    tail.position.set(0, 0.1, -0.11);
-    rabbit.add(body, head, ...ears, tail);
-    rabbit.scale.setScalar(1.35);
+    // A bushy tail with a dark tip, pivoting where it meets the body.
+    const tail = new T.Group();
+    const brush = new T.Mesh(new T.CapsuleGeometry(0.032, 0.1, 3, 7), fennecFur);
+    brush.position.y = 0.08;
+    const tip = new T.Mesh(new T.SphereGeometry(0.033, 7, 5), fennecDark);
+    tip.position.y = 0.155;
+    tail.add(brush, tip);
+    tail.position.set(0, 0.12, -0.12);
+    tail.rotation.x = -2.1;
+    const legs = [
+      [-1, 1],
+      [1, 1],
+      [-1, -1],
+      [1, -1],
+    ].map(([sx, sz]) => {
+      const leg = new T.Mesh(
+        new T.CylinderGeometry(0.011, 0.009, 0.085, 5).translate(0, -0.0425, 0),
+        fennecFur,
+      );
+      leg.position.set(sx * 0.035, 0.085, sz * 0.07);
+      return leg;
+    });
+    fennec.add(body, head, snout, nose, ...ears, tail, ...legs);
+    fennec.scale.setScalar(1.35);
     body.castShadow = true;
     const start = groundSpots[Math.floor(random() * groundSpots.length)];
-    rabbit.position.copy(start);
-    rabbit.userData = {
+    fennec.position.copy(start);
+    fennec.userData = {
       from: start.clone(),
       to: start.clone(),
       t: 1,
       rest: random() * 3,
+      ear: ears[0],
+      tail,
+      legs,
     };
-    world.add(rabbit);
-    return rabbit;
+    world.add(fennec);
+    return fennec;
   });
-  function nextHop(r: T.Group) {
+  function nextTrot(r: T.Group) {
     const here = r.userData.to as T.Vector3;
     const options = groundSpots.filter(
       (p) =>
@@ -2686,11 +2719,12 @@ export async function createGarden(
     return Math.abs(d) <= step ? to : from + Math.sign(d) * step;
   }
 
-  const rabbitColors: Record<Season, number> = {
-    spring: 0x9c7a5a,
-    summer: 0xa07c58,
-    autumn: 0x8e6e50,
-    winter: 0xeef1f3,
+  // Sandy all year; the winter coat is a little paler.
+  const fennecColors: Record<Season, number> = {
+    spring: 0xd9b98a,
+    summer: 0xdcbc86,
+    autumn: 0xcfaa78,
+    winter: 0xe4cda6,
   };
   function updateLife(dt: number, life: number) {
     const day = 1 - night;
@@ -2699,7 +2733,7 @@ export async function createGarden(
     berryMaterial.opacity = life * flowerAmount[season] * (season === "autumn" ? 2 : 1);
     birdMaterial.opacity =
       life * day * dry * (season === "winter" ? 0.6 : 1) * (1 - fogAmount * 0.7);
-    rabbitFur.opacity = rabbitTail.opacity = life * day * dry;
+    fennecFur.opacity = fennecPale.opacity = fennecDark.opacity = life * day * dry;
     lifeMaterials.forEach((m) => (m.visible = m.opacity > 0.01));
     const t = elapsed;
     birds.forEach((b, i) => {
@@ -2728,28 +2762,37 @@ export async function createGarden(
       d.rotation.y = dz >= 0 ? 0 : Math.PI;
       d.rotation.z = Math.sin(t * 1.7 + i) * 0.05;
     });
-    rabbits.forEach((r) => {
+    fennecs.forEach((r) => {
       const u = r.userData;
+      const legs = u.legs as T.Mesh[],
+        tail = u.tail as T.Group;
       if (u.t >= 1) {
         u.rest -= dt;
         if (u.rest <= 0) {
-          nextHop(r);
+          nextTrot(r);
           u.rest = 1.5 + random() * 3.5;
         }
-        // An ear twitch while sitting.
-        r.children[2].rotation.x = -0.25 + Math.max(0, Math.sin(t * 3 + u.rest)) * 0.25;
+        // An ear twitch and a lazy tail sway while sitting.
+        (u.ear as T.Mesh).rotation.x =
+          -0.15 + Math.max(0, Math.sin(t * 3 + u.rest)) * 0.25;
+        legs.forEach((l) => (l.rotation.x = 0));
+        tail.rotation.set(-2.1, Math.sin(t * 0.8 + u.rest) * 0.25, 0);
         return;
       }
       const from = u.from as T.Vector3,
         to = u.to as T.Vector3;
       const distance = from.distanceTo(to);
-      const hops = Math.max(1, Math.round(distance / 0.32));
-      u.t = Math.min(1, u.t + dt / (hops * 0.36));
-      const k = u.t * hops;
+      const strides = Math.max(1, Math.round(distance / 0.2));
+      u.t = Math.min(1, u.t + dt / (strides * 0.26));
+      const k = u.t * strides;
       const frac = k - Math.floor(k);
       r.position.lerpVectors(from, to, u.t);
-      r.position.y = from.y + Math.sin(Math.PI * (u.t >= 1 ? 1 : frac)) * 0.13;
+      r.position.y = from.y + Math.abs(Math.sin(Math.PI * 2 * frac)) * 0.02;
       r.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+      // A trot: diagonal legs swing together, the tail held out behind.
+      const swing = Math.sin(Math.PI * 2 * frac) * 0.6;
+      legs.forEach((l, i) => (l.rotation.x = i === 0 || i === 3 ? swing : -swing));
+      tail.rotation.set(-1.75, 0, 0);
     });
     // The cat breathes and its tail drifts.
     catBody.scale.y = 1 + Math.sin(t * 1.6) * 0.04;
@@ -2766,7 +2809,7 @@ export async function createGarden(
     bushMaterials[0].color.setHex(palette.leaf!);
     bushMaterials[1].color.setHex(palette.leafDark!);
     berryMaterial.color.setHex(season === "autumn" ? 0xb8302a : palette.flower!);
-    rabbitFur.color.setHex(rabbitColors[season]);
+    fennecFur.color.setHex(fennecColors[season]);
     // Litter positions are prepared in yielding batches before the renderer starts.
     paintLitter();
     fallColor.value.setHex(season === "spring" ? 0xf4c3d5 : 0xd2812f);
