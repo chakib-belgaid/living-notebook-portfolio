@@ -17,19 +17,7 @@ import { widgetLifecycle } from "./widgets";
 import { createTransferEstimate, formatGrams } from "./transfer";
 import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY, estimateCompute, type ComputeWork } from "./compute";
 import { initEvidence } from "./evidence";
-
-/* Headline letters are wrapped so they can be set in one after another. */
-function lettered(text: string) {
-  let i = 0;
-  const words = text
-    .split(" ")
-    .map(
-      (w) =>
-        `<span class="word">${[...w].map((c) => `<span class="char" style="--i:${i++}">${c}</span>`).join("")}</span>`,
-    )
-    .join(" ");
-  return `<span class="sr-only">${text}</span><span aria-hidden="true">${words}</span>`;
-}
+import { lettered } from "./lettered";
 
 const sunIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>`;
 const moonIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.8A8 8 0 0 1 9.2 4.5a8 8 0 1 0 10.3 10.3Z"/></svg>`;
@@ -1057,6 +1045,8 @@ async function loadGarden() {
   });
   return gardenLoading;
 }
+// scripts/capture-stills.mjs drives the garden through this, in development only.
+if (import.meta.env.DEV) Object.assign(window, { __notebook: { get garden() { return garden; } } });
 
 // Commit enhancement only after the controllers have initialized.
 initEvidence();

@@ -187,3 +187,17 @@ export const spotBeat: Record<Spot, number> = {
   contact: stageStart[3],
 };
 
+
+/* The phone journey (src/phone.ts): one stop per card, each with the stage
+   its still shows and where the camera looks. The capture script and the
+   live garden use the same list, so stills and garden agree. */
+export type StopName = "sketch" | "blueprint" | "build" | "whisperbook" | "wattch" | "bloom";
+export type Stop = { name: StopName; stage: number; spot: Spot | null; label: string };
+export const stops: Stop[] = [
+  { name: "sketch", stage: 0, spot: null, label: "Sketch" },
+  { name: "blueprint", stage: 1, spot: "about", label: "Blueprint · Background" },
+  { name: "build", stage: 2, spot: null, label: "Build" },
+  { name: "whisperbook", stage: 2, spot: "whisperbook", label: "Build · Whisperbook" },
+  { name: "wattch", stage: 2, spot: "wattch", label: "Build · Wattch Core" },
+  { name: "bloom", stage: 3, spot: null, label: "Bloom · Write to me" },
+];
