@@ -65,7 +65,7 @@ const smoothstep = (t: number) => t * t * (3 - 2 * t);
 const cloud = `<svg viewBox="0 0 120 50" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 44h94c9 0 13-7 10-13-2-5-8-7-13-5 0-10-9-16-18-13-4-9-15-13-24-9-7 3-11 10-10 17-6-3-15 0-17 7-8-1-14 4-13 10 1 4 5 6 11 6z"/></svg>`;
 
 // A speaker: waves while the garden plays, a cross while it is quiet.
-export const speaker = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="icon-speaker" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path class="icon-waves" d="M15.5 9.2a4 4 0 0 1 0 5.6M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/><path class="icon-mute" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>`;
+export const speaker = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="icon-speaker" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path class="icon-waves" d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path class="icon-waves" d="M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/><path class="icon-mute" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>`;
 
 // Two sliders: the time, weather and season of the garden.
 const sliders = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg>`;
@@ -306,7 +306,14 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
     }
   }
 
+  // An empty message takes the current one down.
   function notify(text: string) {
+    if (!text) {
+      clearTimeout(toastTimer);
+      bar.classList.remove("toasting");
+      toast.textContent = "";
+      return;
+    }
     toast.textContent = text;
     bar.classList.add("toasting");
     clearTimeout(toastTimer);

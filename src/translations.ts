@@ -117,6 +117,8 @@ export const translations: Record<string, readonly [string, string]> = {
   "Resume motion": ["Reprendre les animations", "استأنف الحركة"],
   "Play garden sounds": ["Écouter le jardin", "شغّل أصوات الحديقة"],
   "Stop garden sounds": ["Couper le son du jardin", "أوقف أصوات الحديقة"],
+  "Click to hear the garden": ["Cliquez pour écouter le jardin", "انقر لتسمع الحديقة"],
+  "Tap to hear the garden": ["Touchez pour écouter le jardin", "المس لتسمع الحديقة"],
   "Garden sounds, when on, are made by the browser’s audio engine. Their small cost isn’t measured here.": ["Les sons du jardin, quand ils sont activés, sont produits par le moteur audio du navigateur. Leur faible coût n’est pas mesuré ici.", "أصوات الحديقة، عند تشغيلها، يولّدها محرّك الصوت في المتصفح. تكلفتها الصغيرة غير محسوبة هنا."],
   "Motion paused by your system preference": ["Animations suspendues selon les préférences du système", "الحركة متوقفة وفق تفضيلات نظامك"],
   "Garden controls": ["Commandes du jardin", "أدوات الحديقة"],

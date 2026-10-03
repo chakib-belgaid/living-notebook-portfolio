@@ -712,11 +712,17 @@ test('garden sound is on by default, starts on the first gesture, follows the pa
     await ready(p, '#contact');
     await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
     assert.deepEqual(await audioState(p), [], 'no audio engine before the visitor interacts');
-    assert.equal(await p.locator('html').getAttribute('data-sound'), 'playing');
-    const stop = p.getByRole('button',{name:'Stop garden sounds',exact:true});
-    assert.equal(await stop.getAttribute('aria-pressed'), 'true');
+    assert.equal(await p.locator('html').getAttribute('data-sound'), 'waiting');
+    assert.equal(await p.locator('#sound-toggle').getAttribute('aria-pressed'), 'false', 'nothing is heard yet');
+    const hint = p.locator('.sound-hint');
+    await hint.waitFor({state:'visible', timeout: 5000});
+    assert.equal(await hint.textContent(), 'Click to hear the garden');
     await p.keyboard.press('Shift');
     await p.waitForFunction(() => window.audioContexts[0]?.state === 'running');
+    await p.waitForFunction(() => document.documentElement.dataset.sound === 'playing');
+    assert.equal(await hint.isVisible(), false, 'the note goes once the garden plays');
+    const stop = p.getByRole('button',{name:'Stop garden sounds',exact:true});
+    assert.equal(await stop.getAttribute('aria-pressed'), 'true');
     await p.getByRole('button',{name:'Pause motion',exact:true}).click();
     assert.equal(await p.locator('html').getAttribute('data-sound'), 'paused');
     await p.waitForFunction(() => window.audioContexts[0].state === 'suspended', undefined, {timeout: 5000});
@@ -734,17 +740,36 @@ test('garden sound is on by default, starts on the first gesture, follows the pa
   } finally { await p.context().close(); }
 });
 
+test('while the garden waits, its speaker plays it rather than turning it off', async () => {
+  const p = await page();
+  try {
+    await p.addInitScript(countAudio);
+    await ready(p, '#contact');
+    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
+    assert.equal(await p.locator('html').getAttribute('data-sound'), 'waiting');
+    await p.getByRole('button',{name:'Play garden sounds',exact:true}).click();
+    await p.waitForFunction(() => window.audioContexts[0]?.state === 'running');
+    await p.waitForFunction(() => document.documentElement.dataset.sound === 'playing');
+    assert.equal(await p.locator('#sound-toggle').getAttribute('aria-pressed'), 'true');
+    healthy(p);
+  } finally { await p.context().close(); }
+});
+
 test('garden sound plays in the phone journey, and the reading page is silent', async () => {
   const p = await page({viewport:{width:390,height:844}});
   try {
     await p.addInitScript(countAudio);
     await ready(p, '?view=stills');
     const button = p.locator('.journey-bar .journey-sound');
-    assert.equal(await button.getAttribute('aria-label'), 'Stop garden sounds');
+    assert.equal(await button.getAttribute('aria-label'), 'Play garden sounds');
+    assert.equal(await p.locator('html').getAttribute('data-sound'), 'waiting');
     assert.deepEqual(await audioState(p), []);
+    await p.waitForFunction(() => /hear the garden/.test(document.querySelector('.journey-toast').textContent), undefined, {timeout: 5000});
     await p.locator('#intro-title').click();
     await p.waitForFunction(() => window.audioContexts[0]?.state === 'running');
-    assert.equal(await p.locator('html').getAttribute('data-sound'), 'playing');
+    await p.waitForFunction(() => document.documentElement.dataset.sound === 'playing');
+    assert.equal(await p.locator('.journey-toast').textContent(), '', 'the note goes once the garden plays');
+    assert.equal(await button.getAttribute('aria-label'), 'Stop garden sounds');
     await button.click();
     assert.equal(await p.locator('html').getAttribute('data-sound'), 'off');
     healthy(p);

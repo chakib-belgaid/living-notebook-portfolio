@@ -144,15 +144,16 @@ const FADE = 0.6;
 const DRIFT = 1.2;
 
 export type Soundscape = {
-  /** Plays or stops the garden. The first call to play must come from a
-      click or key press, which browsers require before sound. */
+  /** Plays or stops the garden. Browsers hold sound back until a click, tap
+      or key press, so asking to play again from a later gesture retries. */
   setAudible: (on: boolean) => void;
   dispose: () => void;
 };
 
 export const soundSupported = () => typeof AudioContext !== "undefined";
 
-export function createSoundscape(read: () => SoundState): Soundscape {
+/** `onHeard` is called once, when the browser first lets the garden play. */
+export function createSoundscape(read: () => SoundState, onHeard?: () => void): Soundscape {
   let engine: ReturnType<typeof build> | undefined;
   let timer = 0;
   let sleep = 0;
@@ -160,6 +161,12 @@ export function createSoundscape(read: () => SoundState): Soundscape {
 
   function build() {
     const ctx = new AudioContext();
+    const heard = () => {
+      if (ctx.state !== "running") return;
+      ctx.removeEventListener("statechange", heard);
+      onHeard?.();
+    };
+    ctx.addEventListener("statechange", heard);
     const rate = ctx.sampleRate;
     /* A loop of noise. The tail crossfades into the head, so the loop has no
        seam to click on. Brown noise is white noise, gently integrated. */
@@ -479,7 +486,10 @@ export function createSoundscape(read: () => SoundState): Soundscape {
   }
 
   function setAudible(on: boolean) {
-    if (on === audible) return;
+    if (on === audible) {
+      if (on && engine?.ctx.state === "suspended") void engine.ctx.resume();
+      return;
+    }
     if (on && !engine) {
       if (!soundSupported()) return;
       engine = build();

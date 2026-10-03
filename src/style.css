@@ -682,6 +682,91 @@ button {
 :is(.ruler-sound, .journey-sound)[aria-pressed="true"] .icon-mute {
   display: none;
 }
+/* Until the browser lets the garden play, its waves call softly outward, a
+   few times, then rest faint; a note above the speaker says once how to
+   hear it, and goes. */
+:root[data-sound="waiting"] :is(.ruler-sound, .journey-sound) .icon-waves {
+  display: inline;
+  opacity: 0.35;
+  animation: sound-call 2.4s ease-in-out 6 both;
+}
+:root[data-sound="waiting"] :is(.ruler-sound, .journey-sound) .icon-waves + .icon-waves {
+  animation-delay: 0.3s;
+}
+:root[data-sound="waiting"] :is(.ruler-sound, .journey-sound) .icon-mute {
+  display: none;
+}
+@keyframes sound-call {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  45% {
+    opacity: 1;
+  }
+}
+.sound-hint {
+  position: absolute;
+  bottom: calc(100% + 0.6rem);
+  inset-inline-end: calc(var(--to-speaker, 3.9rem) - 1.3rem);
+  padding: 0.3rem 0.8rem;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--ink);
+  background: var(--slip);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  pointer-events: none;
+  animation: sound-hint 6s var(--ease) both;
+}
+/* A small tick points down at the speaker. */
+.sound-hint::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  inset-inline-end: 1.05rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: -0.25rem;
+  background: inherit;
+  border: solid var(--hairline);
+  border-width: 0 1px 1px 0;
+  transform: rotate(45deg);
+}
+@keyframes sound-hint {
+  from {
+    opacity: 0;
+    transform: translateY(0.4rem);
+  }
+  10%,
+  85% {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-sound="waiting"] :is(.ruler-sound, .journey-sound) .icon-waves {
+    animation: none;
+  }
+  .sound-hint {
+    animation-name: sound-hint-still;
+  }
+  @keyframes sound-hint-still {
+    from,
+    to {
+      opacity: 0;
+    }
+    10%,
+    85% {
+      opacity: 1;
+    }
+  }
+}
 #scrub {
   -webkit-appearance: none;
   appearance: none;

@@ -78,7 +78,8 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
         <p class="widget-fine carbon-source" data-compute-source></p><details class="carbon-details"><summary>Details</summary><p class="widget-fine">Data transfer: reported bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, computed with co2.js using the Sustainable Web Design Model v4, which includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded, and cached resources add no reported network bytes.</p><p class="widget-fine">Rendering and animation: the main-thread time spent updating and drawing the garden and sky at an assumed ${CPU_WATTS} W, plus the GPU time of each garden frame at an assumed ${GPU_WATTS} W, × ${Math.round(GRID_INTENSITY)} g CO₂e/kWh, co2.js’s world average grid intensity. GPU time is counted only where the browser exposes GPU timers; elsewhere this part is a CPU-only lower bound. Browsers report time, not power, so the wattages are assumptions, and the model’s device share of transfer may overlap a little with this measured rendering.</p><p class="widget-fine">Garden sounds, when on, are made by the browser’s audio engine. Their small cost isn’t measured here.</p><a class="widget-fine" href="https://sustainablewebdesign.org/estimating-digital-emissions/" target="_blank" rel="noopener noreferrer">Read the transfer methodology ↗</a> <a class="widget-fine" href="https://developers.thegreenwebfoundation.org/co2js/overview/" target="_blank" rel="noopener noreferrer">About co2.js ↗</a></details>
       </section>
     </details>
-    <button type="button" class="ruler-motion ruler-sound" id="sound-toggle" aria-pressed="true" aria-label="Stop garden sounds" title="Stop garden sounds">${speaker}</button>
+    <span class="sound-hint" aria-hidden="true" hidden></span>
+    <button type="button" class="ruler-motion ruler-sound" id="sound-toggle" aria-pressed="false" aria-label="Play garden sounds" title="Play garden sounds">${speaker}</button>
     <button type="button" class="ruler-motion" id="motion-toggle" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>
   </div>
 
@@ -241,14 +242,18 @@ reducedQuery.addEventListener("change", (e) => {
 });
 
 /* Sound is enabled by default and plays while the garden is on screen. Browsers
-   require a user gesture before starting audio, so wait for the first
-   interaction before creating the audio engine. The visitor's pause silences
-   it with the motion; reduced motion doesn't affect sound. */
+   hold sound back until the visitor clicks, taps or presses a key, so until
+   then the garden is waiting: the speaker's waves call softly, and a note
+   says once how to hear it. The visitor's pause silences it with the motion;
+   reduced motion doesn't affect sound. */
 let soundOn = true;
 let soundStarted = false;
+// The browser has let the garden play.
+let soundHeard = false;
 let narrating = false;
 const soundButton = $<HTMLButtonElement>("#sound-toggle");
 soundButton.hidden = !soundSupported();
+const soundHint = $<HTMLElement>(".sound-hint");
 const soundscape = createSoundscape(() => ({
   growth: journey.active ? (reduced ? stageProgress[journey.stop.stage] : journey.growth) : growthNow,
   hour: hourNow,
@@ -257,37 +262,70 @@ const soundscape = createSoundscape(() => ({
   season: (root.dataset.season as Season | undefined) ?? "summer",
   spot: journey.active ? journey.stop.spot : reading ? null : (beats[beat]?.spot ?? null),
   narrating,
-}));
+}), () => {
+  soundHeard = true;
+  syncSound();
+});
+// The note shows once, a moment after the garden starts waiting.
+let hinted = false;
+let hintTimer = 0;
+let hintShown = 0;
+function showSoundHint() {
+  hinted = true;
+  hintShown = performance.now();
+  const text = matchMedia("(hover: none)").matches ? "Tap to hear the garden" : "Click to hear the garden";
+  if (journey.active) journey.notify(text);
+  else {
+    // The note's tick points at the speaker, wherever the ruler's layout puts it.
+    const ruler = soundHint.parentElement!.getBoundingClientRect();
+    const speaker = soundButton.getBoundingClientRect();
+    const middle = speaker.left + speaker.width / 2;
+    soundHint.style.setProperty("--to-speaker", `${root.dir === "rtl" ? middle - ruler.left : ruler.right - middle}px`);
+    soundHint.textContent = text;
+    soundHint.hidden = false;
+  }
+  hintTimer = window.setTimeout(hideSoundHint, 6000);
+}
+function hideSoundHint() {
+  clearTimeout(hintTimer);
+  hintTimer = 0;
+  soundHint.hidden = true;
+  // The phone's note goes by itself after five seconds; only take it down early.
+  if (hintShown && performance.now() - hintShown < 5000) journey.notify("");
+  hintShown = 0;
+}
 function syncSound() {
   const showing = !reading || previewEnabled || journey.active;
   const silenced = (paused && !reduced) || !showing || document.hidden;
-  const state = !soundOn ? "off" : silenced ? "paused" : "playing";
+  const state = !soundOn ? "off" : silenced ? "paused" : soundHeard ? "playing" : "waiting";
   root.dataset.sound = state;
-  const name = soundOn ? "Stop garden sounds" : "Play garden sounds";
-  soundButton.setAttribute("aria-pressed", String(soundOn));
+  const on = soundOn && soundHeard;
+  const name = on ? "Stop garden sounds" : "Play garden sounds";
+  soundButton.setAttribute("aria-pressed", String(on));
   soundButton.setAttribute("aria-label", name);
   soundButton.title = name;
-  journey.setSound(soundSupported() ? soundOn : null);
-  if (soundStarted) soundscape.setAudible(state === "playing");
+  journey.setSound(soundSupported() ? on : null);
+  if (state === "waiting" && soundSupported() && !hinted && !hintTimer) hintTimer = window.setTimeout(showSoundHint, 2500);
+  else if (state !== "waiting" && hintTimer) hideSoundHint();
+  if (soundStarted) soundscape.setAudible(soundOn && !silenced);
 }
 soundButton.addEventListener("click", () => {
-  soundOn = !soundOn;
+  // While the garden waits, the button plays it rather than turning it off.
+  if (soundOn && !soundHeard) soundStarted = true;
+  else soundOn = !soundOn;
   // A click that unmutes is itself the gesture browsers require.
   if (soundOn) soundStarted = true;
   syncSound();
 });
-document.addEventListener("pointerdown", (event) => {
-  if (!soundStarted && soundOn && !(event.target instanceof Element && event.target.closest("#sound-toggle, .journey-sound"))) {
+// Any of these can be the gesture; a touch counts only once it ends, so keep
+// asking until the browser lets the garden play.
+for (const type of ["pointerdown", "pointerup", "touchend", "click", "keydown"]) {
+  document.addEventListener(type, (event) => {
+    if (soundHeard || !soundOn || (event.target instanceof Element && event.target.closest("#sound-toggle, .journey-sound"))) return;
     soundStarted = true;
     syncSound();
-  }
-});
-document.addEventListener("keydown", (event) => {
-  if (!soundStarted && soundOn && !(event.target instanceof Element && event.target.closest("#sound-toggle, .journey-sound"))) {
-    soundStarted = true;
-    syncSound();
-  }
-});
+  }, { passive: true });
+}
 document.addEventListener("visibilitychange", syncSound);
 syncMotion();
 
