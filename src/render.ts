@@ -1,4 +1,4 @@
-import { beats, projects, contactMarkup } from "./content";
+import { beats, projects, contactMarkup, scrollCue } from "./content";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -28,7 +28,7 @@ export function renderPortfolio() {
           <p class="reading-lede">${e(beats[0].copy)}</p>
           <p class="stop-line">Product engineer, Ph.D. AI products, developer tools, and how we measure the energy software uses.</p>
           <div class="entry-actions"><a class="primary-action" href="#work">Selected work</a><a class="script-only journey-hidden" href="?view=garden" data-view="garden">Explore the garden</a><a class="script-only journey-only" href="?view=read" data-view="read">Read as a page</a></div>
-          <p class="journey-only journey-hint">Scroll to explore the garden and projects.</p>
+          <p class="journey-only journey-hint scroll-cue">${scrollCue}<span>Scroll to explore the garden and projects.</span></p>
           <p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a></p>
         </div>
         <div class="garden-preview" id="garden-preview">

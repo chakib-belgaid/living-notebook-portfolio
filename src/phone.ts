@@ -123,7 +123,7 @@ export function createPhoneJourney(options: JourneyOptions): Journey {
   const controls = bar.querySelector<HTMLButtonElement>(".journey-controls")!;
   // Like the desktop's dock, the controls wait for Bloom.
   controls.hidden = true;
-  controls.addEventListener("click", () => sheet.open("controls", "Garden controls", controls));
+  controls.addEventListener("click", () => sheet.open("controls", "Make the garden yours", controls));
   const moreButtons = stops.flatMap((s) => {
     const d = details[s.name];
     if (!d) return [];

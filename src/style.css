@@ -608,6 +608,48 @@ button {
   font-style: italic;
   color: var(--muted);
 }
+/* The first hint says how the story moves, so it carries a moving cue and
+   the ink colour rather than the quiet muted one. */
+.scroll-cue {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--ink);
+}
+.scroll-cue-icon {
+  flex: none;
+  width: 1.2rem;
+  height: 1.7rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+.cue-wheel { animation: cue-wheel 1.8s ease-in-out infinite; }
+.cue-swipe { display: none; animation: cue-bob 1.6s ease-in-out infinite; }
+@media (pointer: coarse) {
+  .cue-mouse { display: none; }
+  .cue-swipe { display: inline; }
+}
+@keyframes cue-wheel {
+  0% { transform: translateY(0); opacity: 0; }
+  25% { opacity: 1; }
+  70% { transform: translateY(6px); opacity: 0; }
+  100% { transform: translateY(6px); opacity: 0; }
+}
+@keyframes cue-bob { 50% { transform: translateY(3px); } }
+/* Until the visitor first scrolls, the ruler's handle calls softly too. */
+:root[data-view="garden"]:not(.scrolled) #scrub::-webkit-slider-thumb { animation: thumb-call 2.4s ease-in-out infinite; }
+:root[data-view="garden"]:not(.scrolled) #scrub::-moz-range-thumb { animation: thumb-call 2.4s ease-in-out infinite; }
+@keyframes thumb-call {
+  0%, 100% { box-shadow: 0 0 0 1px var(--stage); }
+  50% { box-shadow: 0 0 0 1px var(--stage), 0 0 0 7px color-mix(in srgb, var(--stage) 28%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cue-wheel, .cue-swipe, #scrub::-webkit-slider-thumb, #scrub::-moz-range-thumb { animation: none !important; }
+}
 @keyframes fade-up {
   from {
     opacity: 0;

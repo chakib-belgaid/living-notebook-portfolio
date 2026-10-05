@@ -127,6 +127,9 @@ function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
   ];
 }
 export const email = "chakib.belgaid@gmail.com";
+/** The cue beside "scroll" hints: a mouse whose wheel rolls down, or on touch
+ * screens two chevrons that bob, so the hint reads as an action. */
+export const scrollCue = `<svg class="scroll-cue-icon" viewBox="0 0 20 28" aria-hidden="true"><g class="cue-mouse"><rect x="3" y="1.5" width="14" height="23" rx="7"/><path class="cue-wheel" d="M10 6.5v3.5"/></g><g class="cue-swipe"><path d="M5 8l5 5 5-5M5 14l5 5 5-5"/></g></svg>`;
 const envelopeIcon = `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3.5 6.5h17v11h-17zM4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
 const socialIcons = {
   github: `<svg aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.53v-2.08c-3.1.68-3.76-1.31-3.76-1.31-.5-1.29-1.23-1.63-1.23-1.63-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15.99 1.7 2.6 1.21 3.23.93.1-.72.39-1.21.71-1.49-2.48-.28-5.09-1.24-5.09-5.52 0-1.22.44-2.21 1.15-2.99-.12-.28-.5-1.42.11-2.95 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.11-1.44 3.05-1.14 3.05-1.14.61 1.53.23 2.67.11 2.95.72.78 1.15 1.77 1.15 2.99 0 4.29-2.62 5.24-5.11 5.52.4.35.76 1.03.76 2.08V22c0 .29.2.63.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg>`,

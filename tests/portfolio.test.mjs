@@ -29,6 +29,13 @@ async function go(p, id) {
   if (await link.count()) await link.click();
   else await p.evaluate(id => { location.hash = id; }, id);
   await p.waitForTimeout(1500);
+  // Links glide for up to 3 s on long trips: wait for the page to come to rest.
+  for (let y = -1, i = 0; i < 20; i++) {
+    const now = await p.evaluate(() => scrollY);
+    if (now === y) break;
+    y = now;
+    await p.waitForTimeout(250);
+  }
   if (id === 'contact' && await p.locator('html').getAttribute('data-view') === 'garden') await p.locator('.chapter.active .note-email a').waitFor({state:'visible',timeout:5000});
 }
 function healthy(p) { assert.deepEqual(p.errors, []); }
@@ -579,7 +586,7 @@ test('on phones the header opens the garden controls: time, weather and season',
     await opener.click();
     const sheet = p.locator('dialog.sheet[open]');
     await settled(sheet);
-    assert.equal(await sheet.getByRole('heading',{name:'Garden controls'}).isVisible(), true);
+    assert.equal(await sheet.getByRole('heading',{name:'Make the garden yours'}).isVisible(), true);
     await p.waitForFunction(()=>!!document.querySelector('.journey[data-live] #scene canvas'), undefined, {timeout:15000});
     await sheet.getByRole('button',{name:'Rain',exact:true}).click();
     assert.equal(await p.locator('html').getAttribute('data-weather'), 'rain');
@@ -812,7 +819,7 @@ test('the garden controls wait for Bloom, on the desktop and in the phone journe
   const p = await page();
   try {
     await ready(p);
-    const dock = p.getByText('Garden controls', { exact: true });
+    const dock = p.getByText('Make the garden yours', { exact: true });
     for (const hash of ['intro', 'about', 'work', 'whisperbook', 'wattch']) {
       await visit(p, hash);
       assert.equal(await dock.isVisible(), false, `hidden at ${hash}`);

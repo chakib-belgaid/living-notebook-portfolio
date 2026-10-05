@@ -10,7 +10,7 @@ import {
   type WeatherKind,
 } from "./weather";
 
-import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, type Spot, type WidgetSpot, type Stop } from "./content";
+import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, scrollCue, type Spot, type WidgetSpot, type Stop } from "./content";
 import { createNavigation, type SectionId } from "./navigation";
 import { widgetLifecycle } from "./widgets";
 import { createTransferEstimate, formatGrams } from "./transfer";
@@ -50,7 +50,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
           ${b.lede ? `<p class="note-lede">${b.lede}</p>` : ""}
           <p class="note-copy">${b.copy}</p>
           ${b.body ? `<div class="note-body">${b.body}</div>` : ""}
-          ${b.hint ? `<p class="note-hint">${b.hint}</p>` : ""}
+          ${b.hint ? (i === 0 ? `<p class="note-hint scroll-cue">${scrollCue}<span>${b.hint}</span></p>` : `<p class="note-hint">${b.hint}</p>`) : ""}
         </div>
       </section>`,
       )
@@ -83,10 +83,10 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
     <button type="button" class="ruler-motion" id="motion-toggle" aria-pressed="false" aria-label="Pause motion" title="Pause motion"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg></button>
   </div>
 
-  <details class="dock"><summary>Garden controls</summary><div class="dock-body" data-detail="controls">
+  <details class="dock"><summary>Make the garden yours</summary><div class="dock-body" data-detail="controls">
     <section class="widget widget-sky" data-from="3" aria-labelledby="sky-title">
       <div class="widget-head">
-        <h3 id="sky-title">Sky</h3>
+        <h3 id="sky-title">Play with the sky</h3>
         <output id="hour-readout" for="hour">1:00 pm</output>
       </div>
       <p class="sky-report" id="sky-report" aria-live="polite">Looking up the weather</p>
@@ -105,7 +105,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
 
     <section class="widget widget-garden" data-from="3" aria-labelledby="garden-title">
       <div class="widget-head">
-        <h3 id="garden-title">Garden</h3>
+        <h3 id="garden-title">Tend the garden</h3>
         <output id="tree-count">0 of 24 trees</output>
       </div>
       <p class="season-report" id="season-report" aria-live="polite"></p>
@@ -478,12 +478,49 @@ function focusHeading(i: number) {
 }
 function goTo(i: number) {
   setPlanting(false);
-  scrollTo({ top: holdAt(i), behavior: reduced || paused ? "instant" : "smooth" });
+  glideTo(holdAt(i));
   if (beat === i) focusHeading(i);
   else focusTo = i;
 }
 
+/* Links glide to their place rather than jump, so the garden visibly grows
+   (or folds back) on the way: a longer trip takes longer, up to 3 s. The
+   browser's own smooth scroll rushes long trips. A wheel, touch, or key from
+   the visitor hands the scroll back. */
+let glide = 0;
+function glideTo(top: number) {
+  cancelAnimationFrame(glide);
+  glide = 0;
+  const from = scrollY,
+    distance = top - from;
+  if (reduced || paused || Math.abs(distance) < 2) {
+    scrollTo({ top, behavior: "instant" });
+    return;
+  }
+  const duration = Math.min(3000, 700 + (Math.abs(distance) / innerHeight) * 160);
+  const start = performance.now();
+  const step = (now: number) => {
+    const t = Math.min(1, (now - start) / duration);
+    // A sine ease keeps the middle of a long trip slow enough to watch.
+    const eased = (1 - Math.cos(Math.PI * t)) / 2;
+    scrollTo({ top: from + distance * eased, behavior: "instant" });
+    if (t < 1) glide = requestAnimationFrame(step);
+    else {
+      glide = 0;
+      settled();
+    }
+  };
+  glide = requestAnimationFrame(step);
+}
+for (const type of ["wheel", "touchstart", "pointerdown", "keydown"] as const)
+  addEventListener(type, () => {
+    cancelAnimationFrame(glide);
+    glide = 0;
+  }, { passive: true });
+
 function measure() {
+  // Once the visitor has scrolled, the cues asking them to can rest.
+  if (scrollY > 40) root.classList.add("scrolled");
   if (reading) {
     const sections: SectionId[] = ["intro", "work", "whisperbook", "wattch", "about", "contact"];
     // The section whose top most recently passed the threshold, whatever the DOM order.
@@ -495,7 +532,7 @@ function measure() {
       const top = section.getBoundingClientRect().top;
       if (top <= threshold + 1 && top > best) { best = top; current = id; }
     }
-    navigation.passive(current);
+    if (!glide) navigation.passive(current);
     root.style.setProperty("--grow", "1");
     measureReadingRuler(current);
     return;
@@ -538,7 +575,8 @@ function measure() {
     );
     mountNoteWidget();
     syncStory();
-    if (beat >= 0) navigation.passive(sectionForBeat(beat));
+    // A glide passes other sections; the address stays on its destination.
+    if (beat >= 0 && !glide) navigation.passive(sectionForBeat(beat));
     if (beat >= 0 && beat === focusTo) {
       focusTo = -1;
       focusHeading(beat);
@@ -609,10 +647,14 @@ addEventListener("resize", () => {
 });
 // A link's scroll that ends short of its beat (the visitor took over) drops
 // the focus it would have moved.
-addEventListener("scrollend", () => {
+function settled() {
   measure();
   focusTo = -1;
   navigation.settled();
+}
+// Each step of a glide is a scroll of its own; only the glide's end counts.
+addEventListener("scrollend", () => {
+  if (!glide) settled();
 });
 
 scrub.addEventListener("input", () => {
@@ -730,7 +772,7 @@ function applyWeather() {
   fog = fogByKind[w.kind];
   applyFog();
   sky?.setWeather(w);
-  garden?.setWeather(w.cloud, w.precip);
+  garden?.setWeather(w.cloud, w.precip, w.kind === "snow");
   root.dataset.weather = w.kind;
   $$<HTMLButtonElement>("button[data-weather]").forEach((b) =>
     b.setAttribute("aria-pressed", String(b.dataset.weather === weatherMode)),
@@ -1231,9 +1273,10 @@ const navigation = createNavigation((section, focus) => {
   setPlanting(false);
   if (reading) {
     const target = $("#" + section);
-    const behavior = !focus || reduced || paused ? "instant" : "smooth";
-    if (section === "intro") scrollTo({top: 0, behavior});
-    else target.scrollIntoView({ behavior, block: "start" });
+    const top = section === "intro" ? 0 : Math.min(maxScroll(), Math.max(0,
+      target.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(target).scrollMarginTop) || 0)));
+    if (focus) glideTo(top);
+    else scrollTo({ top, behavior: "instant" });
     if (focus) target.querySelector<HTMLElement>("h1,h2,h3")?.focus({preventScroll:true});
   } else {
     if (focus) goTo(sectionBeat[section]);

@@ -22,8 +22,8 @@ export interface Garden {
   plantAt: (x: number, y: number) => number;
   /** Local hour, 5–23. Moves the sun; lanterns and fireflies come out after dusk. */
   setHour: (hour: number) => void;
-  /** Cloud cover and rain or snow, both 0–1. Clouds soften the sun and its shadows. */
-  setWeather: (cloud: number, precip: number) => void;
+  /** Cloud cover and rain or snow, both 0–1. Clouds soften the sun and its shadows; snow settles on the foliage and terraces. */
+  setWeather: (cloud: number, precip: number, snowing?: boolean) => void;
   /** Glide the camera to a named spot, or back to the whole garden. Shift moves the garden on screen as a fraction of the view. */
   focus: (spot: string | null, shiftX?: number, shiftY?: number) => void;
   /** The band of the view the garden is framed in, top and bottom as fractions of the container's height (0–1). The camera eases to a new frame. */
@@ -2298,9 +2298,12 @@ export async function createGarden(
     trunk.position.y = 0.23;
     trunk.castShadow = true;
     g.add(trunk);
-    const leaves = plantLeaves[Math.floor(random() * plantLeaves.length)];
+    // Clumps mix the season's shades, like the garden's own trees: a winter
+    // tree is snow over a dark core rather than one solid green.
+    const first = Math.floor(random() * plantLeaves.length);
     const clumps = 2 + Math.floor(random() * 3);
     for (let i = 0; i < clumps; i++) {
+      const leaves = plantLeaves[(first + i) % plantLeaves.length];
       const m = new T.Mesh(leafGeometry, leaves);
       m.position.set(
         (random() - 0.5) * 0.28,
@@ -2429,11 +2432,14 @@ export async function createGarden(
     world.add(mesh);
     litter = mesh;
   }
+  // Snow on the ground: when it lies thick enough, the terraces turn white
+  // whatever the season.
+  let snowLying = false;
   function paintLitter() {
     if (!litter) return;
-    const colors = litterColors[season];
+    const colors = litterColors[snowLying ? "winter" : season];
     const c = new T.Color();
-    for (let i = 0; i < litter.count; i++) {
+    for (let i = 0; i < litter.userData.total; i++) {
       c.setHex(colors.length ? colors[i % colors.length] : 0xffffff);
       litter.setColorAt(i, c);
     }
@@ -2441,7 +2447,11 @@ export async function createGarden(
     // Petals are sparser than autumn leaves; summer terraces stay swept.
     litter.count = Math.round(
       litter.userData.total *
-        (season === "spring" ? 0.45 : season === "summer" ? 0 : 1),
+        (snowLying || season === "winter" || season === "autumn"
+          ? 1
+          : season === "spring"
+            ? 0.45
+            : 0),
     );
   }
   const fallGeometry = new T.BufferGeometry();
@@ -3153,15 +3163,38 @@ export async function createGarden(
     catTail.rotation.y = 0.6 + Math.sin(t * 0.7) * 0.35;
   }
 
-  function applySeason() {
+  /* Snow settles on the foliage over a few seconds and melts more slowly.
+     Dark shades keep some colour, so trees read as snow over leaves. */
+  const snowColor = new T.Color(0xeef3f2);
+  const snowWeight: Partial<Record<ColorName, number>> = {
+    leaf: 0.78,
+    leafLight: 0.92,
+    leafDark: 0.5,
+    grass: 0.9,
+    flower: 0.8,
+    coral: 0.8,
+  };
+  const plantSnowWeight = [0.82, 0.55, 0.92, 0.55];
+  function paintFoliage() {
     const palette = seasonColors[season];
+    const snow = (m: T.MeshStandardMaterial, hex: number, weight: number) =>
+      m.color.setHex(hex).lerp(snowColor, weight * snowCover);
     materials.forEach(({ material, key }) => {
       const hex = palette[key];
-      if (hex !== undefined) material.color.setHex(hex);
+      if (hex !== undefined) snow(material, hex, snowWeight[key] ?? 0);
     });
-    plantLeaves.forEach((m, i) => m.color.setHex(palette.plants[i]));
-    bushMaterials[0].color.setHex(palette.leaf!);
-    bushMaterials[1].color.setHex(palette.leafDark!);
+    plantLeaves.forEach((m, i) => snow(m, palette.plants[i], plantSnowWeight[i]));
+    snow(bushMaterials[0], palette.leaf!, snowWeight.leaf!);
+    snow(bushMaterials[1], palette.leafDark!, snowWeight.leafDark!);
+    const lying = snowCover > 0.35;
+    if (lying !== snowLying) {
+      snowLying = lying;
+      paintLitter();
+    }
+  }
+  function applySeason() {
+    const palette = seasonColors[season];
+    paintFoliage();
     berryMaterial.color.setHex(season === "autumn" ? 0xb8302a : palette.flower!);
     fennecFur.color.setHex(fennecColors[season]);
     // Litter positions are prepared in yielding batches before the renderer starts.
@@ -3245,6 +3278,9 @@ export async function createGarden(
   const mist = new T.Fog(0xf1f2ee, 30, 60);
   let weatherCloud = 0,
     weatherPrecip = 0;
+  // How white the foliage is under snow (0–1), and where it is heading.
+  let snowCover = 0,
+    snowGoal = 0;
   const observer = new IntersectionObserver(
     (entries) => {
       visible = entries[0].isIntersecting;
@@ -3353,6 +3389,7 @@ export async function createGarden(
       view.distanceTo(viewGoal) > 0.0005 ||
       Math.abs(userZoomGoal - userZoom) > 0.0005 ||
       pan.distanceTo(panGoal) > 0.0005 ||
+      Math.abs(snowGoal - snowCover) > 0.001 ||
       roomsSettling() ||
       growing;
     if ((paused || progress < 0.5) && !changed && !dirty) return;
@@ -3398,6 +3435,14 @@ export async function createGarden(
     world.scale.setScalar(lerp(0.77, 1, smooth(0, 0.62, progress)));
     world.scale.y *= lerp(0.72, 1, smooth(0.1, 0.55, progress));
     world.rotation.y = rotation;
+    if (snowCover !== snowGoal) {
+      const step = snowGoal - snowCover;
+      snowCover =
+        reduced || paused
+          ? snowGoal
+          : snowCover + T.MathUtils.clamp(step, -dt * 0.12, dt * 0.3);
+      paintFoliage();
+    }
     materials.forEach(({ material, flora, glass, key }) => {
       const bloom =
         key === "flower" || key === "coral" ? flowerAmount[season] : 1;
@@ -3427,13 +3472,14 @@ export async function createGarden(
     glowMaterial.visible = glow > 0.01;
     fireflyOpacity.value = night * life;
     butterflyMaterial.opacity =
-      life * (season === "summer" || season === "spring" ? 1 : 0);
+      life * (season === "summer" || season === "spring" ? 1 - snowCover : 0);
     litterMaterial.opacity = life;
     litterMaterial.visible = life > 0.01;
     fallOpacity.value =
       life *
       (season === "autumn" ? 0.95 : season === "spring" ? 0.85 : 0) *
-      (1 - fogAmount * 0.65);
+      (1 - fogAmount * 0.65) *
+      (1 - snowCover);
     fogAmount = lerp(fogAmount, fogTarget, reduced ? 1 : Math.min(dt * 1.5, 1));
     if (fogAmount > 0.002) {
       scene.fog = mist;
@@ -3698,9 +3744,10 @@ export async function createGarden(
       )
         dirty = true;
     },
-    setWeather(cloud, precip) {
+    setWeather(cloud, precip, snowing = false) {
       weatherCloud = cloud;
       weatherPrecip = precip;
+      snowGoal = snowing ? Math.min(1, 0.55 + precip * 0.5) : 0;
       applyLight();
     },
     setHour(value) {

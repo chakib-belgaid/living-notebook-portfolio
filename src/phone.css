@@ -232,7 +232,7 @@
 }
 
 @media (max-width: 599px) and (orientation: portrait) {
-  :root[data-journey="true"] .journey-hint { margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--muted); }
+  :root[data-journey="true"] .journey-hint { margin: 0.6rem 0 0; font-size: 0.875rem; color: var(--ink); }
 }
 /* Short screens keep the garden in view: the moving garden is the hint. */
 @media (max-height: 700px) {
