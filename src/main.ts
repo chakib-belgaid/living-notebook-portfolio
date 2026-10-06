@@ -1448,6 +1448,8 @@ async function loadGarden() {
 }
 // scripts/capture-stills.mjs drives the garden through this, in development only.
 if (import.meta.env.DEV) Object.assign(window, { __notebook: { get garden() { return garden; } } });
+// tests/performance.mjs reads the drawing totals in production builds too.
+Object.assign(window, { __notebookStats: () => ({ garden: garden?.stats() ?? null, sky: sky?.stats() ?? null }) });
 
 // Commit enhancement only after the controllers have initialized.
 initEvidence();

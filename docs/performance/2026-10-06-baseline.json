@@ -1,0 +1,824 @@
+{
+  "date": "2026-10-06T08:48:58.458Z",
+  "browser": "chromium 154.0.8037.98",
+  "channel": "chrome",
+  "headless": true,
+  "hardware": {
+    "platform": "darwin 27.0.0",
+    "cpu": "Apple M5",
+    "cores": 10,
+    "memoryGB": 32
+  },
+  "conditions": {
+    "weather": "Open-Meteo blocked: live weather unavailable, garden default",
+    "throttling": "none",
+    "note": "Desktop and phone rows are desktop-browser emulation, not physical devices. Hidden is simulated."
+  },
+  "viewports": {
+    "desktop": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1.6
+    },
+    "phone": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "deviceScaleFactor": 3,
+      "isMobile": true,
+      "hasTouch": true
+    }
+  },
+  "runs": 5,
+  "unavailable": [
+    "GPU timing is only present where the browser exposes EXT_disjoint_timer_query_webgl2 (see stats.gpuMs)",
+    "energy: not measured"
+  ],
+  "summary": {
+    "desktop-garden": {
+      "runs": 5,
+      "windows": {
+        "opening-sketch": {
+          "seconds": {
+            "median": 2,
+            "p95": 2
+          },
+          "rafPerSecond": {
+            "median": 119.9,
+            "p95": 119.9
+          },
+          "drawFramesPerSecond": {
+            "median": 59.9,
+            "p95": 60
+          },
+          "drawCallsPerFrame": {
+            "median": 82,
+            "p95": 82
+          },
+          "drawIntervalP50": {
+            "median": 16.6,
+            "p95": 16.7
+          },
+          "drawIntervalP95": {
+            "median": 17.4,
+            "p95": 17.7
+          },
+          "drawMissed33": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "stage-transitions": {
+          "seconds": {
+            "median": 4.02,
+            "p95": 4.08
+          },
+          "rafPerSecond": {
+            "median": 123.7,
+            "p95": 124.1
+          },
+          "drawFramesPerSecond": {
+            "median": 59.6,
+            "p95": 59.7
+          },
+          "drawCallsPerFrame": {
+            "median": 121.8,
+            "p95": 122.3
+          },
+          "drawIntervalP50": {
+            "median": 16.7,
+            "p95": 16.7
+          },
+          "drawIntervalP95": {
+            "median": 17.5,
+            "p95": 17.6
+          },
+          "drawMissed33": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "bloom-settled": {
+          "seconds": {
+            "median": 3,
+            "p95": 3.01
+          },
+          "rafPerSecond": {
+            "median": 119.9,
+            "p95": 120.5
+          },
+          "drawFramesPerSecond": {
+            "median": 60,
+            "p95": 60.2
+          },
+          "drawCallsPerFrame": {
+            "median": 282,
+            "p95": 282
+          },
+          "drawIntervalP50": {
+            "median": 16.7,
+            "p95": 16.7
+          },
+          "drawIntervalP95": {
+            "median": 17.4,
+            "p95": 17.7
+          },
+          "drawMissed33": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.8,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "project-focus": {
+          "seconds": {
+            "median": 2.51,
+            "p95": 2.51
+          },
+          "rafPerSecond": {
+            "median": 120.7,
+            "p95": 120.8
+          },
+          "drawFramesPerSecond": {
+            "median": 60.1,
+            "p95": 60.2
+          },
+          "drawCallsPerFrame": {
+            "median": 120.5,
+            "p95": 120.6
+          },
+          "drawIntervalP50": {
+            "median": 16.7,
+            "p95": 16.7
+          },
+          "drawIntervalP95": {
+            "median": 17.4,
+            "p95": 17.5
+          },
+          "drawMissed33": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "planting": {
+          "seconds": {
+            "median": 2.6,
+            "p95": 2.6
+          },
+          "rafPerSecond": {
+            "median": 120,
+            "p95": 120.1
+          },
+          "drawFramesPerSecond": {
+            "median": 60,
+            "p95": 60
+          },
+          "drawCallsPerFrame": {
+            "median": 305.4,
+            "p95": 305.4
+          },
+          "drawIntervalP50": {
+            "median": 16.6,
+            "p95": 16.7
+          },
+          "drawIntervalP95": {
+            "median": 17.4,
+            "p95": 17.7
+          },
+          "drawMissed33": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "heavy-weather": {
+          "seconds": {
+            "median": 3.03,
+            "p95": 3.03
+          },
+          "rafPerSecond": {
+            "median": 120,
+            "p95": 120.1
+          },
+          "drawFramesPerSecond": {
+            "median": 60,
+            "p95": 60
+          },
+          "drawCallsPerFrame": {
+            "median": 217,
+            "p95": 217
+          },
+          "drawIntervalP50": {
+            "median": 16.7,
+            "p95": 16.7
+          },
+          "drawIntervalP95": {
+            "median": 17.5,
+            "p95": 17.7
+          },
+          "drawMissed33": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "paused-settled": {
+          "seconds": {
+            "median": 3,
+            "p95": 3
+          },
+          "rafPerSecond": {
+            "median": 119.9,
+            "p95": 119.9
+          },
+          "drawFramesPerSecond": {
+            "median": 0,
+            "p95": 0
+          },
+          "drawCallsPerFrame": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.8,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "paused-hidden": {
+          "seconds": {
+            "median": 3,
+            "p95": 3
+          },
+          "rafPerSecond": {
+            "median": 120.5,
+            "p95": 120.5
+          },
+          "drawFramesPerSecond": {
+            "median": 0,
+            "p95": 0
+          },
+          "drawCallsPerFrame": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "resumed": {
+          "seconds": {
+            "median": 2,
+            "p95": 2
+          },
+          "rafPerSecond": {
+            "median": 119.9,
+            "p95": 119.9
+          },
+          "drawFramesPerSecond": {
+            "median": 59.9,
+            "p95": 59.9
+          },
+          "drawCallsPerFrame": {
+            "median": 306,
+            "p95": 306
+          },
+          "drawIntervalP50": {
+            "median": 16.7,
+            "p95": 16.7
+          },
+          "drawIntervalP95": {
+            "median": 17.3,
+            "p95": 17.6
+          },
+          "drawMissed33": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "hidden": {
+          "seconds": {
+            "median": 3,
+            "p95": 3
+          },
+          "rafPerSecond": {
+            "median": 120.5,
+            "p95": 120.6
+          },
+          "drawFramesPerSecond": {
+            "median": 0,
+            "p95": 0
+          },
+          "drawCallsPerFrame": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "visible-again": {
+          "seconds": {
+            "median": 2,
+            "p95": 2
+          },
+          "rafPerSecond": {
+            "median": 119.8,
+            "p95": 119.8
+          },
+          "drawFramesPerSecond": {
+            "median": 59.9,
+            "p95": 59.9
+          },
+          "drawCallsPerFrame": {
+            "median": 306,
+            "p95": 306
+          },
+          "drawIntervalP50": {
+            "median": 16.7,
+            "p95": 16.7
+          },
+          "drawIntervalP95": {
+            "median": 17.6,
+            "p95": 17.7
+          },
+          "drawMissed33": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        }
+      },
+      "cold": {
+        "constructionMs": {
+          "median": 641.7,
+          "p95": 678.2
+        },
+        "sceneToFirstRenderMs": {
+          "median": 694,
+          "p95": 728.9
+        },
+        "shaderWarmupMs": {
+          "median": 90.3,
+          "p95": 93.9
+        },
+        "drawCalls": {
+          "median": 82,
+          "p95": 82
+        },
+        "triangles": {
+          "median": 4960,
+          "p95": 4960
+        },
+        "fcp": {
+          "median": 72,
+          "p95": 128
+        }
+      },
+      "transferBytes": {
+        "median": 1131639,
+        "p95": 1131639
+      }
+    },
+    "phone-journey": {
+      "runs": 5,
+      "windows": {
+        "opening-sketch": {
+          "seconds": {
+            "median": 2,
+            "p95": 2
+          },
+          "rafPerSecond": {
+            "median": 119.9,
+            "p95": 119.9
+          },
+          "drawFramesPerSecond": {
+            "median": 30,
+            "p95": 30
+          },
+          "drawCallsPerFrame": {
+            "median": 50,
+            "p95": 50
+          },
+          "drawIntervalP50": {
+            "median": 33.3,
+            "p95": 33.4
+          },
+          "drawIntervalP95": {
+            "median": 34.3,
+            "p95": 34.6
+          },
+          "drawMissed33": {
+            "median": 0.1,
+            "p95": 0.2
+          },
+          "probeIntervalP95": {
+            "median": 16.8,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "journey-scroll": {
+          "seconds": {
+            "median": 4.83,
+            "p95": 4.93
+          },
+          "rafPerSecond": {
+            "median": 145,
+            "p95": 147.3
+          },
+          "drawFramesPerSecond": {
+            "median": 29.5,
+            "p95": 29.6
+          },
+          "drawCallsPerFrame": {
+            "median": 73.1,
+            "p95": 73.3
+          },
+          "drawIntervalP50": {
+            "median": 33.3,
+            "p95": 33.4
+          },
+          "drawIntervalP95": {
+            "median": 34.7,
+            "p95": 35.6
+          },
+          "drawMissed33": {
+            "median": 0.18,
+            "p95": 0.24
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "bloom-settled": {
+          "seconds": {
+            "median": 3,
+            "p95": 3
+          },
+          "rafPerSecond": {
+            "median": 119.9,
+            "p95": 119.9
+          },
+          "drawFramesPerSecond": {
+            "median": 30,
+            "p95": 30
+          },
+          "drawCallsPerFrame": {
+            "median": 83.2,
+            "p95": 83.2
+          },
+          "drawIntervalP50": {
+            "median": 33.3,
+            "p95": 33.4
+          },
+          "drawIntervalP95": {
+            "median": 34.2,
+            "p95": 34.6
+          },
+          "drawMissed33": {
+            "median": 0.09,
+            "p95": 0.17
+          },
+          "probeIntervalP95": {
+            "median": 16.8,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "hidden": {
+          "seconds": {
+            "median": 3,
+            "p95": 3
+          },
+          "rafPerSecond": {
+            "median": 119.9,
+            "p95": 120.5
+          },
+          "drawFramesPerSecond": {
+            "median": 0,
+            "p95": 0
+          },
+          "drawCallsPerFrame": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        },
+        "paused-settled": {
+          "seconds": {
+            "median": 3,
+            "p95": 3
+          },
+          "rafPerSecond": {
+            "median": 120.5,
+            "p95": 120.6
+          },
+          "drawFramesPerSecond": {
+            "median": 0,
+            "p95": 0
+          },
+          "drawCallsPerFrame": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.8,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        }
+      },
+      "cold": {
+        "constructionMs": {
+          "median": 149.7,
+          "p95": 157.2
+        },
+        "sceneToFirstRenderMs": {
+          "median": 196.8,
+          "p95": 205.2
+        },
+        "shaderWarmupMs": {
+          "median": 63.5,
+          "p95": 70.3
+        },
+        "drawCalls": {
+          "median": 50,
+          "p95": 50
+        },
+        "triangles": {
+          "median": 2232,
+          "p95": 2232
+        },
+        "fcp": {
+          "median": 92,
+          "p95": 108
+        }
+      },
+      "transferBytes": {
+        "median": 595491,
+        "p95": 595491
+      }
+    },
+    "phone-stills": {
+      "runs": 5,
+      "windows": {
+        "stills-scroll": {
+          "seconds": {
+            "median": 3.41,
+            "p95": 3.42
+          },
+          "rafPerSecond": {
+            "median": 26.4,
+            "p95": 26.4
+          },
+          "drawFramesPerSecond": {
+            "median": 0,
+            "p95": 0
+          },
+          "drawCallsPerFrame": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        }
+      },
+      "cold": {
+        "constructionMs": "unavailable",
+        "sceneToFirstRenderMs": "unavailable",
+        "shaderWarmupMs": "unavailable",
+        "drawCalls": "unavailable",
+        "triangles": "unavailable",
+        "fcp": {
+          "median": 64,
+          "p95": 92
+        }
+      },
+      "transferBytes": {
+        "median": 576345,
+        "p95": 576345
+      }
+    },
+    "reading": {
+      "runs": 5,
+      "windows": {
+        "reading-navigation": {
+          "seconds": {
+            "median": 3.48,
+            "p95": 3.49
+          },
+          "rafPerSecond": {
+            "median": 118.5,
+            "p95": 119.1
+          },
+          "drawFramesPerSecond": {
+            "median": 0,
+            "p95": 0
+          },
+          "drawCallsPerFrame": {
+            "median": 0,
+            "p95": 0
+          },
+          "probeIntervalP95": {
+            "median": 16.7,
+            "p95": 16.8
+          },
+          "maxTaskMs": {
+            "median": 0,
+            "p95": 0
+          },
+          "tasksOver50": {
+            "median": 0,
+            "p95": 0
+          }
+        }
+      },
+      "cold": {
+        "constructionMs": "unavailable",
+        "sceneToFirstRenderMs": "unavailable",
+        "shaderWarmupMs": "unavailable",
+        "drawCalls": "unavailable",
+        "triangles": "unavailable",
+        "fcp": {
+          "median": 68,
+          "p95": 68
+        }
+      },
+      "transferBytes": {
+        "median": 900773,
+        "p95": 900773
+      }
+    }
+  }
+}
