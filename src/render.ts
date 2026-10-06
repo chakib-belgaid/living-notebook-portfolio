@@ -32,7 +32,7 @@ export function renderPortfolio() {
           <p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a></p>
         </div>
         <div class="garden-preview" id="garden-preview">
-          <div class="preview-frame" id="preview-frame"><img class="static-garden" src="/assets/garden-preview.png" width="1440" height="900" alt="The notebook garden in autumn, with a reading pavilion, energy observatory, atelier, and greenhouse." loading="lazy" fetchpriority="low" /></div>
+          <div class="preview-frame" id="preview-frame"><img class="static-garden" src="/assets/garden-preview.webp" width="1440" height="900" alt="The notebook garden in autumn, with a reading pavilion, energy observatory, atelier, and greenhouse." loading="lazy" fetchpriority="low" /></div>
           <p class="preview-caption">An idea, drawn and brought to life.</p>
           <div id="preview-tools"></div>
         </div>
