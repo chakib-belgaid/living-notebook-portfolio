@@ -57,7 +57,13 @@ export interface Garden {
   restore: (snapshot: GardenSnapshot) => number;
   dispose: () => void;
 }
-export type GardenSnapshot = { rotation: number; trees: { x: number; y: number; z: number; seed: number }[] };
+export type GardenSnapshot = {
+  rotation: number;
+  trees: { x: number; y: number; z: number; seed: number }[];
+  // The visitor's own zoom and pan, so a rebuilt garden keeps their view.
+  zoom: number;
+  pan: { x: number; y: number };
+};
 const smooth = (a: number, b: number, v: number) =>
   T.MathUtils.smoothstep(v, a, b);
 const lerp = T.MathUtils.lerp;
@@ -86,6 +92,32 @@ export async function createGarden(
   detail: "full" | "low" = "full",
   quality: Quality = detail === "low" ? "light" : "full",
 ): Promise<Garden> {
+  const before = container.dataset.detail;
+  const started: { renderer?: T.WebGLRenderer } = {};
+  try {
+    return await buildGarden(container, hotspots, detail, quality, started);
+  } catch (error) {
+    // A garden that fails half built leaves the container as it found it, so
+    // the garden already there carries on and the build can be tried again.
+    const renderer = started.renderer;
+    if (renderer) {
+      renderer.domElement.remove();
+      renderer.dispose();
+      renderer.forceContextLoss();
+    }
+    if (before === undefined) delete container.dataset.detail;
+    else container.dataset.detail = before;
+    throw error;
+  }
+}
+
+async function buildGarden(
+  container: HTMLElement,
+  hotspots: HTMLElement[],
+  detail: "full" | "low",
+  quality: Quality,
+  started: { renderer?: T.WebGLRenderer },
+): Promise<Garden> {
   const constructionDone = phase("scene-construction");
   let batchDone = phase("construction:renderer");
   const checkpoint = async (name: string) => {
@@ -104,6 +136,7 @@ export async function createGarden(
     antialias: true,
     powerPreference: "low-power",
   });
+  started.renderer = renderer;
   renderer.debug.checkShaderErrors = true;
   container.dataset.detail = detail;
   renderer.setClearColor(0xfafbf8, 0);
@@ -4189,6 +4222,8 @@ export async function createGarden(
       return {
         rotation: rotationTarget,
         trees: planted.map(({ group: g }) => ({ x: g.position.x, y: g.position.y, z: g.position.z, seed: g.userData.seed })),
+        zoom: userZoomGoal,
+        pan: { x: panGoal.x, y: panGoal.y },
       };
     },
     restore(snapshot) {
@@ -4200,6 +4235,8 @@ export async function createGarden(
       }
       seed = keep;
       rotation = rotationTarget = snapshot.rotation;
+      userZoom = userZoomGoal = snapshot.zoom;
+      pan.copy(panGoal.set(snapshot.pan.x, snapshot.pan.y));
       // A rebuilt garden replaces one already on screen: no drawing in.
       drawIn = 1;
       restored = true;

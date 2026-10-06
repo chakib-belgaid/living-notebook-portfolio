@@ -1599,6 +1599,7 @@ async function applyQuality() {
 }
 async function rebuildGarden() {
   if (rebuilding) return rebuilding;
+  let failed = false;
   rebuilding = (async () => {
     const old = garden!;
     const snapshot = old.snapshot();
@@ -1615,11 +1616,14 @@ async function rebuildGarden() {
     adoptGarden();
     announce("The garden is redrawn.");
   })().catch((error) => {
+    // The old garden stays; choosing a quality again tries once more.
+    failed = true;
     console.warn("The garden could not be rebuilt.", error);
+    announce("The garden could not be redrawn.");
   }).finally(() => { rebuilding = undefined; });
   // A quality chosen while rebuilding is applied once it is done.
   await rebuilding;
-  if (garden && detailFor(qualityNow()) !== $("#scene").dataset.detail) await rebuildGarden();
+  if (!failed && garden && detailFor(qualityNow()) !== $("#scene").dataset.detail) await rebuildGarden();
   else garden?.setQuality(qualityNow());
 }
 /* Brings a new garden up to date with the page. */
