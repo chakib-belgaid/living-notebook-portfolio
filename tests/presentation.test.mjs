@@ -64,6 +64,8 @@ test('unknown view values keep the reader and bare phone deep links open the jou
     }
     await p.goto(`${base}/#wattch`);
     await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
+    // The journey selects its stop on the next animation frame after deep-link scrolling.
+    await p.waitForFunction(() => document.querySelector('.journey')?.dataset.at === 'wattch');
     assert.equal(await p.locator('html').getAttribute('data-view'), 'read');
     assert.equal(await p.locator('html').getAttribute('data-journey'), 'true');
     assert.equal(await p.locator('.journey').getAttribute('data-at'), 'wattch');

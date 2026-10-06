@@ -1,12 +1,14 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { setupPage } from './browser-fixture.mjs';
 
 /* The garden and sky loops run only while there is something to draw
    (OPTIMIZATION-PLAN.md, item 2). Callbacks are counted from the page's own
    requestAnimationFrame requests; hidden is simulated as in
    tests/performance.mjs. */
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
+const performanceBudgets = process.env.PERFORMANCE_BUDGETS === '1';
 let browser;
 before(async () => { browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) }); });
 after(async () => browser?.close());
@@ -30,18 +32,22 @@ function instrument() {
   window.__setHidden = (h) => { hidden = h; document.dispatchEvent(new Event('visibilitychange')); };
 }
 async function garden(path = '/', options = {}) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...options });
-  const p = await context.newPage();
-  p.errors = [];
-  p.on('pageerror', (e) => p.errors.push(e.message));
-  await p.route('**/*open-meteo.com/**', (r) => r.abort());
-  await p.addInitScript(instrument);
-  // These fixtures exercise the opt-in garden (or an explicitly requested reader).
-  const url = new URL(base + path);
-  if (!url.searchParams.has('view')) url.searchParams.set('view', 'garden');
-  await p.goto(url.href);
-  await p.waitForFunction(() => document.querySelector('#scene')?.dataset.progress);
-  return p;
+  return setupPage(browser, { viewport: { width: 1440, height: 900 }, ...options }, async p => {
+    p.errors = [];
+    p.on('pageerror', (e) => p.errors.push(e.message));
+    await p.route('**/*open-meteo.com/**', (r) => r.abort());
+    await p.addInitScript(instrument);
+    // These fixtures exercise the opt-in garden (or an explicitly requested reader).
+    const url = new URL(base + path);
+    if (!url.searchParams.has('view')) url.searchParams.set('view', 'garden');
+    await p.goto(url.href);
+    await p.waitForFunction(() => document.querySelector('#scene')?.dataset.progress);
+  });
+}
+// Prove the loop keeps drawing without imposing a GPU-dependent frame rate.
+async function drawing(p) {
+  const start = await p.evaluate(() => window.__perf.drawFrames);
+  await p.waitForFunction(start => window.__perf.drawFrames >= start + 3, start);
 }
 /* What the page asked for and drew over `ms`, from just before `act`. */
 async function over(p, ms, act) {
@@ -57,11 +63,14 @@ async function bloom(p) {
   await p.waitForFunction(() => Number(document.querySelector('#scene').dataset.progress) > 0.99);
 }
 
-test('a paused, settled garden and sky stop asking for frames, and wake for changes', async () => {
+test('a paused, settled garden and sky stop asking for frames, and wake for changes', async t => {
   const p = await garden('/#contact');
   try {
     await bloom(p);
-    assert.ok((await over(p, 1000)).draws > 20, 'the living garden draws continuously');
+    await drawing(p);
+    const active = await over(p, 1000);
+    t.diagnostic(`active garden: ${active.draws} frames in 1 s`);
+    if (performanceBudgets) assert.ok(active.draws > 20, `active garden: ${active.draws} frames; expected more than 20 in 1 s`);
     await p.getByRole('button', { name: 'Pause motion', exact: true }).click();
     await p.waitForTimeout(1500);
     const still = await over(p, 2000);
@@ -78,12 +87,15 @@ test('a paused, settled garden and sky stop asking for frames, and wake for chan
     assert.ok(woke.raf < 200);
     // Resuming brings the living garden back.
     await p.getByRole('button', { name: 'Resume motion', exact: true }).click();
-    assert.ok((await over(p, 1000)).draws > 20, 'resumed garden draws again');
+    await drawing(p);
+    const resumed = await over(p, 1000);
+    t.diagnostic(`resumed garden: ${resumed.draws} frames in 1 s`);
+    if (performanceBudgets) assert.ok(resumed.draws > 20, `resumed garden: ${resumed.draws} frames; expected more than 20 in 1 s`);
     assert.deepEqual(p.errors, []);
   } finally { await p.context().close(); }
 });
 
-test('a hidden tab stops the loops; showing it again resumes without a jump', async () => {
+test('a hidden tab stops the loops; showing it again resumes without a jump', async t => {
   const p = await garden('/#contact');
   try {
     await bloom(p);
@@ -95,10 +107,12 @@ test('a hidden tab stops the loops; showing it again resumes without a jump', as
     assert.ok(hidden.raf <= 2, `hidden: ${hidden.raf} frame requests in 2 s`);
     await p.evaluate(() => window.__setHidden(false));
     const shown = await over(p, 800);
-    assert.ok(shown.draws > 10, 'visible again: the garden draws');
+    t.diagnostic(`shown again: ${shown.draws} frames in 0.8 s`);
+    if (performanceBudgets) assert.ok(shown.draws > 10, `shown again: ${shown.draws} frames; expected more than 10 in 0.8 s`);
     const after = Number(await p.locator('#scene').getAttribute('data-animation-time'));
     // 2.3 s hidden must not count as garden time: only the 0.8 s since.
     assert.ok(after - before < 1.6, `animation clock advanced ${(after - before).toFixed(2)} s`);
+    await drawing(p);
     assert.deepEqual(p.errors, []);
   } finally { await p.context().close(); }
 });

@@ -1,6 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { setupPage } from './browser-fixture.mjs';
 
 /* Auto, Full and Light drawing (OPTIMIZATION-PLAN.md, item 4). */
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
@@ -9,18 +10,17 @@ before(async () => { browser = await chromium.launch({ headless: true, ...(proce
 after(async () => browser?.close());
 
 async function bloom(path, options = {}) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, ...options });
-  const p = await context.newPage();
-  p.errors = [];
-  p.on('pageerror', (e) => p.errors.push(e.message));
-  await p.route('**/*open-meteo.com/**', (r) => r.abort());
-  // These fixtures exercise the opt-in garden (or an explicitly requested reader).
-  const url = new URL(base + path);
-  if (!url.searchParams.has('view')) url.searchParams.set('view', 'garden');
-  await p.goto(url.href);
-  await p.waitForFunction(() => Number(document.querySelector('#scene')?.dataset.progress) > 0.99, {}, { timeout: 15000 });
-  await p.locator('.dock > summary').click();
-  return p;
+  return setupPage(browser, { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, ...options }, async p => {
+    p.errors = [];
+    p.on('pageerror', (e) => p.errors.push(e.message));
+    await p.route('**/*open-meteo.com/**', (r) => r.abort());
+    // These fixtures exercise the opt-in garden (or an explicitly requested reader).
+    const url = new URL(base + path);
+    if (!url.searchParams.has('view')) url.searchParams.set('view', 'garden');
+    await p.goto(url.href);
+    await p.waitForFunction(() => Number(document.querySelector('#scene')?.dataset.progress) > 0.99, {}, { timeout: 15000 });
+    await p.locator('.dock > summary').click();
+  });
 }
 const pressed = (p) => p.locator('button[data-quality][aria-pressed="true"]').getAttribute('data-quality');
 const canvasWidth = (p) => p.locator('#scene canvas').evaluate((c) => c.width);

@@ -53,5 +53,5 @@ jobs:
           cat preview.log
           exit 1
 
-      - name: Run tests
+      - name: Run functional tests (one browser file at a time)
         run: npm test
