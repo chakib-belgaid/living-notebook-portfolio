@@ -18,7 +18,7 @@ for (const [width, height] of [[1440, 900], [390, 844], [320, 568]]) {
     p.on('request', r => requests.push(r.url()));
     await p.route('**/*open-meteo.com/**', r => r.abort());
     try {
-      await p.goto(base + (width < 900 ? '/?view=read' : '/'));
+      await p.goto(base + '/?view=read');
       await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
       assert.match(await p.title(), /Chakib Belgaid.*Product engineer/);
       assert.equal(await p.locator('html').getAttribute('data-view'), 'read');
@@ -41,7 +41,7 @@ for (const [width, height] of [[1440, 900], [390, 844], [320, 568]]) {
       assert.equal(new URL(p.url()).hash, '#whisperbook');
       await p.goBack();
       await p.waitForFunction(() => document.documentElement.dataset.view === 'read' && document.querySelector('#stage').hidden);
-      assert.equal(new URL(p.url()).searchParams.get('view'), width < 900 ? 'read' : null, 'Back restores the original reader URL');
+      assert.equal(new URL(p.url()).searchParams.get('view'), 'read', 'Back restores the original reader URL');
       assert.equal(await p.locator('html').getAttribute('data-journey'), null);
       assert.deepEqual(errors, []);
     } finally { await context.close(); }
@@ -93,7 +93,7 @@ for (const [width, height] of [[390, 844], [375, 667], [320, 568]]) {
       assert.ok(growth > 0 && growth < 330, `scroll drives the transition: ${growth}`);
       assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await p.mouse.wheel(0, -distance);
-      await p.getByRole('link', { name: 'Read as a page', exact: true }).click();
+      await p.getByRole('link', { name: 'Low-end mode', exact: true }).click();
       assert.equal(await p.locator('html').getAttribute('data-journey'), null);
       await p.goBack();
       await p.waitForFunction(() => document.documentElement.dataset.journey === 'true' && document.documentElement.dataset.preview === 'true');
@@ -109,14 +109,16 @@ test('automatic presentation follows portrait, desktop, and landscape resizing',
   try {
     await p.goto(base + '/');
     await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
-    assert.equal(await p.locator('#scene canvas').count(), 0);
+    await p.waitForFunction(() => !!document.querySelector('#scene canvas'));
+    assert.equal(await p.locator('html').getAttribute('data-view'), 'garden');
+    assert.equal(await p.locator('.view-switch').innerText(), 'Low-end mode');
     await p.setViewportSize({ width: 390, height: 844 });
     await p.waitForFunction(() => !!document.querySelector('.journey[data-live] #scene canvas'));
     await p.setViewportSize({ width: 844, height: 390 });
     await p.waitForFunction(() => !document.documentElement.dataset.journey);
     assert.equal(await p.locator('#stage').isVisible(), false);
     await p.setViewportSize({ width: 1440, height: 900 });
-    assert.equal(await p.locator('html').getAttribute('data-view'), 'read');
-    assert.equal(await p.locator('#stage').isVisible(), false);
+    assert.equal(await p.locator('html').getAttribute('data-view'), 'garden');
+    assert.equal(await p.locator('#stage').isVisible(), true);
   } finally { await context.close(); }
 });

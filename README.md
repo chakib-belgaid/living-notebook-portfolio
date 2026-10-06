@@ -8,9 +8,11 @@ A portfolio for Chakib Belgaid, retaining the procedural garden, blueprint paper
 
 [Personal website](https://chakib-belgaid.github.io/) · [Source repository](https://github.com/chakib-belgaid/living-notebook-portfolio)
 
-Desktop defaults to a flowing, scan-friendly portfolio: introduction → selected work and canonical research repositories → Whisperbook → Wattch Core → background → contact. **Explore garden** opts into the interactive playground (`?view=garden`); **Read portfolio** returns to the page (`?view=read`). The reading page does not load the Three.js scene or start garden audio.
+Desktop defaults to **Explore garden**, the interactive playground (`?view=garden`). **Low-end mode** selects a flowing, scan-friendly portfolio (`?view=read`): introduction → selected work and canonical research repositories → Whisperbook → Wattch Core → background → contact. Opening the reading page directly does not load the Three.js scene or start garden audio; switching to it stops garden rendering and audio.
 
-Portrait phones default to the animated garden journey: scrolling grows the scene through Sketch, Blueprint, Build, and Bloom, with project details in sheets. Data-saving devices use stills, also selectable with `?view=stills`. **Read as a page** (`?view=read`) explicitly selects the text layout. Direct `?view=garden` links retain the desktop and phone journeys. On phones, opening the garden from the reading page previews it above the page and closes back to the page. Landscape phones and short windows keep flowing content.
+Portrait phones default to the animated garden journey: scrolling grows the scene through Sketch, Blueprint, Build, and Bloom, with project details in sheets. Data-saving devices use stills, also selectable with `?view=stills`. **Low-end mode** (`?view=read`) explicitly selects the text layout. Direct `?view=garden` links retain the desktop and phone journeys. On phones, opening the garden from the reading page previews it above the page and closes back to the page. Landscape phones and short windows keep flowing content.
+
+Bots can read `/llms.txt` (the conventional filename) or `/llm.txt` (the same content). Both static files summarize the portfolio, link to its reading page and canonical project sources, and preserve the limitations of browser illustrations and performance evidence. The HTML links to `/llms.txt` with `rel="describedby"`. Keep both files in sync when changing portfolio content.
 
 ## Run locally
 

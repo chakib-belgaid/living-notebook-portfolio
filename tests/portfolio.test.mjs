@@ -650,7 +650,7 @@ test('the live garden opened from the reading page closes back to the page', asy
   const p = await page({viewport:{width:390,height:844}});
   try {
     await ready(p);
-    await p.getByRole('link',{name:'Read as a page',exact:true}).click();
+    await p.getByRole('link',{name:'Low-end mode',exact:true}).click();
     assert.equal(await p.locator('html').getAttribute('data-journey'), null);
     await p.locator('.view-switch').click();
     await p.waitForFunction(()=>!!document.querySelector('#scene canvas'));

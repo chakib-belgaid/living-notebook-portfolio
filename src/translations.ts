@@ -12,6 +12,8 @@ export const translations: Record<string, readonly [string, string]> = {
   "About me": ["À propos de moi", "نبذة عني"],
   "Write to me": ["Écrivez-moi", "راسلني"],
   "Read portfolio": ["Lire le portfolio", "اقرأ ملف الأعمال"],
+  "Low-end mode": ["Mode léger", "الوضع الخفيف"],
+  "Read the portfolio without 3D or garden audio. Recommended for low-end computers.": ["Lire le portfolio sans 3D ni sons du jardin. Recommandé pour les ordinateurs peu puissants.", "اقرأ ملف الأعمال دون رسوم ثلاثية الأبعاد أو أصوات الحديقة. موصى به للأجهزة محدودة الإمكانات."],
   "Explore garden": ["Explorer le jardin", "استكشف الحديقة"],
   "Explore the garden": ["Explorer le jardin", "استكشف الحديقة"],
   "Close garden": ["Fermer le jardin", "أغلق الحديقة"],

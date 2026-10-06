@@ -197,7 +197,7 @@ export const beats: Beat[] = [
     stage: 0,
     title: "Chakib Belgaid",
     copy: "I’m a product engineer with a Ph.D. in software engineering. I build AI products and developer tools, with a long-running interest in how we measure the energy software uses.",
-    body: `<div class="entry-actions"><a class="primary-action" href="#work">Selected work</a><a href="?view=read" data-view="read">Read portfolio</a></div><p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a></p>`,
+    body: `<div class="entry-actions"><a class="primary-action" href="#work">Selected work</a><a href="?view=read" data-view="read" title="Read the portfolio without 3D or garden audio. Recommended for low-end computers.">Low-end mode</a></div><p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a></p>`,
     hint: "Scroll, or drag the ruler, to build the garden.",
   },
   {

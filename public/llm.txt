@@ -1,0 +1,32 @@
+# Chakib Belgaid — A living notebook
+
+> Portfolio of Chakib Belgaid, a product engineer with a Ph.D. in software engineering. His work covers applied AI, developer tools, and software energy measurement.
+
+The default experience is an interactive garden with Sketch, Blueprint, Build, and Bloom stages. For text extraction, use the reading page at `?view=read`: it contains the portfolio content in semantic HTML without requiring JavaScript, WebGL, or garden audio. Visitors can select this page through Low-end mode. English, French, and Arabic are available with JavaScript through `?lang=en`, `?lang=fr`, and `?lang=ar`; the static HTML is English.
+
+Whisperbook is an Android app for narrating EPUBs and PDFs on the device. The portfolio links to the v0.1 test APK and its release requirements. Current source features may differ from that downloadable build. The browser voice illustration uses browser-local speech and is not the Android narration engine.
+
+Wattch Core provides Linux energy traces for command-line, Python, and VS Code workflows. The portfolio links to source build instructions and VS Code development setup. Its screenshot uses synthetic traces to illustrate the workflow. The portfolio's rendering meter estimates energy and carbon from browser CPU/GPU time and assumed power; it is not a hardware energy measurement.
+
+The portfolio does not provide reproducible Whisperbook device latency, narration speed, or peak RAM benchmarks, or a reproducible Wattch daemon overhead comparison against a native C RAPL reader. Use the linked project documentation for version-specific capabilities and evidence. Links to PowerAPI organization repositories do not attribute all organization work to one contributor.
+
+## Portfolio
+
+- [Reading page](https://chakib-belgaid.github.io/?view=read): Text layout for bots, accessibility, and low-end computers.
+- [Selected work](https://chakib-belgaid.github.io/?view=read#work): Whisperbook, Wattch Core, and canonical research repositories.
+- [Background](https://chakib-belgaid.github.io/?view=read#about): Career and software energy research.
+- [Contact](https://chakib-belgaid.github.io/?view=read#contact): Public email and social links.
+
+## Projects and evidence
+
+- [Whisperbook source](https://github.com/chakib-belgaid/whisper-book): Android book import, local narration, playback, and MP3 export.
+- [Whisperbook v0.1 release](https://github.com/chakib-belgaid/whisper-book/releases/tag/v0.1): Debug-signed test APK for Android 8+ on arm64; see release notes for the downloadable build.
+- [Wattch Core source](https://github.com/chakib-belgaid/wattch-core): Linux energy measurement tooling and source build documentation.
+- [Wattch VS Code setup](https://github.com/chakib-belgaid/wattch-core/tree/main/editors/vscode-energy-tests#development): Local extension development instructions.
+- [Portfolio source](https://github.com/chakib-belgaid/living-notebook-portfolio): Website implementation and content.
+
+## Research repositories
+
+- [pyJoules](https://github.com/powerapi-ng/pyJoules): Python energy measurement.
+- [Joulehunter](https://github.com/powerapi-ng/joulehunter): Python energy profiling; archived repository.
+- [PowerAPI](https://github.com/powerapi-ng/powerapi): Framework for software-defined power meters.
