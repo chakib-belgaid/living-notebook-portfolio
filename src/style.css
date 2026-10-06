@@ -1642,3 +1642,56 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 @media (min-width: 1200px) {
   :root[data-view="garden"] .ruler { width: min(32rem, calc(100vw - 2 * var(--edge))); }
 }
+
+/* Inside Whisperbook: the pipeline as a list on the page, a step at a time
+   in the garden's note (see main.ts showInside). */
+.inside {
+  margin: 1rem 0 0.75rem;
+  padding: 0.8rem 0.95rem 0.7rem;
+  border: 1px solid var(--hairline);
+  border-radius: 0.6rem;
+}
+.inside :is(h3, h4) {
+  margin: 0 0 0.15rem;
+  font-size: 1.0625rem;
+}
+.inside-intro {
+  margin: 0 0 0.55rem;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--muted);
+}
+.inside-steps {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0.5rem;
+  padding-inline-start: 1.35rem;
+}
+.inside-steps li strong {
+  display: block;
+  font-weight: 600;
+}
+.inside-steps li[aria-current] {
+  animation: inside-step 0.35s var(--ease) both;
+}
+@keyframes inside-step {
+  from { opacity: 0; transform: translateY(0.3rem); }
+}
+.inside-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+.inside-count {
+  margin-inline-end: auto;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.inside-source {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .inside-steps li[aria-current] { animation: none; }
+}

@@ -1,4 +1,4 @@
-import { beats, projects, contactMarkup, scrollCue } from "./content";
+import { beats, projects, contactMarkup, scrollCue, insideMarkup } from "./content";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -52,7 +52,7 @@ export function renderPortfolio() {
                 <p class="reading-lede">${e(p.lede)}</p></div>
               <div class="stop-detail" data-detail="${id}"><p>${e(p.intro)}</p>
                 <h4>Project status</h4><p>${e(p.status)}</p><h4>Outcome</h4><p>${e(p.outcome)}</p><h4>Scope and limits</h4><p>${e(p.limits)}</p>
-                <h4>What I built</h4><p>${e(p.built)}</p><h4>The decision that shaped it</h4><p>${e(p.decision)}</p>
+                <h4>What I built</h4><p>${e(p.built)}</p>${id === "whisperbook" ? insideMarkup("page", "h4", false) : ""}<h4>The decision that shaped it</h4><p>${e(p.decision)}</p>
                 <p class="project-tech">${e(p.tech.join(" · "))}</p><a class="source-link" href="${p.url}" target="_blank" rel="noopener noreferrer">Read ${e(p.title)} on GitHub ↗</a>
                 <details class="reading-illustration script-only" data-illustration="${id}"><summary>${id === "whisperbook" ? "Hear a passage in your browser" : "Measure what drawing this page costs"}</summary><p>${e(id === "whisperbook" ? "Hear an excerpt in your browser’s local voice. Whisperbook uses its own on-device narration on Android." : "Watch what drawing this page costs your device: CPU and GPU time, and the estimated carbon of that work. Enable the garden preview to measure it.")}</p><div data-reading-widget="${id}"></div></details>
               </div>

@@ -10,7 +10,7 @@ import {
   type WeatherKind,
 } from "./weather";
 
-import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, scrollCue, type Spot, type WidgetSpot, type Stop } from "./content";
+import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, scrollCue, inside, type Spot, type WidgetSpot, type Stop } from "./content";
 import { createNavigation, type SectionId } from "./navigation";
 import { widgetLifecycle } from "./widgets";
 import { createTransferEstimate, formatGrams } from "./transfer";
@@ -242,6 +242,7 @@ reducedQuery.addEventListener("change", (e) => {
   reduced = e.matches;
   paused = reduced;
   syncMotion();
+  if (insideStep !== null) showInside(insideStep);
   if (reading) garden?.setProgress(Number(scrub.value) / 1000, reduced || paused);
   measure();
 });
@@ -477,6 +478,48 @@ function driveLive(stop: Stop) {
   garden?.focus(stop.spot, 0, 0);
 }
 
+/* Inside Whisperbook, in the garden: the pipeline a step at a time, with
+   the pavilion's lamp and rings lit to match. With reduced motion the steps
+   show together, as on the reading page. Leaving the note closes it. */
+let insideStep: number | null = null;
+function showInside(step: number | null, focus = false) {
+  const box = document.querySelector<HTMLElement>('[data-inside="garden"]');
+  if (!box) return;
+  insideStep = step;
+  const open = step !== null;
+  const all = open && reduced;
+  const start = box.querySelector<HTMLButtonElement>(".inside-start")!;
+  const list = box.querySelector<HTMLOListElement>(".inside-steps")!;
+  const controls = box.querySelector<HTMLElement>(".inside-controls")!;
+  start.hidden = open;
+  start.setAttribute("aria-expanded", String(open));
+  list.hidden = !open;
+  controls.hidden = !open;
+  list.querySelectorAll<HTMLLIElement>("li").forEach((li, i) => {
+    li.hidden = !all && i !== step;
+    li.toggleAttribute("aria-current", !all && i === step);
+  });
+  const last = inside.length - 1;
+  box.querySelector<HTMLButtonElement>("[data-inside-back]")!.hidden = all;
+  box.querySelector<HTMLButtonElement>("[data-inside-back]")!.disabled = step === 0;
+  box.querySelector<HTMLButtonElement>("[data-inside-next]")!.hidden = all || step === last;
+  box.querySelector(".inside-count")!.textContent = open && !all ? `Step ${step! + 1} of ${inside.length}` : "";
+  if (open && !all) announce(inside[step!].text);
+  garden?.explain(open ? (all ? last : step) : null);
+  if (focus) (open ? (all || step === last ? box.querySelector<HTMLButtonElement>("[data-inside-close]")! : box.querySelector<HTMLButtonElement>("[data-inside-next]")!) : start).focus({ preventScroll: true });
+}
+document.addEventListener("click", (e) => {
+  const button = (e.target as Element).closest<HTMLButtonElement>('[data-inside="garden"] button');
+  if (!button) return;
+  if (button.matches(".inside-start")) showInside(0, true);
+  else if (button.matches("[data-inside-next]")) showInside(Math.min(inside.length - 1, (insideStep ?? 0) + 1), true);
+  else if (button.matches("[data-inside-back]")) showInside(Math.max(0, (insideStep ?? 0) - 1), true);
+  else if (button.matches("[data-inside-close]")) showInside(null, true);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && insideStep !== null && (e.target as Element).closest?.('[data-inside="garden"]')) showInside(null, true);
+});
+
 /* One widget is mounted at a time, in the active note. */
 const noteWidget = widgetLifecycle();
 function mountNoteWidget() {
@@ -590,6 +633,7 @@ function measure() {
       d.classList.toggle("current", i === beat),
     );
     mountNoteWidget();
+    if (insideStep !== null) showInside(null);
     syncStory();
     // A glide passes other sections; the address stays on its destination.
     if (beat >= 0 && !glide) navigation.passive(sectionForBeat(beat));
@@ -1348,6 +1392,7 @@ function syncPresentation() {
   // On phones the switch shows only an icon, so its name is kept explicit.
   toggle.setAttribute("aria-label", toggle.textContent);
   if (previous !== reading) {
+    if (insideStep !== null) showInside(null);
     noteWidget.dispose();
     illustration.dispose();
     if (activeIllustration) activeIllustration.open = false;

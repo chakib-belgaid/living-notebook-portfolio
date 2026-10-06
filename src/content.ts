@@ -80,6 +80,29 @@ export type Beat = {
   widget?: WidgetSpot;
 };
 
+/* Inside Whisperbook: its pipeline, from a book to its audio, a step at a
+   time. Each step states one decision already in the project's record above
+   (intro, built, decision); nothing here is a new claim. */
+export const inside = [
+  { title: "Book", text: "You import your own EPUB or PDF on the phone. Privacy holds at the system boundary: the app has no runtime network permission." },
+  { title: "Chapters", text: "Chapters and their speakers are found in the text. Audio is prepared in small segments, so the opening chapter plays while later ones are still being narrated." },
+  { title: "Voices", text: "Each speaker is given a different local voice, so a conversation reads as a cast. Narration runs on the device." },
+  { title: "Audio", text: "Playback follows the text as it plays, and the finished book can be exported as an MP3." },
+];
+/** The steps as a list: read as a whole on the page, or one at a time in
+ * the garden (see main.ts). `heading` is the level that fits around it. */
+export function insideMarkup(id: string, heading: "h3" | "h4", stepped: boolean) {
+  const p = projects.whisperbook;
+  return `<section class="inside" data-inside="${id}" aria-labelledby="inside-${id}-title">
+      <${heading} id="inside-${id}-title">Inside Whisperbook</${heading}>
+      <p class="inside-intro">Four steps from a book to its audio.</p>
+      ${stepped ? `<button type="button" class="chip inside-start" aria-expanded="false" aria-controls="inside-${id}-steps">Step inside</button>` : ""}
+      <ol class="inside-steps" id="inside-${id}-steps"${stepped ? " hidden" : ""}>${inside.map((s, i) => `<li data-step="${i}" value="${i + 1}"><strong>${s.title}</strong> <span>${s.text}</span></li>`).join("")}</ol>
+      ${stepped ? `<div class="inside-controls" hidden><button type="button" class="link small" data-inside-back>Back</button><span class="inside-count" aria-live="polite"></span><button type="button" class="link small" data-inside-next>Next</button><button type="button" class="link small" data-inside-close>Close</button></div>` : ""}
+      <p class="inside-source"><a href="${p.url}" target="_blank" rel="noopener noreferrer">Read the source on GitHub ↗</a></p>
+    </section>`;
+}
+
 /* Each project has an introduction, a browser illustration, what I built, and
    the decision that shaped it, with its screenshot. */
 function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
@@ -112,7 +135,14 @@ function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
       spot,
       widget: spot,
     },
-    { stage: 2, label: p.title, title: "What I built", copy: p.built, spot },
+    {
+      stage: 2,
+      label: p.title,
+      title: "What I built",
+      copy: p.built,
+      body: spot === "whisperbook" ? insideMarkup("garden", "h3", true) : undefined,
+      spot,
+    },
     {
       stage: 2,
       label: p.title,

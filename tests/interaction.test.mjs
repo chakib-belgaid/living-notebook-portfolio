@@ -140,3 +140,64 @@ test('reduced motion: the label answers at once, and no fennec walks over', asyn
     assert.deepEqual(p.errors, []);
   } finally { await p.context().close(); }
 });
+
+/* Inside Whisperbook (OPTIMIZATION-PLAN.md, item 9). */
+async function builtNote(p) {
+  // The Whisperbook "What I built" note holds the steps.
+  const note = p.locator('.chapter:has([data-inside="garden"])');
+  await note.evaluate((e) => scrollTo({ top: e.offsetTop, behavior: 'instant' }));
+  await p.locator('.chapter.active [data-inside="garden"]').waitFor({ state: 'visible' });
+  return note;
+}
+const explaining = (p) => p.locator('#scene').getAttribute('data-explaining');
+
+test('Inside Whisperbook steps from book to audio, lights the pavilion, and can be left at any step', async () => {
+  const p = await bloom('/#whisperbook', {}, undefined, 0.6);
+  try {
+    const note = await builtNote(p);
+    await note.getByRole('button', { name: 'Step inside' }).click();
+    const current = note.locator('li[aria-current]');
+    assert.match(await current.innerText(), /^Book/);
+    assert.equal(await note.locator('.inside-steps li:visible').count(), 1);
+    await p.waitForFunction(() => document.querySelector('#scene').dataset.explaining === '0');
+    for (const title of ['Chapters', 'Voices', 'Audio']) {
+      await note.getByRole('button', { name: 'Next' }).click();
+      assert.match(await current.innerText(), new RegExp('^' + title));
+    }
+    assert.equal(await explaining(p), '3');
+    // From the voices on, the pavilion's rings sound.
+    await p.waitForFunction(() => Number(document.querySelector('#scene').dataset.narrating) > 0.5);
+    assert.equal(await note.getByRole('button', { name: 'Next' }).isVisible(), false, 'the last step');
+    assert.equal(await note.locator('.inside-count').textContent(), 'Step 4 of 4');
+    assert.ok(await note.getByRole('link', { name: /Read the source on GitHub/ }).isVisible(), 'evidence is a click away');
+    await note.getByRole('button', { name: 'Back' }).click();
+    await p.keyboard.press('Escape');
+    await p.waitForFunction(() => document.querySelector('#scene').dataset.explaining === 'none');
+    assert.equal(await p.evaluate(() => document.activeElement.textContent), 'Step inside', 'focus returns to where it began');
+    // Leaving the note mid-way closes it.
+    await note.getByRole('button', { name: 'Step inside' }).click();
+    await p.locator('.chapter:has([data-inside="garden"]) + .chapter, .chapter:has([data-inside="garden"]) ~ .chapter').first()
+      .evaluate((e) => scrollTo({ top: e.offsetTop, behavior: 'instant' }));
+    await p.waitForFunction(() => document.querySelector('#scene').dataset.explaining === 'none');
+    assert.deepEqual(p.errors, []);
+  } finally { await p.context().close(); }
+});
+
+test('Inside Whisperbook reads as a whole on the page and with reduced motion, in every language', async () => {
+  const p = await bloom('/#whisperbook', { reducedMotion: 'reduce' }, undefined, 0.6);
+  try {
+    const note = await builtNote(p);
+    await note.getByRole('button', { name: 'Step inside' }).click();
+    assert.equal(await note.locator('.inside-steps li:visible').count(), 4, 'all steps at once');
+    assert.equal(await note.getByRole('button', { name: 'Next' }).isVisible(), false);
+    await p.goto(base + '/?view=read#whisperbook');
+    const page = p.locator('#whisperbook [data-inside="page"]');
+    assert.equal(await page.locator('li').count(), 4);
+    assert.equal(await page.locator('button').count(), 0, 'a plain list on the page');
+    await p.goto(base + '/?view=read&lang=fr#whisperbook');
+    await p.waitForFunction(() => document.documentElement.lang === 'fr');
+    assert.equal(await p.locator('#inside-page-title').innerText(), 'Dans Whisperbook');
+    assert.match(await page.locator('li').first().innerText(), /aucune permission réseau/);
+    assert.deepEqual(p.errors, []);
+  } finally { await p.context().close(); }
+});

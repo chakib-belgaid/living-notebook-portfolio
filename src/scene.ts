@@ -8,6 +8,8 @@ export type Season = "spring" | "summer" | "autumn" | "winter";
 export interface Garden {
   /** Whisperbook pavilion reacts while the widget narrates. */
   setNarrating: (on: boolean) => void;
+  /** Inside Whisperbook: the pavilion's lamp is lit for a step (0 book, 1 chapters, 2 voices, 3 audio) and its rings sound from the voices on; null ends it. */
+  explain: (step: number | null) => void;
   /** Highlight one step of the path: 0 ground (startup), 1 terrace (research), 2 observatory (energy), 3 roof (atelier); null clears. */
   highlightPath: (step: number | null) => void;
   /** A building's label is pointed at or focused: a ring of light around it. null clears. */
@@ -2109,13 +2111,18 @@ export async function createGarden(
     letterTime = -1;
   let narrating = false,
     narration = 0,
+    // Inside Whisperbook: the step on show (0 book … 3 audio), and the lamp
+    // over the reading table that is lit through it.
+    explaining: number | null = null,
+    lamp = 0,
     ringTime = 0,
     built = 0;
   const approach = (value: number, goal: number, step: number) =>
     value < goal ? Math.min(goal, value + step) : Math.max(goal, value - step);
   function roomsSettling() {
     return (
-      narration !== (narrating ? 1 : 0) ||
+      narration !== (voiced() ? 1 : 0) ||
+      lamp !== (lampOn() ? 1 : 0) ||
       pathGlow !== (pathStep === null ? 0 : 1) ||
       flagLift !== (postbox === "idle" ? 0 : 1) ||
       letterTime >= 0 ||
@@ -2127,10 +2134,15 @@ export async function createGarden(
         Math.abs(tallyGoal - tallyShown) >= 0.0005)
     );
   }
+  // The rings sound out while narrating, and from the voices step on; the
+  // lamp is lit with them, and through the whole of Inside Whisperbook.
+  const voiced = () => narrating || (explaining ?? -1) >= 2;
+  const lampOn = () => voiced() || explaining !== null;
   function updateRooms(dt: number, solid: number, drawn: number, blue: number) {
     built = solid;
     const still = paused || reduced;
-    narration = approach(narration, narrating ? 1 : 0, reduced ? 1 : dt / 0.3);
+    narration = approach(narration, voiced() ? 1 : 0, reduced ? 1 : dt / 0.3);
+    lamp = approach(lamp, lampOn() ? 1 : 0, reduced ? 1 : dt / 0.3);
     if (!still) ringTime += dt;
     soundRings.forEach((ring, k) => {
       const t = (ringTime * 0.55 + k / 3) % 1;
@@ -2139,7 +2151,7 @@ export async function createGarden(
       ringMaterials[k].opacity = (1 - t) * narration * solid * 0.9;
       ringMaterials[k].visible = ringMaterials[k].opacity > 0.01;
     });
-    readingLight.intensity = narration * solid * 2.4;
+    readingLight.intensity = lamp * solid * 2.4;
     if (!still) {
       const goal = lerp(-Math.PI / 2, Math.PI / 2, Math.min(renderMs / 8, 1));
       needleAngle = lerp(needleAngle, goal, Math.min(dt * 3, 1));
@@ -3961,6 +3973,7 @@ export async function createGarden(
     // 0 is the needle hard left (0 ms), 1 hard right (8 ms or more).
     show("meter", ((needleAngle + Math.PI / 2) / Math.PI).toFixed(3));
     show("narrating", narration.toFixed(2));
+    show("explaining", explaining === null ? "none" : String(explaining));
     show("path", pathStep === null ? "none" : String(pathStep));
     show("postbox", postbox);
     show("flag", flagLift.toFixed(2));
@@ -4056,6 +4069,10 @@ export async function createGarden(
   return {
     setNarrating(on) {
       narrating = on;
+      invalidate();
+    },
+    explain(step) {
+      explaining = step;
       invalidate();
     },
     hover(spot) {
