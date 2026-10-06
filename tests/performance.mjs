@@ -64,13 +64,17 @@ const intervals = (ts) => ts.slice(1).map((t, i) => t - ts[i]);
 
 /* One measured window: what the page scheduled, drew and blocked on. */
 async function window_(page, name, ms, act) {
-  await page.evaluate(() => { const p = window.__perf; p.sampling = true; p.mark = { raf: p.raf, draws: p.draws, drawFrames: p.drawFrames, t: performance.now(), tasks: p.longtasks.length }; p.drawTimes = []; p.probe = []; });
+  await page.evaluate(() => { const p = window.__perf; p.sampling = true; p.mark = { raf: p.raf, draws: p.draws, drawFrames: p.drawFrames, t: performance.now(), tasks: p.longtasks.length, stats: window.__notebookStats?.() ?? null }; p.drawTimes = []; p.probe = []; });
   if (act) await act();
   await page.waitForTimeout(ms);
   const r = await page.evaluate(() => {
     const p = window.__perf; p.sampling = false;
     const seconds = (performance.now() - p.mark.t) / 1000;
-    return { seconds, raf: p.raf - p.mark.raf, drawCalls: p.draws - p.mark.draws, drawFrames: p.drawFrames - p.mark.drawFrames, drawTimes: p.drawTimes, probe: p.probe, tasks: p.longtasks.slice(p.mark.tasks) };
+    // Main-thread and GPU time per garden frame, from the page's own totals.
+    const a = p.mark.stats?.garden, b = window.__notebookStats?.()?.garden;
+    const frames = a && b ? b.frames - a.frames : 0;
+    const work = frames ? { cpuMsPerFrame: (b.cpuMs - a.cpuMs) / frames, gpuMsPerFrame: b.gpuMs === null ? null : (b.gpuMs - a.gpuMs) / frames } : { cpuMsPerFrame: null, gpuMsPerFrame: null };
+    return { seconds, raf: p.raf - p.mark.raf, drawCalls: p.draws - p.mark.draws, drawFrames: p.drawFrames - p.mark.drawFrames, drawTimes: p.drawTimes, probe: p.probe, tasks: p.longtasks.slice(p.mark.tasks), work };
   });
   const draw = intervals(r.drawTimes), probe = intervals(r.probe);
   return {
@@ -83,6 +87,7 @@ async function window_(page, name, ms, act) {
     drawMissed33: draw.length ? round(draw.filter((d) => d > 34).length / draw.length, 4) : null,
     probeIntervalP95: round(quantile(probe, 0.95)),
     maxTaskMs: round(Math.max(0, ...r.tasks.map((t) => t.ms))), tasksOver50: r.tasks.length,
+    cpuMsPerFrame: round(r.work.cpuMsPerFrame, 3), gpuMsPerFrame: round(r.work.gpuMsPerFrame, 3),
   };
 }
 
@@ -141,8 +146,13 @@ const desktop = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.6
 const phone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true };
 
 const scenarios = {
-  async 'desktop-garden'() {
-    const page = await newPage(desktop, '/');
+  'desktop-garden': () => desktopGarden('/'),
+  // The same journey drawn Light (OPTIMIZATION-PLAN.md, item 4).
+  'desktop-garden-light': () => desktopGarden('/?quality=light'),
+  ...phoneScenarios(),
+};
+async function desktopGarden(url) {
+    const page = await newPage(desktop, url);
     await page.waitForFunction(() => document.querySelector('#scene')?.dataset.progress);
     await settledShaders(page);
     const cold = { ...(await sceneInfo(page)), tasks: await page.evaluate(() => window.__perf.longtasks) };
@@ -175,10 +185,17 @@ const scenarios = {
     windows.push(await window_(page, 'resumed', 2000));
     windows.push(await window_(page, 'hidden', 3000, () => page.evaluate(() => window.__setHidden(true))));
     windows.push(await window_(page, 'visible-again', 2000, () => page.evaluate(() => window.__setHidden(false))));
+    // A garden full of planted trees (OPTIMIZATION-PLAN.md, item 5).
+    await page.locator('.dock > summary').click();
+    for (let i = 0; i < 21; i++) await page.locator('#plant-one').click();
+    await page.locator('.dock > summary').click();
+    await page.waitForTimeout(1500);
+    windows.push(await window_(page, 'full-garden', 3000));
     const after = await sceneInfo(page);
     const transfer = await transferReport(page);
     return { page, cold, windows, after, transfer };
-  },
+}
+function phoneScenarios() { return {
   async 'phone-journey'() {
     const page = await newPage(phone, '/');
     await page.waitForFunction(() => document.querySelector('#scene')?.dataset.progress, {}, { timeout: 30000 });
@@ -219,7 +236,7 @@ const scenarios = {
     })];
     return { page, cold: await sceneInfo(page), windows, transfer: await transferReport(page) };
   },
-};
+}; }
 
 /* Warm transfer: the same page reloaded in the same context. */
 async function warmTransfer(page) {
@@ -239,7 +256,7 @@ try {
       await r.page.context().close();
       const { page, ...rest } = r;
       results.push({ scenario: name, run: i + 1, ...rest, warmTransfer: warm, errors });
-      console.log(JSON.stringify({ scenario: name, run: i + 1, bytes: r.transfer.total.transfer, ...Object.fromEntries(r.windows.map((w) => [w.name, `${w.drawFramesPerSecond} draws/s ${w.rafPerSecond} raf/s p95 ${w.drawIntervalP95}`])) }));
+      console.log(JSON.stringify({ scenario: name, run: i + 1, bytes: r.transfer.total.transfer, ...Object.fromEntries(r.windows.map((w) => [w.name, `${w.drawFramesPerSecond} draws/s ${w.rafPerSecond} raf/s p95 ${w.drawIntervalP95} cpu ${w.cpuMsPerFrame} gpu ${w.gpuMsPerFrame}`])) }));
     }
   }
   // Medians and p95 across runs, per scenario and window.

@@ -1,4 +1,4 @@
-import type { Garden, Season } from "./scene";
+import type { Garden, Season, Quality } from "./scene";
 import { createSky } from "./sky";
 import {
   currentWeather,
@@ -36,6 +36,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
     <p class="garden-loading" role="status" hidden>Growing the garden… The trees are getting dressed. One little moment.</p>
     <canvas class="sky sky-front" aria-hidden="true"></canvas>
     ${spotOrder.map((s) => `<div class="hotspot" data-spot="${s}"><a href="#${s}" class="hotspot-title" tabindex="-1">${spotNames[s]}</a></div>`).join("")}
+    <a class="overview-return" href="#work" hidden>Back to all work</a>
   </div>
 
   <main class="chapters">
@@ -117,6 +118,10 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
         <button type="button" class="chip" id="plant-mode" aria-pressed="false">Plant by clicking</button>
         <button type="button" class="chip" id="plant-one">Plant one</button>
         <button type="button" class="chip" id="turn">Turn</button>
+      </div>
+      <p class="quality-label" id="quality-label">Drawing quality</p>
+      <div class="weather-chips quality-chips" role="group" aria-labelledby="quality-label">
+        ${(["auto", "full", "light"] as const).map((k) => `<button type="button" class="chip" data-quality="${k}" aria-pressed="false">${{ auto: "Auto", full: "Full", light: "Light" }[k]}</button>`).join("")}
       </div>
     </section>
   </div></details>
@@ -339,6 +344,15 @@ const moveEls = new Map(
 );
 const scrub = $<HTMLInputElement>("#scrub");
 const hotspots = $$<HTMLElement>(".hotspot");
+/* A label pointed at or focused lights its building; leaving clears it. */
+for (const h of hotspots) {
+  const on = () => garden?.hover(h.dataset.spot!);
+  const off = () => { if (!h.matches(":hover, :focus-within")) garden?.hover(null); };
+  h.addEventListener("pointerenter", on);
+  h.addEventListener("focusin", on);
+  h.addEventListener("pointerleave", off);
+  h.addEventListener("focusout", () => requestAnimationFrame(off));
+}
 const widgets = $$<HTMLElement>(".widget");
 let stage = -1;
 // The beat whose note is showing; -1 while the garden moves between stages.
@@ -388,6 +402,8 @@ let idle = false;
 function syncStory() {
   const b = beats[beat];
   garden?.highlightPath(b?.path ?? null);
+  // Close on a project, the way back to the whole garden is in view.
+  $(".overview-return").hidden = reading || !(b?.spot === "whisperbook" || b?.spot === "wattch");
   // Idle, the note steps back too, so the garden comes to the centre.
   const side = narrow.matches || idle ? 0 : 1;
   if (b?.spot) garden?.focus(b.spot, 0.16 * side, 0.04 * side);
@@ -869,14 +885,16 @@ setInterval(() => {
 /* Planting. */
 const MAX_TREES = 24;
 const plantMode = $<HTMLButtonElement>("#plant-mode");
-function counted(n: number) {
+// `planted` is false when the count is only restored, as after a rebuild.
+function counted(n: number, planted = true) {
   $("#tree-count").textContent = `${n} of ${MAX_TREES} trees`;
   if (n >= MAX_TREES) {
     plantMode.disabled = true;
     $<HTMLButtonElement>("#plant-one").disabled = true;
     setPlanting(false);
-    announce("The garden is full. 24 trees planted.");
-  } else announce(`Tree planted. ${n} of ${MAX_TREES}.`);
+    if (planted) announce("The garden is full. 24 trees planted.");
+  } else if (planted) announce(`Tree planted. ${n} of ${MAX_TREES}.`);
+  if (planted) soundscape.planted();
 }
 function setPlanting(on: boolean) {
   plantMode.setAttribute("aria-pressed", String(on));
@@ -926,16 +944,23 @@ function setIdle(on: boolean) {
   root.dataset.idle = String(on);
   syncStory();
   cancelAnimationFrame(drift);
-  if (on && !(paused || reduced) && stage === 3 && !beats[beat]?.spot) {
-    let last = performance.now();
-    const turn = (now: number) => {
-      garden?.rotateBy(((now - last) / 1000) * 0.03);
-      last = now;
-      drift = requestAnimationFrame(turn);
-    };
-    drift = requestAnimationFrame(turn);
-  }
+  drift = 0;
+  if (on && !(paused || reduced) && stage === 3 && !beats[beat]?.spot) startDrift();
 }
+// The slow turn stops in a hidden tab and picks up where it was on return.
+function startDrift() {
+  let last = performance.now();
+  const turn = (now: number) => {
+    if (document.hidden) { drift = 0; return; }
+    garden?.rotateBy((Math.min(now - last, 50) / 1000) * 0.03);
+    last = now;
+    drift = requestAnimationFrame(turn);
+  };
+  drift = requestAnimationFrame(turn);
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && idle && !drift && !(paused || reduced) && stage === 3 && !beats[beat]?.spot) startDrift();
+});
 function wake() {
   setIdle(false);
   // Pointer moves come many to a frame; the timer is reset at most every 200 ms.
@@ -1032,8 +1057,8 @@ function renderWork(): ComputeWork | null {
   const g = garden?.stats();
   const s = sky?.stats();
   return {
-    cpuMs: (g?.cpuMs ?? 0) + (s?.cpuMs ?? 0),
-    gpuMs: g ? g.gpuMs : null,
+    cpuMs: (g?.cpuMs ?? 0) + (s?.cpuMs ?? 0) + retiredWork.cpuMs,
+    gpuMs: g && g.gpuMs !== null ? g.gpuMs + retiredWork.gpuMs : null,
   };
 }
 function drawCarbon() {
@@ -1361,6 +1386,8 @@ $$<HTMLAnchorElement>("[data-view]").forEach(a => a.addEventListener("click", e 
 }));
 compact.addEventListener("change", () => {
   const section = navigation.section;
+  // Auto follows the screen in how it draws; what was built stays.
+  garden?.setQuality(qualityNow());
   syncPresentation();
   navigation.go(section, false, false);
   if (!reading || previewEnabled) void loadGarden();
@@ -1395,6 +1422,91 @@ function leaveLiveGarden(message: string) {
   announce(message);
 }
 
+/* Drawing quality. Auto draws phones light and everything else in full; the
+   visitor's choice is remembered on this device. Light changes how the built
+   garden is drawn. A phone builds a lighter garden too, so moving a phone
+   between Full and Light rebuilds it, keeping its trees, turn and place. */
+type QualityChoice = "auto" | Quality;
+const QUALITY_KEY = "notebook:quality";
+const qualityParam = new URL(location.href).searchParams.get("quality");
+let qualityChoice: QualityChoice = qualityParam === "low" || qualityParam === "light" ? "light" : qualityParam === "full" ? "full" : (() => {
+  try {
+    const saved = localStorage.getItem(QUALITY_KEY);
+    return saved === "full" || saved === "light" ? saved : "auto";
+  } catch { return "auto"; }
+})();
+const qualityNow = (): Quality => (qualityChoice === "auto" ? (compact.matches ? "light" : "full") : qualityChoice);
+// ?quality=low keeps asking for the lighter build on any screen.
+const detailFor = (q: Quality) => (q === "light" && (compact.matches || qualityParam === "low") ? "low" : "full");
+// Rendering already done by gardens since replaced, so the visit's total keeps counting.
+const retiredWork = { cpuMs: 0, gpuMs: 0 };
+let rebuilding: Promise<void> | undefined;
+function syncQuality() {
+  $$<HTMLButtonElement>("[data-quality]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.quality === qualityChoice)));
+}
+$$<HTMLButtonElement>("[data-quality]").forEach((b) => b.addEventListener("click", () => {
+  qualityChoice = b.dataset.quality as QualityChoice;
+  try {
+    if (qualityChoice === "auto") localStorage.removeItem(QUALITY_KEY);
+    else localStorage.setItem(QUALITY_KEY, qualityChoice);
+  } catch { /* Remembering is a convenience. */ }
+  syncQuality();
+  void applyQuality();
+}));
+syncQuality();
+async function applyQuality() {
+  if (!garden) return;
+  const quality = qualityNow();
+  if (detailFor(quality) === $("#scene").dataset.detail) {
+    garden.setQuality(quality);
+    return;
+  }
+  await rebuildGarden();
+}
+async function rebuildGarden() {
+  if (rebuilding) return rebuilding;
+  rebuilding = (async () => {
+    const old = garden!;
+    const snapshot = old.snapshot();
+    announce("Redrawing the garden.");
+    const { createGarden } = await import("./scene");
+    const quality = qualityNow();
+    const next = await createGarden($("#scene"), hotspots, detailFor(quality), quality);
+    const work = old.stats();
+    retiredWork.cpuMs += work.cpuMs;
+    retiredWork.gpuMs += work.gpuMs ?? 0;
+    old.dispose();
+    garden = next;
+    counted(garden.restore(snapshot), false);
+    adoptGarden();
+    announce("The garden is redrawn.");
+  })().catch((error) => {
+    console.warn("The garden could not be rebuilt.", error);
+  }).finally(() => { rebuilding = undefined; });
+  // A quality chosen while rebuilding is applied once it is done.
+  await rebuilding;
+  if (garden && detailFor(qualityNow()) !== $("#scene").dataset.detail) await rebuildGarden();
+  else garden?.setQuality(qualityNow());
+}
+/* Brings a new garden up to date with the page. */
+function adoptGarden() {
+  if (!garden) return;
+  syncTheme(); syncMotion(); setHour(Number(hourInput.value)); applyWeather(); applySeason();
+  if (journey.active) { driveLive(journey.stop); journey.setLive(previewEnabled); }
+  else if (reading) { garden.setProgress(1, reduced || paused); setGrowth(1); }
+  else {
+    // The meter needs a renderer; contact and speech already work while loading.
+    if (beats[beat]?.widget === "wattch") mountNoteWidget();
+    measure(); syncStory();
+  }
+  if (activeIllustration?.open && activeIllustration.dataset.illustration === "wattch") {
+    illustration.replace(() => mountProjectWidget("wattch", activeIllustration!.querySelector<HTMLElement>("[data-reading-widget]")!));
+  }
+  garden.setPostbox("idle");
+  garden.setNarrating(!!document.querySelector('.play[data-playing="true"]'));
+  measureFrames();
+}
+
 async function loadGarden() {
   if (gardenLoading) return gardenLoading;
   $(".garden-loading").hidden = false;
@@ -1405,8 +1517,8 @@ async function loadGarden() {
     sky = createSky($(".sky-back"), $(".sky-front"));
     syncMotion();
     const { createGarden } = await import("./scene");
-    const quality = compact.matches || new URL(location.href).searchParams.get("quality") === "low" ? "low" : "full";
-    garden = await createGarden($("#scene"), hotspots, quality);
+    const quality = qualityNow();
+    garden = await createGarden($("#scene"), hotspots, detailFor(quality), quality);
     $(".garden-loading").hidden = true;
     $(".scene-fallback").hidden = true;
     $("#scene").addEventListener("garden-context-lost", () => {
@@ -1416,20 +1528,7 @@ async function loadGarden() {
       else announce("Garden graphics unavailable. Portfolio navigation remains available.");
     });
     $("#scene").addEventListener("garden-context-restored", () => $(".scene-fallback").hidden = true);
-    syncTheme(); syncMotion(); setHour(Number(hourInput.value)); applyWeather(); applySeason();
-    if (journey.active) { driveLive(journey.stop); journey.setLive(previewEnabled); }
-    else if (reading) { garden.setProgress(1, reduced || paused); setGrowth(1); }
-    else {
-      // The meter needs a renderer; contact and speech already work while loading.
-      if (beats[beat]?.widget === "wattch") mountNoteWidget();
-      measure(); syncStory();
-    }
-    if (activeIllustration?.open && activeIllustration.dataset.illustration === "wattch") {
-      illustration.replace(() => mountProjectWidget("wattch", activeIllustration!.querySelector<HTMLElement>("[data-reading-widget]")!));
-    }
-    garden.setPostbox("idle");
-    garden.setNarrating(!!document.querySelector('.play[data-playing="true"]'));
-    measureFrames();
+    adoptGarden();
     void startWeather();
   })().catch(error => {
     $(".garden-loading").hidden = true;

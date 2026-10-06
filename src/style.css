@@ -323,9 +323,56 @@ button {
   font-style: inherit;
   cursor: pointer;
 }
-.hotspot:hover {
+/* Pointed at or focused, a label answers the same way; its building lights up
+   in the garden (see Garden.hover). */
+.hotspot:hover,
+.hotspot:focus-within {
   background: var(--ink);
   color: var(--paper);
+}
+.hotspot-title:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.hotspot:is(:hover, :focus-within)::before {
+  transform: scale(1.35);
+}
+/* On a project, the way back to the whole garden. */
+.overview-return {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--header-clearance, 4rem) + 1rem);
+  inset-inline-end: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.2rem 0.95rem;
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--slip);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.overview-return::before {
+  content: "←";
+  margin-inline-end: 0.45rem;
+  font-style: normal;
+}
+:root[dir="rtl"] .overview-return::before {
+  content: "→";
+}
+.overview-return:hover,
+.overview-return:focus-visible {
+  background: var(--ink);
+  color: var(--paper);
+}
+.overview-return:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
 }
 @keyframes ping {
   0% {
@@ -1182,6 +1229,11 @@ button {
   font-style: italic;
   color: var(--muted);
 }
+.quality-label {
+  margin: 0.55rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
 
 /* Phones and narrow windows: the garden takes the upper part of the screen. */
 @media (max-width: 899px) {
@@ -1449,7 +1501,7 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
   :root[data-view="garden"] .tally-panel { right: auto; left: calc(100% - 8.5rem); }
 }
 :root[data-view="read"] .stage { position: absolute; inset: 0; }
-:root[data-view="read"] .hotspot { display: none; }
+:root[data-view="read"] :is(.hotspot, .overview-return) { display: none; }
 :root[data-view="read"] #preview-tools { display: flex; flex-direction: column; gap: 0.75rem; }
 :root[data-view="read"] .ruler, :root[data-view="read"] .dock { position: static; transform: none; width: 100%; max-height: none; }
 /* In the reading view the ruler is in the page's flow: the track takes its
@@ -1470,7 +1522,7 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 .dock.waiting { opacity: 0; visibility: hidden; pointer-events: none; }
 /* Idle: the controls and the note step back and leave the garden. They come
    back at once with any movement. */
-:root[data-view="garden"][data-idle="true"] :is(.masthead, .ruler, .dock, .hotspot, .chapter.active .note) { opacity: 0; pointer-events: none; transition: opacity 1.6s ease; }
+:root[data-view="garden"][data-idle="true"] :is(.masthead, .ruler, .dock, .hotspot, .overview-return, .chapter.active .note) { opacity: 0; pointer-events: none; transition: opacity 1.6s ease; }
 :root[data-view="garden"][data-idle="true"] .stage { cursor: none; }
 :root[data-motion-paused="true"] *, :root[data-motion-paused="true"] *::before, :root[data-motion-paused="true"] *::after { animation-play-state: paused !important; transition: none !important; }
 :root[data-motion-paused="true"] .char, :root[data-motion-paused="true"] .note-copy, :root[data-motion-paused="true"] .note-lede, :root[data-motion-paused="true"] .note-body, :root[data-motion-paused="true"] .note-hint { animation: none !important; }
