@@ -58,6 +58,23 @@ test('a building answers its label pointed at or focused, within 100 ms', async 
   } finally { await p.context().close(); }
 });
 
+test('a fragment change interrupts an unfinished garden navigation', async () => {
+  const p = await bloom('/#whisperbook', {}, undefined, 0.6);
+  try {
+    const target = await p.locator('.chapter').evaluateAll(chapters =>
+      chapters.find(chapter => chapter.querySelector('h2')?.textContent === 'Wattch Core').offsetTop);
+    await p.getByRole('link', { name: 'Back to all work' }).click();
+    await p.waitForFunction(() => location.hash === '#work');
+    // A new fragment arrives while the previous link is still gliding.
+    await p.evaluate(() => { location.hash = 'wattch'; });
+    await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.match(p.url(), /#wattch$/);
+    assert.ok(Math.abs(await p.evaluate(() => scrollY) - target) < 1, 'the old glide must not move the requested project');
+    assert.equal(await p.locator('.chapter.active h2').innerText(), 'Wattch Core');
+    assert.deepEqual(p.errors, []);
+  } finally { await p.context().close(); }
+});
+
 test('close on a project, a visible link leads back to all the work', async () => {
   // Whisperbook is a Build stop.
   const p = await bloom('/#whisperbook', {}, undefined, 0.6);

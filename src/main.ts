@@ -1434,6 +1434,10 @@ function sectionForBeat(i: number): SectionId {
 }
 const sectionBeat: Record<SectionId, number> = { intro: 0, work: stageStart[2], ...spotBeat };
 const navigation = createNavigation((section, focus) => {
+  // A new navigation replaces the previous glide and its pending focus.
+  cancelAnimationFrame(glide);
+  glide = 0;
+  focusTo = -1;
   setPlanting(false);
   if (reading) {
     const target = $("#" + section);
