@@ -40,7 +40,7 @@ test('language precedence is URL, saved choice, supported browser language, then
 test('both translations cover portfolio narratives and retain every message placeholder', () => {
   for (const locale of ['fr', 'ar']) {
     for (const p of Object.values(projects)) {
-      for (const key of ['place', 'field', 'lede', 'intro', 'built', 'decision', 'alt', 'caption', 'summary', 'status', 'outcome', 'limits']) {
+      for (const key of ['place', 'field', 'lede', 'intro', 'built', 'decision', 'alt', 'caption', 'summary', 'status', 'outcome', 'limits', 'availability', 'performance', 'releaseNote']) {
         assert.notEqual(translate(p[key], locale), p[key], `${locale}: ${p.title}.${key}`);
       }
     }
@@ -101,7 +101,7 @@ test('a browser language works with blocked storage and history restores the ini
 test('the Arabic phone journey opens translated details and all languages reflow at 200% text', async () => {
   const p = await page({ width: 320, height: 568 });
   try {
-    await ready(p, '?lang=ar');
+    await ready(p, '?view=garden&lang=ar');
     assert.equal(await p.locator('html').getAttribute('data-journey'), 'true');
     await p.locator('#intro-title').evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(a => a.finished)));
     const letters = await p.locator('#intro-title .word').first().locator('.char').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().x));

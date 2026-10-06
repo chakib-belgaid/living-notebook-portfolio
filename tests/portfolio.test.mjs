@@ -20,7 +20,10 @@ async function page(options = {}) {
   return p;
 }
 async function ready(p, path = '') {
-  await p.goto(base + '/' + path);
+  // These fixtures exercise the opt-in garden (or an explicitly requested reader).
+  const url = new URL(base + '/' + path);
+  if (!url.searchParams.has('view')) url.searchParams.set('view', 'garden');
+  await p.goto(url.href);
   await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
 }
 async function go(p, id) {
@@ -60,7 +63,7 @@ test('every journey stop and its details are in the served page', async () => {
   assert.match(html, /class="static-garden"[^>]*loading="lazy"/);
 });
 
-test('desktop entry, project links, wheel chaining and clean landmarks', async () => {
+test('opt-in desktop garden, project links, wheel chaining and clean landmarks', async () => {
   const p = await page();
   try {
     await ready(p);
@@ -352,7 +355,7 @@ test('on phones the live garden grows with the scroll, and ?view=stills keeps th
     await p.waitForFunction(()=>!!document.querySelector('.journey[data-live] #scene canvas'), undefined, {timeout:15000});
     assert.equal(await p.locator('html').getAttribute('data-journey'),'true');
     assert.equal(await p.locator('#stage').isVisible(),true);
-    assert.doesNotMatch(p.url(),/view=/);
+    assert.match(p.url(),/view=garden/);
     // Halfway between two stops the garden is between their stages, and no card shows.
     const between = await p.evaluate(()=>{const t=document.querySelector('[data-stop="blueprint"]').getBoundingClientRect().top+scrollY;scrollTo(0,t-innerHeight*0.7);return t;});
     await p.waitForTimeout(300);
@@ -664,7 +667,7 @@ test('on phones a live garden that cannot be drawn gives way to the stills and i
     });
     await ready(p);
     await p.waitForFunction(()=>document.querySelector('#announce').textContent.includes('can’t be drawn'), undefined, {timeout:10000});
-    assert.doesNotMatch(p.url(), /view=/);
+    assert.match(p.url(), /view=stills/);
     assert.equal(await p.locator('html').getAttribute('data-preview'), 'false');
     assert.equal(await p.locator('.journey-toast').isVisible(), true, 'the header shows it too');
     healthy(p);

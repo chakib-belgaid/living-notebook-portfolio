@@ -14,7 +14,10 @@ async function bloom(path, options = {}) {
   p.errors = [];
   p.on('pageerror', (e) => p.errors.push(e.message));
   await p.route('**/*open-meteo.com/**', (r) => r.abort());
-  await p.goto(base + path);
+  // These fixtures exercise the opt-in garden (or an explicitly requested reader).
+  const url = new URL(base + path);
+  if (!url.searchParams.has('view')) url.searchParams.set('view', 'garden');
+  await p.goto(url.href);
   await p.waitForFunction(() => Number(document.querySelector('#scene')?.dataset.progress) > 0.99, {}, { timeout: 15000 });
   await p.locator('.dock > summary').click();
   return p;

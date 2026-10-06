@@ -7,7 +7,13 @@ export const projects = {
     field: "Local AI on Android",
     lede: "A book can stay yours, even when it speaks.",
     summary: "An Android app that narrates your EPUBs and PDFs on the device.",
-    status: "Source code and an Android player screenshot are linked here. Release availability is not documented on this page.",
+    availability: "Android test APK · v0.1",
+    status: "Installable test build for Android 8+ on arm64. The public v0.1 APK is debug-signed for direct testing, not Play Store distribution.",
+    access: [
+      { label: "Get the test APK ↗", url: "https://github.com/chakib-belgaid/whisper-book/releases/tag/v0.1" },
+    ],
+    performance: "On-device latency, narration speed, and peak RAM: no reproducible device benchmark is linked yet. The browser voice demo cannot establish these numbers.",
+    releaseNote: "The source has evolved since v0.1; the release notes describe the downloadable build.",
     outcome: "Book import, chapter playback, local narration, and MP3 export in one reading flow.",
     limits: "The browser passage is an illustration using your device’s voices; it is not the Android app’s narration engine.",
     intro:
@@ -29,7 +35,14 @@ export const projects = {
     field: "Systems and energy",
     lede: "Know what you measured before you optimize it.",
     summary: "Linux energy traces for command-line, Python, and VS Code workflows.",
-    status: "Source code and a VS Code screenshot are linked here. Release availability is not documented on this page.",
+    availability: "Build from source",
+    status: "Source-available developer tooling. Build the daemon and clients locally; the documented VS Code setup runs in an Extension Development Host.",
+    access: [
+      { label: "Build and run ↗", url: "https://github.com/chakib-belgaid/wattch-core#quick-start" },
+      { label: "VS Code setup ↗", url: "https://github.com/chakib-belgaid/wattch-core/tree/main/editors/vscode-energy-tests#development" },
+    ],
+    performance: "Daemon CPU, memory, and sampling overhead versus a native C RAPL reader: no reproducible comparison is linked yet. Synthetic traces validate the workflow only.",
+    releaseNote: "No GitHub release assets are published, and the project documentation does not link a Marketplace release. Checked 6 October 2026.",
     outcome: "A measurement daemon and clients that capture, validate, and replay raw energy traces.",
     limits: "The screenshot uses synthetic test data. The garden meter estimates this page’s rendering cost; it is not a Wattch hardware measurement.",
     intro:
@@ -47,6 +60,14 @@ export const projects = {
       "Energy Tests on a deterministic run. These synthetic values check the workflow, not real energy use.",
   },
 };
+
+export const research = [
+  { title: "pyJoules", url: "https://github.com/powerapi-ng/pyJoules", summary: "Python energy measurement", status: "Install with pip" },
+  { title: "Joulehunter", url: "https://github.com/powerapi-ng/joulehunter", summary: "Find energy hotspots in Python", status: "Archived repository" },
+  { title: "PowerAPI", url: "https://github.com/powerapi-ng/powerapi", summary: "Software-defined power meters", status: "Research framework" },
+];
+
+export const researchLinks = `<p class="project-shortcuts">${research.map(p => `<a href="${p.url}" target="_blank" rel="noopener noreferrer">${p.title} ↗</a>`).join(" · ")}</p>`;
 
 export const spotOrder: Spot[] = ["whisperbook", "wattch", "about", "contact"];
 export const spotNames: Record<Spot, string> = {
@@ -113,11 +134,12 @@ function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
       label: p.place,
       title: p.title,
       lede: p.lede,
-      copy: p.intro,
+      copy: p.summary,
       body: `<dl class="note-facts">
           <div><dt>Field</dt><dd>${p.field}</dd></div>
           <div><dt>Built with</dt><dd>${p.tech.join(", ")}</dd></div>
           <div><dt>Project status</dt><dd>${p.status}</dd></div>
+          <div><dt>Try it</dt><dd>${p.access.map(a => `<a href="${a.url}" target="_blank" rel="noopener noreferrer">${a.label}</a>`).join(" · ")}</dd></div>
           <div><dt>Outcome</dt><dd>${p.outcome}</dd></div>
           <div><dt>Scope and limits</dt><dd>${p.limits}</dd></div>
           <div><dt>Source</dt><dd><a href="${p.url}" target="_blank" rel="noopener noreferrer">Read it on GitHub</a></dd></div>
@@ -140,7 +162,7 @@ function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
       label: p.title,
       title: "What I built",
       copy: p.built,
-      body: spot === "whisperbook" ? insideMarkup("garden", "h3", true) : undefined,
+      body: `${spot === "whisperbook" ? insideMarkup("garden", "h3", true) : ""}<h3>Performance evidence</h3><p>${p.performance}</p>`,
       spot,
     },
     {
@@ -203,6 +225,7 @@ export const beats: Beat[] = [
     label: "2022–2024",
     title: "Research engineer, Qarnot Computing and Inria",
     copy: "I helped turn energy-measurement research into working infrastructure, including a PowerAPI deployment across more than 100 computing nodes.",
+    body: researchLinks,
     path: 2,
   },
   {

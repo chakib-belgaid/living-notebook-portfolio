@@ -8,7 +8,9 @@ A portfolio for Chakib Belgaid, retaining the procedural garden, blueprint paper
 
 [Personal website](https://chakib-belgaid.github.io/) · [Source repository](https://github.com/chakib-belgaid/living-notebook-portfolio)
 
-Desktop opens the garden journey. **Read portfolio** switches to introduction → Whisperbook → Wattch Core → current work and background → contact. Phones in portrait (below 900 px wide, at least 500 px high) get the garden journey: short cards over stills of the garden that wipe from Sketch to Bloom as you scroll, with each section's details in a bottom sheet (**View project** or **View background**); Bloom's card carries the email and social links. The sprout swaps the stills for the live garden, which follows the same stops. Landscape phones, short windows and **Read as a page** (`?view=read`) use normal document flow.
+Desktop defaults to a flowing, scan-friendly portfolio: introduction → selected work and canonical research repositories → Whisperbook → Wattch Core → background → contact. **Explore garden** opts into the interactive playground (`?view=garden`); **Read portfolio** returns to the page (`?view=read`). The reading page does not load the Three.js scene or start garden audio.
+
+Portrait phones default to the animated garden journey: scrolling grows the scene through Sketch, Blueprint, Build, and Bloom, with project details in sheets. Data-saving devices use stills, also selectable with `?view=stills`. **Read as a page** (`?view=read`) explicitly selects the text layout. Direct `?view=garden` links retain the desktop and phone journeys. On phones, opening the garden from the reading page previews it above the page and closes back to the page. Landscape phones and short windows keep flowing content.
 
 ## Run locally
 
@@ -38,6 +40,18 @@ Explicit view choices use `?view=read` or `?view=garden`. Compact windows always
 The journey (`src/phone.ts`, `src/sheet.ts`, `src/phone.css`) is laid over the reading page rather than replacing it: each stop is a section marked `data-stop`, and the nodes marked `data-detail` move into the sheet and back, keeping any playing voice. Bloom's card carries the email and social links itself. The stills in `public/assets/stills/` are captured from the real garden by `npm run stills` (dev server on port 5198; needs `cwebp`): six by day (1 pm) and six by night (`-night`, 10 pm), each set within a 100 KB-each, 600 KB-total budget. A phone shows the set for the visitor's clock and fetches the current still and one ahead. Clouds and leaves are CSS animation, paused by the header's pause button and absent with reduced motion, where wipes also cut instead of sweeping.
 
 Each reading project groups its purpose, contribution, decision, screenshot, and source repository. **View full screenshot** works as an ordinary image link and gains a native dialog when JavaScript is available: caption, source link, fit/actual size, Escape dismissal, and restored focus. Wattch's screenshot remains explicitly synthetic workflow evidence. Browser illustrations remain separately labeled: local browser speech for Whisperbook, and this page's measured CPU and GPU rendering cost, with its estimated carbon, for Wattch.
+
+## Project availability and evidence
+
+Whisperbook links to its published [v0.1 Android test APK](https://github.com/chakib-belgaid/whisper-book/releases/tag/v0.1), with the debug-signing, Android 8+/arm64 requirements, and source-versus-release distinction visible. Wattch links to its [source build instructions](https://github.com/chakib-belgaid/wattch-core#quick-start) and [VS Code development setup](https://github.com/chakib-belgaid/wattch-core/tree/main/editors/vscode-energy-tests#development). The site does not imply a Marketplace release.
+
+The selected-work section also points directly to organization-owned research:
+
+- [pyJoules](https://github.com/powerapi-ng/pyJoules): Python energy measurement; pip installation is documented upstream.
+- [Joulehunter](https://github.com/powerapi-ng/joulehunter): Python energy profiling; upstream is archived.
+- [PowerAPI](https://github.com/powerapi-ng/powerapi): framework for software-defined power meters.
+
+Availability was checked on 6 October 2026. [Project evidence and benchmark requirements](docs/project-evidence.md) records the sources and remaining measurement gaps. Device latency, narration speed, peak RAM, and daemon overhead must come from reproducible runs; the browser illustrations and synthetic fixtures cannot support these claims.
 
 ## The garden
 

@@ -152,9 +152,15 @@ function setGrowth(growth: number) {
 const compact = matchMedia("(max-width: 899px), (max-height: 599px)");
 let reading = true;
 let previewEnabled = false;
-let requestedView = new URL(location.href).searchParams.get("view");
-// In the phone journey the live garden is on unless the visitor turned it off
-// (?view=stills), asked to save data, or it can't be drawn.
+const viewFromUrl = () => {
+  const view = new URL(location.href).searchParams.get("view");
+  if (view === null) return null;
+  return view === "garden" || view === "stills" ? view : "read";
+};
+let requestedView: string | null = viewFromUrl();
+const readingLayout = () => compact.matches || requestedView === null || requestedView === "read";
+// Portrait phones default to the scroll-driven journey. Desktop defaults to
+// the reading page; explicit view choices work at either size.
 let liveFailed = false;
 const saveData = () => !!(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
 // On a phone, whether the visitor chose the reading page over the journey.
@@ -721,7 +727,7 @@ addEventListener("resize", () => {
   const section = navigation.section;
   const wider = innerWidth !== resizedFrom;
   resizedFrom = innerWidth;
-  const changed = reading !== (compact.matches || requestedView === "read");
+  const changed = reading !== readingLayout();
   if (changed) syncPresentation();
   measureFrames();
   if (!reading && !journey.active) syncStory();
@@ -1441,7 +1447,7 @@ const navigation = createNavigation((section, focus) => {
     else { scrollTo({top:holdAt(sectionBeat[section]), behavior:"instant"}); measure(); }
   }
 }, () => {
-  requestedView = new URL(location.href).searchParams.get("view");
+  requestedView = viewFromUrl();
   previewEnabled = requestedView === "garden";
   syncPresentation();
   if (!reading || previewEnabled) void loadGarden();
@@ -1449,7 +1455,7 @@ const navigation = createNavigation((section, focus) => {
 
 function syncPresentation() {
   const previous = reading;
-  reading = compact.matches || requestedView === "read";
+  reading = readingLayout();
   root.dataset.view = reading ? "read" : "garden";
   // The garden view keeps whichever the visitor opened it from.
   if (requestedView !== "garden") overPage = requestedView === "read";
@@ -1547,9 +1553,9 @@ $$<HTMLDetailsElement>("[data-illustration]").forEach(details => details.addEven
 function leaveLiveGarden(message: string) {
   previewEnabled = false;
   liveFailed = true;
-  requestedView = null;
+  requestedView = "stills";
   const url = new URL(location.href);
-  url.searchParams.delete("view");
+  url.searchParams.set("view", "stills");
   history.replaceState(null, "", url);
   syncPresentation();
   journey.notify(message);

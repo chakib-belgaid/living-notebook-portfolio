@@ -15,13 +15,13 @@ async function create(viewport={width:1440,height:900}) {
 }
 try {
  const entry=await create();
- await entry.goto(base);
+ await entry.goto(base+'/?view=garden');
  await entry.waitForFunction(()=>document.querySelector('#scene')?.dataset.progress==='0.000');
  await entry.waitForTimeout(2200);
- await entry.screenshot({path:output+'/desktop-default.png'});
+ await entry.screenshot({path:output+'/desktop-garden.png'});
  await entry.context().close();
  const read=await create();
- await read.goto(base+'/?view=read');await read.evaluate(()=>document.fonts.ready);
+ await read.goto(base);await read.evaluate(()=>document.fonts.ready);
  await read.screenshot({path:output+'/desktop-reading.png'});
  for(const id of ['whisperbook','wattch']){
   await read.goto(base+'/?view=read#'+id);await read.waitForTimeout(250);
@@ -31,7 +31,7 @@ try {
  await writeFile(output+'/accessibility-reading.json',JSON.stringify(await cdp.send('Accessibility.getFullAXTree'),null,2));
  await read.context().close();
  for(const quality of ['full','low']){
-  const p=await create();await p.goto(base+'/?quality='+quality+'#contact');
+  const p=await create();await p.goto(base+'/?view=garden&quality='+quality+'#contact');
   await p.waitForFunction(()=>performance.getEntriesByName('notebook:shader-first-use-complete').length>0);
   await p.locator('.dock > summary').click();
   await p.getByRole('button',{name:'Clear',exact:true}).click();
@@ -49,7 +49,7 @@ try {
   await p.context().close();
  }
  const phone=await create({width:390,height:844});
- await phone.goto(base+'/?view=garden');
+ await phone.goto(base+'/?view=garden#contact');
  await phone.waitForFunction(()=>document.querySelector('#scene')?.dataset.progress==='1.000');
  await phone.screenshot({path:output+'/mobile-garden-preview.png'});
  await phone.context().close();

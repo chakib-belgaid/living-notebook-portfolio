@@ -20,7 +20,7 @@ const page = await browser.newPage({ viewport: { width: 900, height: 1948 }, dev
 await page.route('**/*open-meteo.com/**', route => route.abort());
 // The moon's phase follows the date: a fixed one, with a crescent that reads as a moon.
 await page.clock.setFixedTime(new Date(2026, 9, 15, 13));
-await page.goto(base + '/');
+await page.goto(base + '/?view=garden');
 await page.waitForFunction(() => window.__notebook?.garden);
 await page.addStyleTag({ content: '.masthead, .chapters, .chapters *, .ruler, .dock, .mist, .hotspot, .skip-link, #portfolio { visibility: hidden !important; }' });
 // Fixed conditions, so a re-run matches: autumn and a clear sky, at 1 pm for

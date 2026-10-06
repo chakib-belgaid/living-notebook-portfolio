@@ -36,7 +36,10 @@ async function garden(path = '/', options = {}) {
   p.on('pageerror', (e) => p.errors.push(e.message));
   await p.route('**/*open-meteo.com/**', (r) => r.abort());
   await p.addInitScript(instrument);
-  await p.goto(base + path);
+  // These fixtures exercise the opt-in garden (or an explicitly requested reader).
+  const url = new URL(base + path);
+  if (!url.searchParams.has('view')) url.searchParams.set('view', 'garden');
+  await p.goto(url.href);
   await p.waitForFunction(() => document.querySelector('#scene')?.dataset.progress);
   return p;
 }
