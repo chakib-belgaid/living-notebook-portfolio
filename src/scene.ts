@@ -2298,16 +2298,7 @@ export async function createGarden(
   });
   world.add(new T.Points(fireflyGeometry, fireflyMaterial));
 
-  // A planted tree: `group` holds where it stands and its size; its parts are
-  // instances in the shared meshes below.
-  type Planted = {
-    group: T.Object3D;
-    age: number;
-    grown: boolean;
-    index: number;
-    parts: { mesh: T.InstancedMesh; slot: number; local: T.Matrix4 }[];
-  };
-  const planted: Planted[] = [];
+  const planted: { group: T.Group; age: number; grown: boolean }[] = [];
   const MAX_TREES = 24;
   const plantMaterial = new T.MeshStandardMaterial({
     color: 0x8ca360,
@@ -2333,82 +2324,39 @@ export async function createGarden(
       [0, 0.48, 0], [-0.05, 0.62, -0.12],
     ].map(([x, y, z]) => new T.Vector3(x, y, z)),
   );
-  /* The planted trees share one instanced mesh per part, a trunk and a clump
-     for each shade of leaves, and one line mesh for their sticks: a full
-     garden of trees costs a few draws rather than a few for every tree. */
-  const instanced = (geometry: T.BufferGeometry, material: T.Material) => {
-    const mesh = new T.InstancedMesh(geometry, material, MAX_TREES);
-    mesh.count = 0;
-    mesh.castShadow = true;
-    // Instances move as trees grow; the whole garden is in view anyway.
-    mesh.frustumCulled = false;
-    mesh.visible = false;
-    world.add(mesh);
-    return mesh;
-  };
-  const trunks = instanced(trunkGeometry, plantMaterial);
-  const clumpMeshes = plantLeaves.map((m) => instanced(leafGeometry, m));
-  const stickPoints = stickGeometry.attributes.position as T.BufferAttribute;
-  const stickPositions = new T.BufferAttribute(
-    new Float32Array(MAX_TREES * stickPoints.count * 3),
-    3,
-  ).setUsage(T.DynamicDrawUsage);
-  const sticks = new T.LineSegments(new T.BufferGeometry(), stickMaterial);
-  sticks.geometry.setAttribute("position", stickPositions);
-  sticks.geometry.setDrawRange(0, 0);
-  sticks.frustumCulled = false;
-  world.add(sticks);
-  const treeMatrix = new T.Matrix4(),
-    partMatrix = new T.Matrix4(),
-    stickPoint = new T.Vector3();
-  // Moves a tree's instances and sticks to where it stands, at its size.
-  function placeTree(p: Planted) {
-    p.group.updateMatrix();
-    treeMatrix.copy(p.group.matrix);
-    for (const part of p.parts) {
-      part.mesh.setMatrixAt(part.slot, partMatrix.multiplyMatrices(treeMatrix, part.local));
-      part.mesh.instanceMatrix.needsUpdate = true;
-    }
-    for (let k = 0; k < stickPoints.count; k++) {
-      stickPoint.fromBufferAttribute(stickPoints, k).applyMatrix4(treeMatrix);
-      stickPositions.setXYZ(p.index * stickPoints.count + k, stickPoint.x, stickPoint.y, stickPoint.z);
-    }
-    stickPositions.needsUpdate = true;
-  }
   // `grown` plants a tree at its full size, as when replanting a rebuilt garden.
   function makeTree(local: T.Vector3, grown = reduced || paused) {
-    const g = new T.Object3D();
+    const g = new T.Group();
     // The seed it was drawn from, to draw the same tree again (see snapshot).
     g.userData.seed = seed;
-    const parts: Planted["parts"] = [
-      { mesh: trunks, slot: trunks.count++, local: new T.Matrix4().makeTranslation(0, 0.23, 0) },
-    ];
+    g.add(new T.LineSegments(stickGeometry, stickMaterial));
+    const trunk = new T.Mesh(trunkGeometry, plantMaterial);
+    trunk.position.y = 0.23;
+    trunk.castShadow = true;
+    g.add(trunk);
     // Clumps mix the season's shades, like the garden's own trees: a winter
     // tree is snow over a dark core rather than one solid green.
     const first = Math.floor(random() * plantLeaves.length);
     const clumps = 2 + Math.floor(random() * 3);
     for (let i = 0; i < clumps; i++) {
-      const mesh = clumpMeshes[(first + i) % plantLeaves.length];
-      temp.position.set(
+      const leaves = plantLeaves[(first + i) % plantLeaves.length];
+      const m = new T.Mesh(leafGeometry, leaves);
+      m.position.set(
         (random() - 0.5) * 0.28,
         0.42 + random() * 0.18,
         (random() - 0.5) * 0.22,
       );
-      temp.rotation.set(0, 0, 0);
-      temp.scale.setScalar(0.75 + random() * 0.5);
-      temp.updateMatrix();
-      parts.push({ mesh, slot: mesh.count++, local: temp.matrix.clone() });
+      m.scale.setScalar(0.75 + random() * 0.5);
+      m.castShadow = true;
+      g.add(m);
     }
     g.position.copy(local);
     g.rotation.y = random() * Math.PI * 2;
     g.userData.size = 1.15 + random() * 0.6;
     g.scale.setScalar(grown ? g.userData.size : 0.001);
-    const tree: Planted = { group: g, age: grown ? 1 : 0, grown, index: planted.length, parts };
-    planted.push(tree);
-    parts.forEach((part) => (part.mesh.visible = true));
-    sticks.geometry.setDrawRange(0, planted.length * stickPoints.count);
-    placeTree(tree);
+    world.add(g);
     if (!grown) visitTree(local);
+    planted.push({ group: g, age: grown ? 1 : 0, grown });
     invalidate();
     return planted.length;
   }
@@ -3912,7 +3860,6 @@ export async function createGarden(
       const t = p.age,
         back = 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);
       p.group.scale.setScalar(Math.max(0.001, back * p.group.userData.size));
-      placeTree(p);
       p.grown = p.age >= 1;
     }
     updateVisitor(paused || reduced ? 0 : dt);
@@ -3994,6 +3941,8 @@ export async function createGarden(
     bounds.copy(o.geometry.boundingSphere!).applyMatrix4(o.matrixWorld);
     if (bounds.radius < 0.2) smallCasters.push(o);
   });
+  // The washing is instanced, and sways and comes and goes with the chores.
+  smallCasters.push(cloth);
   container.dataset.smallCasters = String(smallCasters.length);
   applyQuality(quality);
   batchDone();
@@ -4289,8 +4238,6 @@ export async function createGarden(
       mats.forEach((m) => m.dispose());
       paperTexture.dispose();
       tallyTexture.dispose();
-      // The sticks' template is copied into the shared line mesh, not drawn.
-      stickGeometry.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     },

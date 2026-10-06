@@ -49,6 +49,10 @@ One pause state stops CSS effects, mist, marker pulses, sky, and garden motion. 
 
 The garden has sound, on by default; the speaker beside the pause button (on phones, in the journey's header) turns it off. `src/soundscape.ts` makes it in the browser with Web Audio, so nothing is downloaded: water once the stone is built, wind that follows the weather, rain, birds by day (a chorus of trills and calls on a sunny morning) and crickets by night at Bloom, distant thunder in a storm, and piano: a slow loop in D major for the rain and autumn's falling leaves, and a lilting waltz in G major for sunny mornings, which takes over from the leaves' piece in the morning. One piece plays at a time, changing at a bar line. The water is louder beside the canal, and the garden steps back while Whisperbook reads. `soundMix` turns the garden's state into a level per layer; the engine's loudness table is the place to tune by ear. Browsers allow audio only after a gesture, so no audio context exists before the visitor's first tap, click or key press. The pause button silences sound with the motion, and so do a hidden tab and the reading page; reduced motion doesn't, since sound isn't motion. Once silent, the engine is suspended. Its processing isn't part of the carbon estimate, which says so.
 
+Building labels answer pointer and keyboard focus alike: the label inverts and a ring of lantern light circles its building on the ground. Close on a project, **Back to all work** returns to the overview. Planting plays a short chime while the garden is heard, and the nearest fennec on the tree's level may notice it, trot over by a route checked for water, bridges and steps, settle under it for a few seconds and go back to its day; it never does so while motion is paused or reduced. **Save a postcard** downloads the garden as framed, with its sky and a caption giving the portfolio's address; it is drawn once on request, and nothing is sent.
+
+Whisperbook's "What I built" note offers **Inside Whisperbook**: book, chapters, voices and audio, one step at a time, while the pavilion's lamp and sound rings light up to match. Each step states one decision already in the project's record. The reading page, reduced motion and every language show the steps as one list, with the source a click away.
+
 Left alone for 20 seconds in the garden view, the header, ruler, controls and building labels fade, leaving the garden and the note; any movement or key brings them back. At Bloom, the garden slowly turns, unless motion is paused. Writing a note, planting, or an open slip or dialog keeps the controls.
 
 Contact is an email link and social links; the page sends nothing itself. Missing local speech voices have a readable fallback state.
@@ -64,7 +68,9 @@ Vite + TypeScript + Three.js, without a framework or backend:
 
 The semantic page paints before scene loading. Reading mode creates no scene until requested; project images load near use. Scene construction yields between batches, including raycasts for animals and fallen leaves. Instrumentation records construction phases, shader warm-up and first use, first render, and stage changes. Shader error checks remain enabled.
 
-Desktop retains the full settings (pixel ratio capped at 1.6, 2048 px shadows). Compact previews use a 1.25 cap and 1024 px shadows after visual comparison. A captured garden image covers loading, unavailable WebGL, and context loss. Print exposes the complete reading portfolio and removes fixed controls.
+The garden and sky loops ask for frames only while there is something to draw. They stop in a hidden tab, off screen, and once a paused or unfinished garden has settled; every change (scroll, resize, navigation, pointer, weather, hour, planting, context restoration) wakes them, and the clock restarts after a sleep rather than jumping. Materials, outlines, the camera and label positions are recomputed only when their inputs change. Instancing the planted trees was measured and not kept: it cut draw calls by 39% with 24 trees but drew no faster (see VALIDATION.md).
+
+**Drawing quality** in the garden controls offers Auto, Full and Light, remembered on the device. Auto draws desktops Full and phones Light. Full keeps the original settings (pixel ratio capped at 1.6, 2048 px shadows), recasting the shadows of moving animals every other frame. Light caps the pixel ratio at 1.25 and the frame rate at 30, uses 1024 px shadows redrawn only when the garden changes, and drops the shadows of small things. Phones also build a lighter garden (no gardener, animals or small props); moving a phone between Full and Light rebuilds it in place, keeping its trees, turn and stage. `?quality=low` still asks for the lighter build anywhere. A captured garden image covers loading, unavailable WebGL, and context loss. Print exposes the complete reading portfolio and removes fixed controls.
 
 ## Carbon estimate and deployment metadata
 
@@ -113,7 +119,7 @@ The supplied concept is retained as `design-reference.png` inside the source arc
 
 ```sh
 PLAYWRIGHT_CHANNEL=chrome npm test
-PLAYWRIGHT_CHANNEL=chrome npm run test:performance
+PLAYWRIGHT_CHANNEL=chrome npm run test:performance   # RUNS=5 SCENARIOS=desktop-garden,phone-journey,…
 PLAYWRIGHT_CHANNEL=chrome node tests/visuals.mjs
 ```
 
