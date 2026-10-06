@@ -12,6 +12,8 @@ after(async () => browser?.close());
 
 async function bloom(path = '/#contact', options = {}, init, grown = 0.99) {
   return setupPage(browser, { viewport: { width: 1440, height: 900 }, ...options }, async p => {
+    // Visits need daylight; Date is fixed without changing animation/timer cadence.
+    await p.clock.setFixedTime(new Date('2026-10-06T12:00:00Z'));
     p.errors = [];
     p.on('pageerror', (e) => p.errors.push(e.message));
     await p.route('**/*open-meteo.com/**', (r) => r.abort());
@@ -38,7 +40,9 @@ const answerTime = (p, spot, type) => p.evaluate(([spot, type]) => new Promise((
 test('a building answers its label pointed at or focused, within 100 ms', async () => {
   const p = await bloom();
   try {
-    await p.locator('.hotspot[data-spot="whisperbook"]').hover();
+    // These labels move with the camera. Hover them during that movement and
+    // verify the real pointer response instead of waiting for identical pixels.
+    await p.locator('.hotspot[data-spot="whisperbook"]').hover({ force: true });
     await p.waitForFunction(() => document.querySelector('#scene').dataset.hover === 'whisperbook');
     await p.mouse.move(5, 450);
     await p.waitForFunction(() => document.querySelector('#scene').dataset.hover === 'none');
@@ -121,12 +125,17 @@ test('a fennec visits a new tree, settles under it, and goes back to its day', a
     await p.evaluate(() => { window.longtasks = []; });
     for (let i = 0; i < 8 && !phases.length; i++) { await p.locator('#plant-one').click(); await p.waitForTimeout(400); }
     assert.equal(phases[0], 'notice', 'a fennec notices one of the new trees');
-    await p.waitForFunction(() => document.querySelector('#scene').dataset.visitor === 'none', {}, { timeout: 20000 });
+    // Simulation time advances at most 50 ms per drawn frame. Slow software
+    // rendering needs more wall time; the hardware budget retains its old limit.
+    await p.waitForFunction(() => document.querySelector('#scene').dataset.visitor === 'none', {}, { timeout: performanceBudgets ? 20000 : 120000 });
     assert.deepEqual(phases.filter((v, i) => v !== phases[i - 1]), ['notice', 'approach', 'settle', 'none']);
     const stall = Math.max(0, ...await p.evaluate(() => window.longtasks));
     t.diagnostic(`fennec visit: longest main-thread task ${stall.toFixed(1)} ms`);
     if (performanceBudgets) assert.ok(stall < 100, `fennec stall ${stall.toFixed(1)} ms exceeds the 100 ms budget`);
     // Not again straight away, and never while paused.
+    // A slow visit can outlast the idle timer; a real pointer move wakes controls.
+    await p.mouse.move(10, 10);
+    await p.waitForFunction(() => document.documentElement.dataset.idle === 'false');
     await p.getByRole('button', { name: 'Pause motion', exact: true }).click();
     await p.locator('#plant-one').click();
     await p.waitForTimeout(500);
@@ -170,6 +179,8 @@ test('Inside Whisperbook steps from book to audio, lights the pavilion, and can 
       await note.getByRole('button', { name: 'Next' }).click();
       assert.match(await current.innerText(), new RegExp('^' + title));
     }
+    // The scene publishes its explanation state on the next rendered frame.
+    await p.waitForFunction(() => document.querySelector('#scene').dataset.explaining === '3');
     assert.equal(await explaining(p), '3');
     // From the voices on, the pavilion's rings sound.
     await p.waitForFunction(() => Number(document.querySelector('#scene').dataset.narrating) > 0.5);
