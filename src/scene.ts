@@ -48,6 +48,9 @@ export interface Garden {
   setTally: (grams: number | null) => void;
   /** How the built garden is drawn: Full as designed, or Light (fewer pixels, 30 fps, cheaper shadows). What was built stays. */
   setQuality: (quality: Quality) => void;
+  /** Draws the garden as it is on screen into a 2D canvas, once: a frame is
+      rendered and copied in the same task, so no drawing buffer is kept. */
+  drawInto: (target: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => void;
   /** What the visitor has made of the garden: its planted trees and its turn. */
   snapshot: () => GardenSnapshot;
   /** Carries a snapshot into a rebuilt garden, already drawn in. Returns the tree count. */
@@ -4221,6 +4224,10 @@ export async function createGarden(
     },
     setQuality(value) {
       applyQuality(value);
+    },
+    drawInto(target, x, y, w, h) {
+      renderer.render(scene, camera);
+      target.drawImage(renderer.domElement, x, y, w, h);
     },
     snapshot() {
       return {

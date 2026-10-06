@@ -118,6 +118,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
         <button type="button" class="chip" id="plant-mode" aria-pressed="false">Plant by clicking</button>
         <button type="button" class="chip" id="plant-one">Plant one</button>
         <button type="button" class="chip" id="turn">Turn</button>
+        <button type="button" class="chip" id="postcard">Save a postcard</button>
       </div>
       <p class="quality-label" id="quality-label">Drawing quality</p>
       <div class="weather-chips quality-chips" role="group" aria-labelledby="quality-label">
@@ -955,6 +956,71 @@ $("#turn").addEventListener("click", () => garden?.rotate());
 addEventListener("keydown", (e) => {
   if (e.key === "Escape" && root.classList.contains("planting"))
     setPlanting(false);
+});
+
+/* A postcard of the garden as the visitor has framed it: the sky, the
+   garden and a caption with the portfolio's address, made only when asked
+   and downloaded as a PNG. Nothing is sent anywhere. */
+const postcardButton = $<HTMLButtonElement>("#postcard");
+postcardButton.addEventListener("click", async () => {
+  const failed = () => announce("The postcard couldn’t be made in this browser. The garden is unchanged.");
+  if (!garden) return failed();
+  postcardButton.disabled = true;
+  try {
+    const stage = $("#stage").getBoundingClientRect();
+    const scale = Math.min(2, devicePixelRatio || 1);
+    // Only the band the garden is framed in, as on a phone above its cards.
+    const [top, bottom] = gardenBand();
+    const cropTop = top * stage.height;
+    const width = Math.round(stage.width * scale), height = Math.round((bottom - top) * stage.height * scale);
+    // Tall enough to read on a wide, short phone card too.
+    const band = Math.round(Math.max(height * 0.13, width * 0.09));
+    const card = document.createElement("canvas");
+    card.width = width;
+    card.height = height + band;
+    const ctx = card.getContext("2d");
+    if (!ctx) return failed();
+    const css = getComputedStyle(root);
+    ctx.fillStyle = css.getPropertyValue("--paper").trim() || "#1f4a7a";
+    ctx.fillRect(0, 0, card.width, card.height);
+    const place = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return [(r.left - stage.left) * scale, (r.top - stage.top - cropTop) * scale, r.width * scale, r.height * scale] as const;
+    };
+    ctx.drawImage($<HTMLCanvasElement>(".sky-back"), ...place($(".sky-back")));
+    garden.drawInto(ctx, ...place($("#scene")));
+    ctx.drawImage($<HTMLCanvasElement>(".sky-front"), ...place($(".sky-front")));
+    // The caption, in the page's ink and type, on a band of paper.
+    ctx.fillStyle = css.getPropertyValue("--paper").trim() || "#1f4a7a";
+    ctx.fillRect(0, height, width, band);
+    ctx.fillStyle = css.getPropertyValue("--ink").trim() || "#f4efe4";
+    ctx.direction = root.dir === "rtl" ? "rtl" : "ltr";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    // The caption is set as large as fits the card's width.
+    const caption = translate("A garden I tended in Chakib Belgaid’s living notebook");
+    let size = Math.round(band * 0.3);
+    do ctx.font = `italic ${size}px Newsreader, Georgia, serif`;
+    while (ctx.measureText(caption).width > width * 0.9 && --size > 8);
+    ctx.fillText(caption, width / 2, height + band * 0.38);
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href ?? location.origin;
+    ctx.font = `${Math.round(band * 0.2)}px Newsreader, Georgia, serif`;
+    ctx.fillText(canonical.replace(/^https?:\/\//, "").replace(/\/$/, ""), width / 2, height + band * 0.72);
+    const blob = await new Promise<Blob | null>((resolve) => card.toBlob(resolve, "image/png"));
+    if (!blob) return failed();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "living-notebook-garden.png";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    announce("Your garden postcard is saved.");
+  } catch (error) {
+    console.warn("The postcard could not be made.", error);
+    failed();
+  } finally {
+    postcardButton.disabled = false;
+  }
 });
 
 /* The carbon counter's slip closes like a popover: on Escape, or a press
