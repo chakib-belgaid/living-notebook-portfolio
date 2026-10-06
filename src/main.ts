@@ -158,9 +158,9 @@ const viewFromUrl = () => {
   return view === "garden" || view === "stills" ? view : "read";
 };
 let requestedView: string | null = viewFromUrl();
-const readingLayout = () => compact.matches || requestedView === null || requestedView === "read";
-// Portrait phones default to the scroll-driven journey. Desktop defaults to
-// the reading page; explicit view choices work at either size.
+const readingLayout = () => compact.matches || requestedView === "read";
+// Desktop defaults to the garden; portrait phones use the scroll-driven journey.
+// The reading page is an explicit low-end option at either size.
 let liveFailed = false;
 const saveData = () => !!(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
 // On a phone, whether the visitor chose the reading page over the journey.
@@ -1487,7 +1487,8 @@ function syncPresentation() {
   viewUrl.searchParams.set("view", toggle.dataset.view);
   viewUrl.searchParams.set("lang", getLocale());
   toggle.href = viewUrl.search + viewUrl.hash;
-  toggle.textContent = reading ? (previewEnabled && compact.matches ? "Close garden" : "Explore garden") : "Read portfolio";
+  toggle.textContent = reading ? (previewEnabled && compact.matches ? "Close garden" : "Explore garden") : "Low-end mode";
+  toggle.title = reading ? toggle.textContent : "Read the portfolio without 3D or garden audio. Recommended for low-end computers.";
   // On phones the switch shows only an icon, so its name is kept explicit.
   toggle.setAttribute("aria-label", toggle.textContent);
   if (previous !== reading) {
