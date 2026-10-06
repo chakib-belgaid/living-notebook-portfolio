@@ -8,8 +8,12 @@ export type Season = "spring" | "summer" | "autumn" | "winter";
 export interface Garden {
   /** Whisperbook pavilion reacts while the widget narrates. */
   setNarrating: (on: boolean) => void;
+  /** Inside Whisperbook: the pavilion's lamp is lit for a step (0 book, 1 chapters, 2 voices, 3 audio) and its rings sound from the voices on; null ends it. */
+  explain: (step: number | null) => void;
   /** Highlight one step of the path: 0 ground (startup), 1 terrace (research), 2 observatory (energy), 3 roof (atelier); null clears. */
   highlightPath: (step: number | null) => void;
+  /** A building's label is pointed at or focused: a ring of light around it. null clears. */
+  hover: (spot: string | null) => void;
   /** Contact postbox: flag up while writing, a letter drop on send. */
   setPostbox: (state: "idle" | "writing" | "sent") => void;
   setProgress: (p: number, immediate?: boolean) => void;
@@ -24,8 +28,8 @@ export interface Garden {
   setHour: (hour: number) => void;
   /** Cloud cover and rain or snow, both 0–1. Clouds soften the sun and its shadows; snow settles on the foliage and terraces. */
   setWeather: (cloud: number, precip: number, snowing?: boolean) => void;
-  /** Glide the camera to a named spot, or back to the whole garden. Shift moves the garden on screen as a fraction of the view. */
-  focus: (spot: string | null, shiftX?: number, shiftY?: number) => void;
+  /** Glide the camera to a named spot, or back to the whole garden. Shift moves the garden on screen as a fraction of the view; `room` below 1 draws it smaller, to fit a narrower space. */
+  focus: (spot: string | null, shiftX?: number, shiftY?: number, room?: number) => void;
   /** The band of the view the garden is framed in, top and bottom as fractions of the container's height (0–1). The camera eases to a new frame. */
   frame: (top: number, bottom: number) => void;
   /** The visitor's own zoom, 1–4x, multiplied by `factor`. A point (relative to the container) stays under the fingers; without one the view zooms about its centre. */
@@ -42,8 +46,24 @@ export interface Garden {
   setFog: (amount: number, color: number) => void;
   /** The visit's carbon so far in g CO₂e, rolled onto the register under the Wattch dial; null shows dashes. */
   setTally: (grams: number | null) => void;
+  /** How the built garden is drawn: Full as designed, or Light (fewer pixels, 30 fps, cheaper shadows). What was built stays. */
+  setQuality: (quality: Quality) => void;
+  /** Draws the garden as it is on screen into a 2D canvas, once: a frame is
+      rendered and copied in the same task, so no drawing buffer is kept. */
+  drawInto: (target: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => void;
+  /** What the visitor has made of the garden: its planted trees and its turn. */
+  snapshot: () => GardenSnapshot;
+  /** Carries a snapshot into a rebuilt garden, already drawn in. Returns the tree count. */
+  restore: (snapshot: GardenSnapshot) => number;
   dispose: () => void;
 }
+export type GardenSnapshot = {
+  rotation: number;
+  trees: { x: number; y: number; z: number; seed: number }[];
+  // The visitor's own zoom and pan, so a rebuilt garden keeps their view.
+  zoom: number;
+  pan: { x: number; y: number };
+};
 const smooth = (a: number, b: number, v: number) =>
   T.MathUtils.smoothstep(v, a, b);
 const lerp = T.MathUtils.lerp;
@@ -64,10 +84,39 @@ function random() {
   return (seed - 1) / 2147483646;
 }
 
+export type Quality = "full" | "light";
+
 export async function createGarden(
   container: HTMLElement,
   hotspots: HTMLElement[],
-  quality: "full" | "low" = "full",
+  detail: "full" | "low" = "full",
+  quality: Quality = detail === "low" ? "light" : "full",
+): Promise<Garden> {
+  const before = container.dataset.detail;
+  const started: { renderer?: T.WebGLRenderer } = {};
+  try {
+    return await buildGarden(container, hotspots, detail, quality, started);
+  } catch (error) {
+    // A garden that fails half built leaves the container as it found it, so
+    // the garden already there carries on and the build can be tried again.
+    const renderer = started.renderer;
+    if (renderer) {
+      renderer.domElement.remove();
+      renderer.dispose();
+      renderer.forceContextLoss();
+    }
+    if (before === undefined) delete container.dataset.detail;
+    else container.dataset.detail = before;
+    throw error;
+  }
+}
+
+async function buildGarden(
+  container: HTMLElement,
+  hotspots: HTMLElement[],
+  detail: "full" | "low",
+  quality: Quality,
+  started: { renderer?: T.WebGLRenderer },
 ): Promise<Garden> {
   const constructionDone = phase("scene-construction");
   let batchDone = phase("construction:renderer");
@@ -77,24 +126,25 @@ export async function createGarden(
     batchDone = phase(`construction:${name}`);
   };
   seed = 73;
-  // Phones draw a lighter garden: no gardener, animals or small props, simpler
-  // foliage, fewer lights, and a slower, steadier frame rate.
-  const lite = quality === "low";
+  // Phones build a lighter garden: no gardener, animals or small props,
+  // simpler foliage and fewer lights. That is fixed once built; how it is
+  // drawn (see setQuality) can change at any time.
+  const lite = detail === "low";
   const scene = new T.Scene();
   const renderer = new T.WebGLRenderer({
     alpha: true,
     antialias: true,
     powerPreference: "low-power",
   });
+  started.renderer = renderer;
   renderer.debug.checkShaderErrors = true;
-  renderer.setPixelRatio(Math.min(devicePixelRatio, quality === "low" ? 1.25 : 1.6));
-  container.dataset.quality = quality;
+  container.dataset.detail = detail;
   renderer.setClearColor(0xfafbf8, 0);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = T.PCFSoftShadowMap;
-  // Nothing that casts a shadow moves on its own in the phone garden, so the
-  // shadows are only redrawn when the garden changes (see render).
-  renderer.shadowMap.autoUpdate = !lite;
+  // Shadows are redrawn when the garden changes, and for whatever moves on its
+  // own as often as the quality asks (see render and setQuality).
+  renderer.shadowMap.autoUpdate = false;
   renderer.toneMapping = T.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.2;
   renderer.domElement.setAttribute("aria-hidden", "true");
@@ -107,7 +157,7 @@ export async function createGarden(
   const sun = new T.DirectionalLight(0xffefd4, 3.3);
   sun.position.set(-6, 15, 8);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(quality === "low" ? 1024 : 2048, quality === "low" ? 1024 : 2048);
+  sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = -12;
   sun.shadow.camera.right = 12;
   sun.shadow.camera.top = 12;
@@ -2097,16 +2147,22 @@ export async function createGarden(
     letterTime = -1;
   let narrating = false,
     narration = 0,
+    // Inside Whisperbook: the step on show (0 book … 3 audio), and the lamp
+    // over the reading table that is lit through it.
+    explaining: number | null = null,
+    lamp = 0,
     ringTime = 0,
     built = 0;
   const approach = (value: number, goal: number, step: number) =>
     value < goal ? Math.min(goal, value + step) : Math.max(goal, value - step);
   function roomsSettling() {
     return (
-      narration !== (narrating ? 1 : 0) ||
+      narration !== (voiced() ? 1 : 0) ||
+      lamp !== (lampOn() ? 1 : 0) ||
       pathGlow !== (pathStep === null ? 0 : 1) ||
       flagLift !== (postbox === "idle" ? 0 : 1) ||
       letterTime >= 0 ||
+      hoverGlow !== (hoverSpot ? 1 : 0) ||
       // The register's wheels, only while they are on show and still turning.
       (built > 0.01 &&
         tallyGoal !== null &&
@@ -2114,10 +2170,15 @@ export async function createGarden(
         Math.abs(tallyGoal - tallyShown) >= 0.0005)
     );
   }
+  // The rings sound out while narrating, and from the voices step on; the
+  // lamp is lit with them, and through the whole of Inside Whisperbook.
+  const voiced = () => narrating || (explaining ?? -1) >= 2;
+  const lampOn = () => voiced() || explaining !== null;
   function updateRooms(dt: number, solid: number, drawn: number, blue: number) {
     built = solid;
     const still = paused || reduced;
-    narration = approach(narration, narrating ? 1 : 0, reduced ? 1 : dt / 0.3);
+    narration = approach(narration, voiced() ? 1 : 0, reduced ? 1 : dt / 0.3);
+    lamp = approach(lamp, lampOn() ? 1 : 0, reduced ? 1 : dt / 0.3);
     if (!still) ringTime += dt;
     soundRings.forEach((ring, k) => {
       const t = (ringTime * 0.55 + k / 3) % 1;
@@ -2126,7 +2187,7 @@ export async function createGarden(
       ringMaterials[k].opacity = (1 - t) * narration * solid * 0.9;
       ringMaterials[k].visible = ringMaterials[k].opacity > 0.01;
     });
-    readingLight.intensity = narration * solid * 2.4;
+    readingLight.intensity = lamp * solid * 2.4;
     if (!still) {
       const goal = lerp(-Math.PI / 2, Math.PI / 2, Math.min(renderMs / 8, 1));
       needleAngle = lerp(needleAngle, goal, Math.min(dt * 3, 1));
@@ -2174,6 +2235,10 @@ export async function createGarden(
     highlightGlowMaterial.color.setHex(ink);
     highlightLineMaterial.opacity = pathGlow * lit * 0.95;
     highlightGlowMaterial.opacity = pathGlow * lit * 0.22;
+    hoverGlow = approach(hoverGlow, hoverSpot ? 1 : 0, reduced ? 1 : dt / 0.15);
+    hoverLineMaterial.opacity = hoverGlow * solid * 0.85;
+    hoverGlowMaterial.opacity = hoverGlow * solid * 0.24;
+    hoverMark.visible = hoverGlow * solid > 0.01;
     flagLift = approach(flagLift, postbox === "idle" ? 0 : 1, reduced ? 1 : dt / 0.35);
     flag.rotation.x = lerp(-Math.PI / 2, 0, 1 - (1 - flagLift) ** 2);
     flagMaterial.opacity = solid;
@@ -2266,7 +2331,8 @@ export async function createGarden(
   });
   world.add(new T.Points(fireflyGeometry, fireflyMaterial));
 
-  const planted: { group: T.Group; age: number }[] = [];
+  const planted: { group: T.Group; age: number; grown: boolean }[] = [];
+  const MAX_TREES = 24;
   const plantMaterial = new T.MeshStandardMaterial({
     color: 0x8ca360,
     roughness: 1,
@@ -2291,8 +2357,11 @@ export async function createGarden(
       [0, 0.48, 0], [-0.05, 0.62, -0.12],
     ].map(([x, y, z]) => new T.Vector3(x, y, z)),
   );
-  function makeTree(local: T.Vector3) {
+  // `grown` plants a tree at its full size, as when replanting a rebuilt garden.
+  function makeTree(local: T.Vector3, grown = reduced || paused) {
     const g = new T.Group();
+    // The seed it was drawn from, to draw the same tree again (see snapshot).
+    g.userData.seed = seed;
     g.add(new T.LineSegments(stickGeometry, stickMaterial));
     const trunk = new T.Mesh(trunkGeometry, plantMaterial);
     trunk.position.y = 0.23;
@@ -2317,15 +2386,15 @@ export async function createGarden(
     g.position.copy(local);
     g.rotation.y = random() * Math.PI * 2;
     g.userData.size = 1.15 + random() * 0.6;
-    g.scale.setScalar(reduced || paused ? g.userData.size : 0.001);
+    g.scale.setScalar(grown ? g.userData.size : 0.001);
     world.add(g);
-    planted.push({ group: g, age: reduced || paused ? 1 : 0 });
-    dirty = true;
+    if (!grown) visitTree(local);
+    planted.push({ group: g, age: grown ? 1 : 0, grown });
+    invalidate();
     return planted.length;
   }
   const raycaster = new T.Raycaster();
   const pointer = new T.Vector2();
-  const MAX_TREES = 24;
 
   await checkpoint("seasons");
   /* Seasons. Foliage colours per batch, how many flowers are out, what lies
@@ -2738,6 +2807,134 @@ export async function createGarden(
     r.userData.t = 0;
   }
 
+  /* A planted tree is noticed by the nearest fennec on its level: it looks
+     up, trots over by a clear route, settles beneath the tree for a while,
+     then goes back to its day. One visit at a time, and not again for a
+     while; nothing happens while motion is paused or reduced. */
+  type Visit = {
+    fennec: T.Group;
+    route: T.Vector3[];
+    leg: number;
+    t: number;
+    phase: "notice" | "approach" | "settle";
+    time: number;
+    tree: T.Vector3;
+  };
+  let visit: Visit | null = null,
+    nextVisit = 0;
+  const probe = new T.Vector3(),
+    down = new T.Vector3(0, -1, 0);
+  // Every point along the way must be open ground on the fennec's own level:
+  // no water, bridge, building or step in between.
+  function clearWay(a: T.Vector3, b: T.Vector3) {
+    world.updateMatrixWorld();
+    const samples = Math.max(1, Math.ceil(a.distanceTo(b) / 0.15));
+    for (let i = 1; i <= samples; i++) {
+      probe.lerpVectors(a, b, i / samples);
+      if (inWater(probe) || onBridge(probe)) return false;
+      probe.y = 12;
+      world.localToWorld(probe);
+      raycaster.set(probe, down);
+      const hit = raycaster.intersectObjects(solidMeshes, false)[0];
+      if (!hit?.face || hit.face.normal.y < 0.7) return false;
+      if (Math.abs(world.worldToLocal(hit.point).y - a.y) > 0.03) return false;
+    }
+    return true;
+  }
+  function visitTree(tree: T.Vector3) {
+    if (!fennecs.length || visit || paused || reduced || elapsed < nextVisit) return;
+    if (fennecFur.opacity < 0.5) return;
+    // A tree on its own level, or up to a planter's or curb's height above it.
+    const near = fennecs
+      .filter((f) => tree.y - f.position.y > -0.05 && tree.y - f.position.y < 0.25 && f.position.distanceTo(tree) < 3.5)
+      .sort((a, b) => a.position.distanceTo(tree) - b.position.distanceTo(tree))[0];
+    if (!near) return;
+    const from = near.position.clone();
+    // At the foot of the tree, on open ground on the fennec's level: its own
+    // side of the trunk first, then around it.
+    const toward = Math.atan2(from.x - tree.x, from.z - tree.z);
+    const goal = new T.Vector3();
+    const open = [0, 0.8, -0.8, 1.6, -1.6].some((turn) => {
+      goal.set(tree.x + Math.sin(toward + turn) * 0.3, from.y, tree.z + Math.cos(toward + turn) * 0.3);
+      return !inWater(goal) && !onBridge(goal) && clearWay(goal, goal);
+    });
+    if (!open) return;
+    let route: T.Vector3[] | null = clearWay(from, goal) ? [from, goal] : null;
+    if (!route) {
+      // One turn by way of a known ground spot, the shortest that is clear.
+      // Few are tried, so a visit costs a few dozen short raycasts at most.
+      const turns = groundSpots
+        .filter((p) => Math.abs(p.y - from.y) < 0.03)
+        .sort((a, b) => a.distanceTo(from) + a.distanceTo(goal) - b.distanceTo(from) - b.distanceTo(goal))
+        .slice(0, 6);
+      const turn = turns.find((p) => clearWay(from, p) && clearWay(p, goal));
+      if (turn) route = [from, turn.clone(), goal];
+    }
+    if (!route) return;
+    visit = { fennec: near, route, leg: 0, t: 0, phase: "notice", time: 0, tree: tree.clone() };
+    nextVisit = elapsed + 20;
+    show("visitor", "notice");
+  }
+  function updateVisitor(dt: number) {
+    if (!visit) return;
+    const v = visit,
+      f = v.fennec,
+      u = f.userData;
+    const legs = u.legs as T.Mesh[],
+      tail = u.tail as T.Group,
+      ear = u.ear as T.Mesh;
+    v.time += dt;
+    const facing = Math.atan2(v.tree.x - f.position.x, v.tree.z - f.position.z);
+    if (v.phase === "notice") {
+      // Ears up, legs still, and a turn toward the new tree.
+      f.rotation.y = turnToward(f.rotation.y, facing, dt * 5);
+      ear.rotation.x = -0.45;
+      legs.forEach((l) => (l.rotation.x = 0));
+      if (v.time > 0.7) {
+        v.phase = "approach";
+        v.time = 0;
+        show("visitor", "approach");
+      }
+    } else if (v.phase === "approach") {
+      const a = v.route[v.leg],
+        b = v.route[v.leg + 1];
+      const distance = a.distanceTo(b);
+      const strides = Math.max(1, Math.round(distance / 0.2));
+      v.t = Math.min(1, v.t + dt / (strides * 0.26));
+      const k = v.t * strides,
+        frac = k - Math.floor(k);
+      f.position.lerpVectors(a, b, v.t);
+      f.position.y = a.y + Math.abs(Math.sin(Math.PI * 2 * frac)) * 0.02;
+      f.rotation.y = turnToward(f.rotation.y, Math.atan2(b.x - a.x, b.z - a.z), dt * 8);
+      const swing = Math.sin(Math.PI * 2 * frac) * 0.6;
+      legs.forEach((l, i) => (l.rotation.x = i === 0 || i === 3 ? swing : -swing));
+      tail.rotation.set(-1.75, 0, 0);
+      if (v.t >= 1) {
+        v.t = 0;
+        if (++v.leg >= v.route.length - 1) {
+          v.phase = "settle";
+          v.time = 0;
+          show("visitor", "settle");
+        }
+      }
+    } else {
+      f.position.y = v.route[v.route.length - 1].y;
+      f.rotation.y = turnToward(f.rotation.y, facing, dt * 3);
+      legs.forEach((l) => (l.rotation.x = 0));
+      ear.rotation.x = -0.15 + Math.max(0, Math.sin(elapsed * 2)) * 0.1;
+      tail.rotation.set(-2.1, Math.sin(elapsed * 0.6) * 0.3, 0);
+      if (v.time > 6) {
+        // Back to its own day from where it sat.
+        u.from = f.position.clone();
+        u.to = f.position.clone();
+        u.t = 1;
+        u.rest = 1 + random() * 2;
+        visit = null;
+        show("visitor", "none");
+      }
+    }
+  }
+
   // A ginger cat asleep on the terrace bench.
   const catFur = mat(0xd38b4c, 0.85);
   const cat = new T.Group();
@@ -3099,6 +3296,8 @@ export async function createGarden(
       life * day * dry * (season === "winter" ? 0.6 : 1) * (1 - fogAmount * 0.7);
     fennecFur.opacity = fennecPale.opacity = fennecDark.opacity = life * day * dry;
     lifeMaterials.forEach((m) => (m.visible = m.opacity > 0.01));
+    // Nothing alive is drawn yet: the animals wait where they are.
+    if (life <= 0.01) return;
     const t = elapsed;
     birds.forEach((b, i) => {
       const u = b.userData;
@@ -3127,6 +3326,8 @@ export async function createGarden(
       d.rotation.z = Math.sin(t * 1.7 + i) * 0.05;
     });
     fennecs.forEach((r) => {
+      // A fennec visiting a new tree follows its own steps (updateVisitor).
+      if (visit?.fennec === r) return;
       const u = r.userData;
       const legs = u.legs as T.Mesh[],
         tail = u.tail as T.Group;
@@ -3200,7 +3401,8 @@ export async function createGarden(
     // Litter positions are prepared in yielding batches before the renderer starts.
     paintLitter();
     fallColor.value.setHex(season === "spring" ? 0xf4c3d5 : 0xd2812f);
-    dirty = true;
+    styled.stale = true;
+    invalidate();
   }
   await checkpoint("renderer-state");
   let targetProgress = 0,
@@ -3211,10 +3413,57 @@ export async function createGarden(
     rotation = 0,
     rotationTarget = 0,
     frame = 0,
-    last = 0,
+    // -1 after the loop has slept: its next frame restarts the clock.
+    last = -1,
     elapsed = 0,
     disposed = false,
+    // The loop starts once the garden is built (see the end of createGarden).
+    constructed = false,
     dirty = true;
+  // What the materials and the camera were last set from (see render).
+  const styled = { progress: NaN, snow: NaN, fog: NaN, night: NaN, shadow: NaN, stale: true };
+  const framed = new Float64Array(19).fill(NaN);
+  /* The loop runs only while there is something to draw. It stops off screen,
+     in a hidden tab, and once a paused or unfinished garden has settled; any
+     change wakes it. */
+  function wake() {
+    if (!frame && !disposed && constructed) frame = requestAnimationFrame(render);
+  }
+  function invalidate() {
+    dirty = true;
+    wake();
+  }
+  const onVisibility = () => {
+    if (!document.hidden) wake();
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+  /* Quality: how the built garden is drawn. Full is the garden as designed.
+     Light draws fewer pixels at up to 30 frames a second, with a smaller
+     shadow map that is redrawn only when the garden changes, and without the
+     shadows of small things. Neither adds or removes what was built. */
+  let light = false,
+    shadowEvery = 1;
+  // Meshes too small for their shadow to matter in Light: animals, the
+  // gardener's limbs, small props. Collected once the garden is built.
+  const smallCasters: T.Mesh[] = [];
+  function applyQuality(value: Quality) {
+    light = value === "light";
+    renderer.setPixelRatio(Math.min(devicePixelRatio, light ? 1.25 : 1.6));
+    // A garden built light has nothing that moves and casts a shadow. In
+    // Full, what moves on its own (animals, the gardener, drones) recasts its
+    // shadow every other frame: a lag of one frame at most, for about a
+    // third less drawing at Bloom (docs/performance).
+    shadowEvery = light || lite ? Infinity : 2;
+    const size = light ? 1024 : 2048;
+    if (sun.shadow.mapSize.x !== size) {
+      sun.shadow.mapSize.set(size, size);
+      sun.shadow.map?.dispose();
+      sun.shadow.map = null;
+    }
+    smallCasters.forEach((m) => (m.castShadow = !light));
+    container.dataset.quality = value;
+    invalidate();
+  }
   let darkTheme = false;
   let drawIn = 0;
   let hour = 13;
@@ -3228,6 +3477,9 @@ export async function createGarden(
     focusZoomGoal = 0.4,
     shift = new T.Vector2(),
     shiftGoal = new T.Vector2();
+  // How much of its usual size the garden is drawn at, to fit beside the controls.
+  let room = 1,
+    roomGoal = 1;
   // The band the garden is framed in: top and bottom, as fractions.
   const view = new T.Vector2(0, 1),
     viewGoal = new T.Vector2(0, 1);
@@ -3284,7 +3536,7 @@ export async function createGarden(
   const observer = new IntersectionObserver(
     (entries) => {
       visible = entries[0].isIntersecting;
-      dirty = true;
+      invalidate();
     },
     { rootMargin: "80px" },
   );
@@ -3295,7 +3547,7 @@ export async function createGarden(
     width = container.clientWidth;
     height = container.clientHeight;
     renderer.setSize(width, height);
-    dirty = true;
+    invalidate();
   };
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(container);
@@ -3317,6 +3569,40 @@ export async function createGarden(
     whisperbook: { at: new T.Vector3(3.4, 1.7, -0.55), zoom: 1.6 },
     wattch: { at: new T.Vector3(-3.4, 1.45, 0.45), zoom: 1.8 },
   };
+  /* A building answers its label being pointed at or focused: a ring of
+     lantern light on the ground around it, and a faint glow inside. */
+  const hoverRadius: Record<string, number> = { whisperbook: 1.35, wattch: 1.45, about: 0.9, contact: 0.55 };
+  const hoverLineMaterial = new T.MeshBasicMaterial({
+    color: 0xffd28a,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    depthTest: false,
+  });
+  const hoverGlowMaterial = new T.MeshBasicMaterial({
+    color: 0xffd28a,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: T.AdditiveBlending,
+  });
+  const hoverMark = new T.Group();
+  hoverMark.add(
+    new T.Mesh(new T.RingGeometry(0.96, 1, 64).rotateX(-Math.PI / 2), hoverLineMaterial),
+    new T.Mesh(new T.CircleGeometry(1, 48).rotateX(-Math.PI / 2), hoverGlowMaterial),
+  );
+  hoverMark.traverse((o) => (o.renderOrder = 4));
+  hoverMark.visible = false;
+  world.add(hoverMark);
+  let hoverSpot: string | null = null,
+    hoverGlow = 0;
+  function placeHover(spot: string) {
+    const p = points[spot];
+    // The tower stands on the strip of tiles, off the terraces, at 0.16.
+    const ground = groundAt(p.x, p.z);
+    hoverMark.position.set(p.x, (Number.isFinite(ground) ? ground : 0.16) + 0.03, p.z);
+    hoverMark.scale.setScalar(hoverRadius[spot] ?? 1);
+  }
   // Centred on the garden with its strip of tiles on the right, which makes
   // it wider to the right than to the left.
   const lookDefault = new T.Vector3(0.55, 2.4, -0.55);
@@ -3343,7 +3629,7 @@ export async function createGarden(
     sky.color.setHex(0xf7fbff).lerp(new T.Color(0x6d84bd), night);
     sky.groundColor.setHex(0x839073).lerp(new T.Color(0x2b3550), night);
     fillLight.intensity = 0.7 * (1 - night * 0.6);
-    dirty = true;
+    invalidate();
   }
   applyLight();
   const onLost = (event: Event) => {
@@ -3359,20 +3645,66 @@ export async function createGarden(
   const onRestored = () => {
     container.dispatchEvent(new Event("garden-context-restored"));
     hotspots.forEach((h) => (h.style.visibility = ""));
+    styled.stale = true;
+    framed.fill(NaN);
+    invalidate();
   };
   renderer.domElement.addEventListener("webglcontextlost", onLost);
   renderer.domElement.addEventListener("webglcontextrestored", onRestored);
-  let firstRender = true;
+  let firstRender = true,
+    restored = false;
+  // What the materials, outlines and camera were last set from. Each is
+  // updated only when one of its inputs changes.
+  let drawnShown = -1;
+  const look = new T.Vector3();
+  const frameInputs = new Float64Array(19);
+  function cameraMoved(drawn: number) {
+    const k = frameInputs;
+    k[0] = width; k[1] = height; k[2] = view.x; k[3] = view.y;
+    k[4] = shift.x; k[5] = shift.y; k[6] = focusAmount; k[7] = focusZoom;
+    k[8] = userZoom; k[9] = pan.x; k[10] = pan.y; k[11] = focusPoint.x;
+    k[12] = focusPoint.y; k[13] = focusPoint.z; k[14] = progress; k[15] = drawn;
+    k[16] = rotation; k[17] = renderer.getPixelRatio(); k[18] = room;
+    let moved = false;
+    for (let i = 0; i < k.length; i++)
+      if (k[i] !== framed[i]) {
+        framed[i] = k[i];
+        moved = true;
+      }
+    return moved;
+  }
+  function styleStale() {
+    return (
+      styled.stale ||
+      styled.progress !== progress ||
+      styled.snow !== snowCover ||
+      styled.fog !== fogAmount ||
+      styled.night !== night ||
+      styled.shadow !== shadowStrength
+    );
+  }
+  // Data attributes are only written when their text changes.
+  const shown: Record<string, string> = {};
+  function show(key: string, value: string) {
+    if (shown[key] === value) return;
+    shown[key] = value;
+    container.dataset[key] = value;
+  }
+  let shadowFrame = 0;
   function render(now: number) {
+    frame = 0;
     if (disposed) return;
-    frame = requestAnimationFrame(render);
     if (!visible || document.hidden) {
-      last = now;
+      last = -1;
       return;
     }
-    // Phones draw at most 30 frames a second.
-    if (lite && now - last < 1000 / 30 - 4) return;
-    const dt = Math.min((now - last) / 1000, 0.05);
+    // Light drawing keeps to 30 frames a second.
+    if (light && last >= 0 && now - last < 1000 / 30 - 4) {
+      wake();
+      return;
+    }
+    // The first frame after a sleep starts the clock again instead of jumping.
+    const dt = last < 0 ? 0 : Math.min((now - last) / 1000, 0.05);
     last = now;
     if (drawIn < 1) {
       drawIn = reduced || paused ? 1 : Math.min(1, drawIn + dt / 3.2);
@@ -3386,16 +3718,34 @@ export async function createGarden(
       Math.abs(focusZoomGoal - focusZoom) > 0.0005 ||
       Math.abs(fogTarget - fogAmount) > 0.002 ||
       shift.distanceTo(shiftGoal) > 0.0005 ||
+      Math.abs(roomGoal - room) > 0.0005 ||
       view.distanceTo(viewGoal) > 0.0005 ||
       Math.abs(userZoomGoal - userZoom) > 0.0005 ||
       pan.distanceTo(panGoal) > 0.0005 ||
       Math.abs(snowGoal - snowCover) > 0.001 ||
       roomsSettling() ||
       growing;
-    if ((paused || progress < 0.5) && !changed && !dirty) return;
-    if (lite && (changed || dirty)) renderer.shadowMap.needsUpdate = true;
+    // Paused, or before the garden is built, a settled garden sleeps.
+    if ((paused || progress < 0.5) && !changed && !dirty) {
+      last = -1;
+      return;
+    }
+    wake();
+    // Shadows are redrawn when the garden changes, and otherwise every
+    // `shadowEvery` frames for whatever moves on its own.
+    if (changed || dirty || ++shadowFrame >= shadowEvery) {
+      shadowFrame = 0;
+      renderer.shadowMap.needsUpdate = true;
+    }
     dirty = false;
     const work = performance.now();
+    // A rebuilt garden opens where the one it replaces was.
+    if (firstRender && restored) {
+      progress = targetProgress;
+      focusAmount = focusGoal;
+      focusZoom = focusZoomGoal;
+      focusPoint.copy(focusTarget);
+    }
     progress = lerp(
       progress,
       targetProgress,
@@ -3412,19 +3762,24 @@ export async function createGarden(
     // than sliding over from the centre.
     if (firstRender) {
       shift.copy(shiftGoal);
+      room = roomGoal;
       view.copy(viewGoal);
     }
     focusAmount = lerp(focusAmount, focusGoal, ease);
     focusZoom = lerp(focusZoom, focusZoomGoal, ease);
     shift.lerp(shiftGoal, ease);
+    room = lerp(room, roomGoal, ease);
     view.lerp(viewGoal, ease);
     const quick = reduced ? 1 : Math.min(dt * 14, 1);
     userZoom = lerp(userZoom, userZoomGoal, quick);
     pan.lerp(panGoal, quick);
     focusPoint.lerp(focusTarget, ease);
     const drawn = drawIn * drawIn * (3 - 2 * drawIn);
-    const count = outlines.geometry.attributes.position.count;
-    outlines.geometry.setDrawRange(0, Math.floor((count * drawn) / 2) * 2);
+    if (drawn !== drawnShown) {
+      drawnShown = drawn;
+      const count = outlines.geometry.attributes.position.count;
+      outlines.geometry.setDrawRange(0, Math.floor((count * drawn) / 2) * 2);
+    }
     timeUniform.value = elapsed;
     // The story holds at 0, 0.33, 0.66 and 1. Each stage is complete by its
     // hold: blue lines by 0.3, stone and water by 0.64, and only then life.
@@ -3443,59 +3798,68 @@ export async function createGarden(
           : snowCover + T.MathUtils.clamp(step, -dt * 0.12, dt * 0.3);
       paintFoliage();
     }
-    materials.forEach(({ material, flora, glass, key }) => {
-      const bloom =
-        key === "flower" || key === "coral" ? flowerAmount[season] : 1;
-      fade(material, flora ? life * bloom : solid * (glass ? 0.38 : 1));
-    });
-    fade(plantMaterial, solid);
-    plantLeaves.forEach((m) => fade(m, life));
-    lineMaterial.color
-      .copy(pencilColor)
-      .lerp(blueColor, blueprint)
-      .lerp(finalColor, solid);
-    lineMaterial.opacity =
-      lerp(darkTheme ? 0.38 : 0.21, darkTheme ? 0.85 : 0.6, blueprint) *
-      (1 - solid * 0.92);
-    stickMaterial.color.copy(lineMaterial.color);
-    stickMaterial.opacity = lineMaterial.opacity * (1 - solid);
-    stickMaterial.visible = stickMaterial.opacity > 0.003;
-    ghostMaterial.opacity = 0.055 * (1 - blueprint);
-    guideMaterial.opacity =
-      smooth(0.06, 0.3, progress) * (1 - smooth(0.45, 0.62, progress)) * 0.38;
-    shadowMaterial.opacity = solid * 0.15 * shadowStrength;
-    waterfallLip.material.opacity = solid;
-    waterMaterial.uniforms.uOpacity.value = smooth(0.46, 0.63, progress);
-    const glow = night * solid;
-    lanternLights.forEach((l) => (l.intensity = glow * 2.6));
-    glowMaterial.opacity = glow * 0.95;
-    glowMaterial.visible = glow > 0.01;
-    fireflyOpacity.value = night * life;
-    butterflyMaterial.opacity =
-      life * (season === "summer" || season === "spring" ? 1 - snowCover : 0);
-    litterMaterial.opacity = life;
-    litterMaterial.visible = life > 0.01;
-    fallOpacity.value =
-      life *
-      (season === "autumn" ? 0.95 : season === "spring" ? 0.85 : 0) *
-      (1 - fogAmount * 0.65) *
-      (1 - snowCover);
     fogAmount = lerp(fogAmount, fogTarget, reduced ? 1 : Math.min(dt * 1.5, 1));
     if (fogAmount > 0.002) {
       scene.fog = mist;
       mist.near = lerp(30, 9.5, fogAmount);
       mist.far = lerp(60, 27, fogAmount);
     } else scene.fog = null;
-    waterfallOpacity.value = smooth(0.52, 0.64, progress);
-    droneBodyMaterial.opacity = life;
-    droneTrimMaterial.opacity = life;
-    rotorMaterial.opacity = life * 0.21;
-    droneBodyMaterial.emissiveIntensity = night * 0.5;
-    droneTrimMaterial.emissiveIntensity = night * 0.35;
-    navOpacity.value = life * (0.3 + 0.7 * night);
-    // The blueprint outline, and at night a pale rim around the shell.
-    droneLineMaterial.opacity =
-      smooth(0.15, 0.3, progress) * (1 - life) * 0.46 + life * night * 0.55;
+    if (styleStale()) {
+      styled.stale = false;
+      styled.progress = progress;
+      styled.snow = snowCover;
+      styled.fog = fogAmount;
+      styled.night = night;
+      styled.shadow = shadowStrength;
+      materials.forEach(({ material, flora, glass, key }) => {
+        const bloom =
+          key === "flower" || key === "coral" ? flowerAmount[season] : 1;
+        fade(material, flora ? life * bloom : solid * (glass ? 0.38 : 1));
+      });
+      fade(plantMaterial, solid);
+      plantLeaves.forEach((m) => fade(m, life));
+      lineMaterial.color
+        .copy(pencilColor)
+        .lerp(blueColor, blueprint)
+        .lerp(finalColor, solid);
+      lineMaterial.opacity =
+        lerp(darkTheme ? 0.38 : 0.21, darkTheme ? 0.85 : 0.6, blueprint) *
+        (1 - solid * 0.92);
+      stickMaterial.color.copy(lineMaterial.color);
+      stickMaterial.opacity = lineMaterial.opacity * (1 - solid);
+      stickMaterial.visible = stickMaterial.opacity > 0.003;
+      ghostMaterial.opacity = 0.055 * (1 - blueprint);
+      guideMaterial.opacity =
+        smooth(0.06, 0.3, progress) * (1 - smooth(0.45, 0.62, progress)) * 0.38;
+      shadowMaterial.opacity = solid * 0.15 * shadowStrength;
+      waterfallLip.material.opacity = solid;
+      waterMaterial.uniforms.uOpacity.value = smooth(0.46, 0.63, progress);
+      const glow = night * solid;
+      lanternLights.forEach((l) => (l.intensity = glow * 2.6));
+      glowMaterial.opacity = glow * 0.95;
+      glowMaterial.visible = glow > 0.01;
+      fireflyOpacity.value = night * life;
+      butterflyMaterial.opacity =
+        life * (season === "summer" || season === "spring" ? 1 - snowCover : 0);
+      butterflyMaterial.visible = butterflyMaterial.opacity > 0.003;
+      litterMaterial.opacity = life;
+      litterMaterial.visible = life > 0.01;
+      fallOpacity.value =
+        life *
+        (season === "autumn" ? 0.95 : season === "spring" ? 0.85 : 0) *
+        (1 - fogAmount * 0.65) *
+        (1 - snowCover);
+      waterfallOpacity.value = smooth(0.52, 0.64, progress);
+      droneBodyMaterial.opacity = life;
+      droneTrimMaterial.opacity = life;
+      rotorMaterial.opacity = life * 0.21;
+      droneBodyMaterial.emissiveIntensity = night * 0.5;
+      droneTrimMaterial.emissiveIntensity = night * 0.35;
+      navOpacity.value = life * (0.3 + 0.7 * night);
+      // The blueprint outline, and at night a pale rim around the shell.
+      droneLineMaterial.opacity =
+        smooth(0.15, 0.3, progress) * (1 - life) * 0.46 + life * night * 0.55;
+    }
     drones.forEach((drone, i) => {
       const phase = elapsed * 0.105 * life + i * 2.08;
       drone.position.set(
@@ -3511,59 +3875,68 @@ export async function createGarden(
     });
     updateRooms(dt, solid, drawn, blueprint);
     updateLife(paused || reduced ? 0 : dt, life);
-    if (!lite) updateGardener(paused || reduced ? 0 : dt, paused || reduced);
-    butterflies.forEach((b, i) => {
-      b.position.set(
-        Math.cos(elapsed * 0.2 + i * 1.9) * (2 + i * 0.25),
-        1.5 + Math.sin(elapsed * 0.4 + i) * 0.35 + i * 0.4,
-        Math.sin(elapsed * 0.2 + i * 1.9) * 2,
-      );
-      b.rotation.y = elapsed * 0.2 + i;
-      b.children.forEach(
-        (wing, j) =>
-          (wing.rotation.y =
-            Math.sin(elapsed * 8 + i) * 0.7 * (j === 0 ? 1 : -1)),
-      );
-    });
-    planted.forEach((p) => {
+    // The gardener is only drawn with the life of the garden.
+    if (!lite && life > 0.01) updateGardener(paused || reduced ? 0 : dt, paused || reduced);
+    if (butterflyMaterial.visible)
+      butterflies.forEach((b, i) => {
+        b.position.set(
+          Math.cos(elapsed * 0.2 + i * 1.9) * (2 + i * 0.25),
+          1.5 + Math.sin(elapsed * 0.4 + i) * 0.35 + i * 0.4,
+          Math.sin(elapsed * 0.2 + i * 1.9) * 2,
+        );
+        b.rotation.y = elapsed * 0.2 + i;
+        b.children.forEach(
+          (wing, j) =>
+            (wing.rotation.y =
+              Math.sin(elapsed * 8 + i) * 0.7 * (j === 0 ? 1 : -1)),
+        );
+      });
+    for (const p of planted) {
+      // A grown tree keeps its final size; only growing ones are rescaled.
+      if (p.grown) continue;
       p.age = reduced ? 1 : Math.min(1, p.age + dt * 1.6);
       // A small overshoot, as if the tree springs up.
       const t = p.age,
         back = 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);
       p.group.scale.setScalar(Math.max(0.001, back * p.group.userData.size));
-    });
+      p.grown = p.age >= 1;
+    }
+    updateVisitor(paused || reduced ? 0 : dt);
     // The garden is fitted to its frame, as if the frame were the whole
     // view; the rest of the view shows more of the same scene around it.
-    const band = Math.max(0.05, view.y - view.x);
-    const aspect = width / (height * band);
-    const span = gardenSpan(aspect);
-    const half = span / 2 / (1 + focusAmount * focusZoom) / userZoom;
-    const full = half / band;
-    camera.left = -half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
-    camera.right = half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
-    camera.top = (view.x + view.y) * full - shift.y * half * 2 + pan.y * full * 2;
-    camera.bottom = camera.top - 2 * full;
-    // Leaves and petals keep the same size relative to the garden.
-    fallSize.value = (height / (2 * full)) * 0.2 * renderer.getPixelRatio();
-    const angle =
-      lerp(0.69, 0.78, smooth(0.3, 1, progress)) - (1 - drawn) * 0.45;
-    const look = lookDefault.clone().lerp(focusPoint, focusAmount);
-    camera.position.set(
-      look.x + Math.sin(angle) * 15,
-      look.y - 2.4 + lerp(14, 12, solid),
-      look.z + Math.cos(angle) * 15,
-    );
-    camera.lookAt(look);
-    camera.updateProjectionMatrix();
-    camera.updateMatrixWorld();
-    world.updateMatrixWorld();
-    for (const h of hotspots) {
-      projected
-        .copy(points[h.dataset.spot!])
-        .applyMatrix4(world.matrixWorld)
-        .project(camera);
-      h.style.left = `${(projected.x * 0.5 + 0.5) * width}px`;
-      h.style.top = `${(-projected.y * 0.5 + 0.5) * height}px`;
+    // The camera and the labels move only when what frames them changes.
+    if (cameraMoved(drawn)) {
+      const band = Math.max(0.05, view.y - view.x);
+      const aspect = width / (height * band);
+      const span = gardenSpan(aspect);
+      const half = span / 2 / (1 + focusAmount * focusZoom) / userZoom / room;
+      const full = half / band;
+      camera.left = -half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
+      camera.right = half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
+      camera.top = (view.x + view.y) * full - shift.y * half * 2 + pan.y * full * 2;
+      camera.bottom = camera.top - 2 * full;
+      // Leaves and petals keep the same size relative to the garden.
+      fallSize.value = (height / (2 * full)) * 0.2 * renderer.getPixelRatio();
+      const angle =
+        lerp(0.69, 0.78, smooth(0.3, 1, progress)) - (1 - drawn) * 0.45;
+      look.copy(lookDefault).lerp(focusPoint, focusAmount);
+      camera.position.set(
+        look.x + Math.sin(angle) * 15,
+        look.y - 2.4 + lerp(14, 12, solid),
+        look.z + Math.cos(angle) * 15,
+      );
+      camera.lookAt(look);
+      camera.updateProjectionMatrix();
+      camera.updateMatrixWorld();
+      world.updateMatrixWorld();
+      for (const h of hotspots) {
+        projected
+          .copy(points[h.dataset.spot!])
+          .applyMatrix4(world.matrixWorld)
+          .project(camera);
+        h.style.left = `${(projected.x * 0.5 + 0.5) * width}px`;
+        h.style.top = `${(-projected.y * 0.5 + 0.5) * height}px`;
+      }
     }
     readGpuTimers();
     const query = gpuTimer && gpuPending.length < 4 ? gl.createQuery() : null;
@@ -3576,28 +3949,45 @@ export async function createGarden(
     }
     if (firstRender) { firstRender = false; performance.mark("notebook:first-render"); performance.measure("notebook:scene-to-first-render", "notebook:scene-construction:start", "notebook:first-render"); }
     renderMs = lerp(renderMs || 1, performance.now() - before, 0.1);
-    container.dataset.progress = progress.toFixed(3);
-    container.dataset.drawCalls = String(renderer.info.render.calls);
-    container.dataset.triangles = String(renderer.info.render.triangles);
-    container.dataset.waterfall = waterfallOpacity.value.toFixed(2);
-    container.dataset.drones = String(drones.length);
-    container.dataset.animationTime = elapsed.toFixed(3);
-    container.dataset.rotation = rotation.toFixed(3);
-    container.dataset.shift = shift.x.toFixed(3);
+    show("progress", progress.toFixed(3));
+    show("drawCalls", String(renderer.info.render.calls));
+    show("triangles", String(renderer.info.render.triangles));
+    show("geometries", String(renderer.info.memory.geometries));
+    show("textures", String(renderer.info.memory.textures));
+    show("waterfall", waterfallOpacity.value.toFixed(2));
+    show("drones", String(drones.length));
+    show("animationTime", elapsed.toFixed(3));
+    show("rotation", rotation.toFixed(3));
+    show("shift", shift.x.toFixed(3));
     // 0 is the needle hard left (0 ms), 1 hard right (8 ms or more).
-    container.dataset.meter = ((needleAngle + Math.PI / 2) / Math.PI).toFixed(3);
-    container.dataset.narrating = narration.toFixed(2);
-    container.dataset.path = pathStep === null ? "none" : String(pathStep);
-    container.dataset.postbox = postbox;
-    container.dataset.flag = flagLift.toFixed(2);
+    show("meter", ((needleAngle + Math.PI / 2) / Math.PI).toFixed(3));
+    show("narrating", narration.toFixed(2));
+    show("explaining", explaining === null ? "none" : String(explaining));
+    show("path", pathStep === null ? "none" : String(pathStep));
+    show("postbox", postbox);
+    show("flag", flagLift.toFixed(2));
+    show("hover", hoverSpot ?? "none");
     workMs += performance.now() - work;
     framesDrawn++;
   }
   await checkpoint("ground-litter");
   await buildLitter();
+  world.updateMatrixWorld(true);
+  const bounds = new T.Sphere();
+  world.traverse((o) => {
+    if (!(o instanceof T.Mesh) || o instanceof T.InstancedMesh || !o.castShadow) return;
+    o.geometry.boundingSphere ?? o.geometry.computeBoundingSphere();
+    bounds.copy(o.geometry.boundingSphere!).applyMatrix4(o.matrixWorld);
+    if (bounds.radius < 0.2) smallCasters.push(o);
+  });
+  // The washing is instanced, and sways and comes and goes with the chores.
+  smallCasters.push(cloth);
+  container.dataset.smallCasters = String(smallCasters.length);
+  applyQuality(quality);
   batchDone();
   constructionDone();
-  frame = requestAnimationFrame(render);
+  constructed = true;
+  wake();
   /* Most of the garden's materials are first drawn at Build and Bloom, and
      three compiles a shader program on first draw, blocking the page while
      the driver works. Compile them all in the background while the visitor
@@ -3670,12 +4060,23 @@ export async function createGarden(
   return {
     setNarrating(on) {
       narrating = on;
-      dirty = true;
+      invalidate();
+    },
+    explain(step) {
+      explaining = step;
+      invalidate();
+    },
+    hover(spot) {
+      if (spot && points[spot]) {
+        hoverSpot = spot;
+        placeHover(spot);
+      } else hoverSpot = null;
+      invalidate();
     },
     highlightPath(step) {
       if (step !== null) placeHighlight(step);
       pathStep = step;
-      dirty = true;
+      invalidate();
     },
     setPostbox(state) {
       if (state === "sent") {
@@ -3686,12 +4087,12 @@ export async function createGarden(
       // A letter already on its way settles the flag itself.
       if (state === "idle" && letterTime >= 0) return;
       postbox = state;
-      dirty = true;
+      invalidate();
     },
     setProgress(p, immediate = false) {
       targetProgress = p;
       reduced = immediate;
-      dirty = true;
+      invalidate();
       if (immediate) progress = p;
     },
     setTheme(dark) {
@@ -3702,18 +4103,20 @@ export async function createGarden(
       ghostMaterial.color.setHex(dark ? 0x94c8e9 : 0x777b7d);
       droneLineMaterial.color.setHex(dark ? 0xc0eaff : 0x5983ad);
       renderer.toneMappingExposure = dark ? 0.95 : 1.2;
-      dirty = true;
+      styled.stale = true;
+      invalidate();
     },
     setMotion(value) {
       paused = value;
-      dirty = true;
+      invalidate();
     },
     rotate() {
       rotationTarget += Math.PI / 6;
+      invalidate();
     },
     rotateBy(radians) {
       rotationTarget += radians;
-      dirty = true;
+      invalidate();
     },
     plantAt(x, y) {
       if (planted.length >= MAX_TREES) return MAX_TREES;
@@ -3730,7 +4133,7 @@ export async function createGarden(
     setFog(amount, color) {
       fogTarget = amount;
       mist.color.setHex(color);
-      dirty = true;
+      invalidate();
     },
     setTally(grams) {
       tallyGoal = grams;
@@ -3742,7 +4145,7 @@ export async function createGarden(
         ((grams === null) !== (drawn === null) ||
           (grams !== null && Math.abs(grams - drawn!) >= 0.0005))
       )
-        dirty = true;
+        invalidate();
     },
     setWeather(cloud, precip, snowing = false) {
       weatherCloud = cloud;
@@ -3756,7 +4159,7 @@ export async function createGarden(
     },
     frame(top, bottom) {
       viewGoal.set(top, bottom);
-      dirty = true;
+      invalidate();
     },
     zoomBy(factor, x, y) {
       const zoom = T.MathUtils.clamp(userZoomGoal * factor, 1, 4);
@@ -3770,20 +4173,20 @@ export async function createGarden(
       } else panGoal.multiplyScalar(f);
       userZoomGoal = zoom;
       clampPan();
-      dirty = true;
+      invalidate();
     },
     panBy(dx, dy) {
       panGoal.x += dx / width;
       panGoal.y += dy / height;
       clampPan();
-      dirty = true;
+      invalidate();
     },
     resetView() {
       userZoomGoal = 1;
       panGoal.set(0, 0);
-      dirty = true;
+      invalidate();
     },
-    focus(spot, shiftX = 0, shiftY = 0) {
+    focus(spot, shiftX = 0, shiftY = 0, roomX = 1) {
       if (spot && points[spot]) {
         const room = rooms[spot];
         focusTarget
@@ -3794,7 +4197,8 @@ export async function createGarden(
         focusZoomGoal = room?.zoom ?? 0.4;
       } else focusGoal = 0;
       shiftGoal.set(shiftX, shiftY);
-      dirty = true;
+      roomGoal = roomX;
+      invalidate();
     },
     stats() {
       return {
@@ -3807,6 +4211,38 @@ export async function createGarden(
         frames: framesDrawn,
       };
     },
+    setQuality(value) {
+      applyQuality(value);
+    },
+    drawInto(target, x, y, w, h) {
+      renderer.render(scene, camera);
+      target.drawImage(renderer.domElement, x, y, w, h);
+    },
+    snapshot() {
+      return {
+        rotation: rotationTarget,
+        trees: planted.map(({ group: g }) => ({ x: g.position.x, y: g.position.y, z: g.position.z, seed: g.userData.seed })),
+        zoom: userZoomGoal,
+        pan: { x: panGoal.x, y: panGoal.y },
+      };
+    },
+    restore(snapshot) {
+      // The same trees, drawn from the seeds they were drawn from.
+      const keep = seed;
+      for (const t of snapshot.trees.slice(0, MAX_TREES - planted.length)) {
+        seed = t.seed;
+        makeTree(new T.Vector3(t.x, t.y, t.z), true);
+      }
+      seed = keep;
+      rotation = rotationTarget = snapshot.rotation;
+      userZoom = userZoomGoal = snapshot.zoom;
+      pan.copy(panGoal.set(snapshot.pan.x, snapshot.pan.y));
+      // A rebuilt garden replaces one already on screen: no drawing in.
+      drawIn = 1;
+      restored = true;
+      invalidate();
+      return planted.length;
+    },
     plant() {
       if (planted.length >= MAX_TREES) return MAX_TREES;
       // Keyboard planting fills the front terrace from left to right.
@@ -3818,6 +4254,8 @@ export async function createGarden(
     dispose() {
       disposed = true;
       cancelAnimationFrame(frame);
+      frame = 0;
+      document.removeEventListener("visibilitychange", onVisibility);
       gpuPending.forEach((q) => gl.deleteQuery(q));
       observer.disconnect();
       resizeObserver.disconnect();

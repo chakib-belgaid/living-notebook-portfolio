@@ -1,4 +1,4 @@
-import type { Garden, Season } from "./scene";
+import type { Garden, Season, Quality } from "./scene";
 import { createSky } from "./sky";
 import {
   currentWeather,
@@ -10,7 +10,7 @@ import {
   type WeatherKind,
 } from "./weather";
 
-import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, scrollCue, type Spot, type WidgetSpot, type Stop } from "./content";
+import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, scrollCue, inside, type Spot, type WidgetSpot, type Stop } from "./content";
 import { createNavigation, type SectionId } from "./navigation";
 import { widgetLifecycle } from "./widgets";
 import { createTransferEstimate, formatGrams } from "./transfer";
@@ -36,6 +36,7 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
     <p class="garden-loading" role="status" hidden>Growing the garden… The trees are getting dressed. One little moment.</p>
     <canvas class="sky sky-front" aria-hidden="true"></canvas>
     ${spotOrder.map((s) => `<div class="hotspot" data-spot="${s}"><a href="#${s}" class="hotspot-title" tabindex="-1">${spotNames[s]}</a></div>`).join("")}
+    <a class="overview-return" href="#work" hidden>Back to all work</a>
   </div>
 
   <main class="chapters">
@@ -117,6 +118,11 @@ document.querySelector<HTMLDivElement>("#app")!.insertAdjacentHTML("beforeend", 
         <button type="button" class="chip" id="plant-mode" aria-pressed="false">Plant by clicking</button>
         <button type="button" class="chip" id="plant-one">Plant one</button>
         <button type="button" class="chip" id="turn">Turn</button>
+        <button type="button" class="chip" id="postcard">Save a postcard</button>
+      </div>
+      <p class="quality-label" id="quality-label">Drawing quality</p>
+      <div class="weather-chips quality-chips" role="group" aria-labelledby="quality-label">
+        ${(["auto", "full", "light"] as const).map((k) => `<button type="button" class="chip" data-quality="${k}" aria-pressed="false">${{ auto: "Auto", full: "Full", light: "Light" }[k]}</button>`).join("")}
       </div>
     </section>
   </div></details>
@@ -237,6 +243,7 @@ reducedQuery.addEventListener("change", (e) => {
   reduced = e.matches;
   paused = reduced;
   syncMotion();
+  if (insideStep !== null) showInside(insideStep);
   if (reading) garden?.setProgress(Number(scrub.value) / 1000, reduced || paused);
   measure();
 });
@@ -339,6 +346,15 @@ const moveEls = new Map(
 );
 const scrub = $<HTMLInputElement>("#scrub");
 const hotspots = $$<HTMLElement>(".hotspot");
+/* A label pointed at or focused lights its building; leaving clears it. */
+for (const h of hotspots) {
+  const on = () => garden?.hover(h.dataset.spot!);
+  const off = () => { if (!h.matches(":hover, :focus-within")) garden?.hover(null); };
+  h.addEventListener("pointerenter", on);
+  h.addEventListener("focusin", on);
+  h.addEventListener("pointerleave", off);
+  h.addEventListener("focusout", () => requestAnimationFrame(off));
+}
 const widgets = $$<HTMLElement>(".widget");
 let stage = -1;
 // The beat whose note is showing; -1 while the garden moves between stages.
@@ -388,10 +404,34 @@ let idle = false;
 function syncStory() {
   const b = beats[beat];
   garden?.highlightPath(b?.path ?? null);
+  // Close on a project, the way back to the whole garden is in view.
+  $(".overview-return").hidden = reading || !(b?.spot === "whisperbook" || b?.spot === "wattch");
   // Idle, the note steps back too, so the garden comes to the centre.
   const side = narrow.matches || idle ? 0 : 1;
-  if (b?.spot) garden?.focus(b.spot, 0.16 * side, 0.04 * side);
-  else garden?.focus(null, wholeShift() * side);
+  const [shift, room] = besideDock(b?.spot ? 0.16 * side : wholeShift() * side, !!b?.spot);
+  if (b?.spot) garden?.focus(b.spot, shift, 0.04 * side);
+  else garden?.focus(null, shift, 0, room);
+}
+$(".dock").addEventListener("toggle", () => { if (!reading && !journey.active) syncStory(); });
+/* With the controls open, the garden moves into the space between the note
+   and the controls, and the whole garden is drawn smaller if that space is
+   too narrow for it. */
+function besideDock(shift: number, spot: boolean): [number, number] {
+  const dock = $<HTMLDetailsElement>(".dock");
+  if (reading || narrow.matches || idle || !dock.open) return [shift, 1];
+  const stage = $("#stage").getBoundingClientRect();
+  const right = dock.getBoundingClientRect().left - stage.left;
+  if (!stage.width || right <= 0 || right >= stage.width) return [shift, 1];
+  const note = chapterEls[beat]?.querySelector<HTMLElement>(".note")?.getBoundingClientRect();
+  const left = note?.width ? Math.max(0, note.right - stage.left) : 0;
+  const free = right - left;
+  if (free <= 0) return [shift, 1];
+  const centred = (left + right) / 2 / stage.width - 0.5;
+  if (spot) return [centred, 1];
+  // The whole garden is about as wide as its frame is tall.
+  const [top, bottom] = gardenBand();
+  const wide = 0.95 * (bottom - top) * stage.height;
+  return [centred, Math.max(0.6, Math.min(1, free / wide))];
 }
 
 /* The dock's widgets come out with the stage. The carbon counter is on the
@@ -460,6 +500,48 @@ function driveLive(stop: Stop) {
   growLive();
   garden?.focus(stop.spot, 0, 0);
 }
+
+/* Inside Whisperbook, in the garden: the pipeline a step at a time, with
+   the pavilion's lamp and rings lit to match. With reduced motion the steps
+   show together, as on the reading page. Leaving the note closes it. */
+let insideStep: number | null = null;
+function showInside(step: number | null, focus = false) {
+  const box = document.querySelector<HTMLElement>('[data-inside="garden"]');
+  if (!box) return;
+  insideStep = step;
+  const open = step !== null;
+  const all = open && reduced;
+  const start = box.querySelector<HTMLButtonElement>(".inside-start")!;
+  const list = box.querySelector<HTMLOListElement>(".inside-steps")!;
+  const controls = box.querySelector<HTMLElement>(".inside-controls")!;
+  start.hidden = open;
+  start.setAttribute("aria-expanded", String(open));
+  list.hidden = !open;
+  controls.hidden = !open;
+  list.querySelectorAll<HTMLLIElement>("li").forEach((li, i) => {
+    li.hidden = !all && i !== step;
+    li.toggleAttribute("aria-current", !all && i === step);
+  });
+  const last = inside.length - 1;
+  box.querySelector<HTMLButtonElement>("[data-inside-back]")!.hidden = all;
+  box.querySelector<HTMLButtonElement>("[data-inside-back]")!.disabled = step === 0;
+  box.querySelector<HTMLButtonElement>("[data-inside-next]")!.hidden = all || step === last;
+  box.querySelector(".inside-count")!.textContent = open && !all ? `Step ${step! + 1} of ${inside.length}` : "";
+  if (open && !all) announce(inside[step!].text);
+  garden?.explain(open ? (all ? last : step) : null);
+  if (focus) (open ? (all || step === last ? box.querySelector<HTMLButtonElement>("[data-inside-close]")! : box.querySelector<HTMLButtonElement>("[data-inside-next]")!) : start).focus({ preventScroll: true });
+}
+document.addEventListener("click", (e) => {
+  const button = (e.target as Element).closest<HTMLButtonElement>('[data-inside="garden"] button');
+  if (!button) return;
+  if (button.matches(".inside-start")) showInside(0, true);
+  else if (button.matches("[data-inside-next]")) showInside(Math.min(inside.length - 1, (insideStep ?? 0) + 1), true);
+  else if (button.matches("[data-inside-back]")) showInside(Math.max(0, (insideStep ?? 0) - 1), true);
+  else if (button.matches("[data-inside-close]")) showInside(null, true);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && insideStep !== null && (e.target as Element).closest?.('[data-inside="garden"]')) showInside(null, true);
+});
 
 /* One widget is mounted at a time, in the active note. */
 const noteWidget = widgetLifecycle();
@@ -574,6 +656,7 @@ function measure() {
       d.classList.toggle("current", i === beat),
     );
     mountNoteWidget();
+    if (insideStep !== null) showInside(null);
     syncStory();
     // A glide passes other sections; the address stays on its destination.
     if (beat >= 0 && !glide) navigation.passive(sectionForBeat(beat));
@@ -641,6 +724,7 @@ addEventListener("resize", () => {
   const changed = reading !== (compact.matches || requestedView === "read");
   if (changed) syncPresentation();
   measureFrames();
+  if (!reading && !journey.active) syncStory();
   // A phone's URL bar showing or hiding changes only the height: the reader stays put.
   if (reading && !wider && !changed) return;
   navigation.go(section, false, false);
@@ -869,14 +953,16 @@ setInterval(() => {
 /* Planting. */
 const MAX_TREES = 24;
 const plantMode = $<HTMLButtonElement>("#plant-mode");
-function counted(n: number) {
+// `planted` is false when the count is only restored, as after a rebuild.
+function counted(n: number, planted = true) {
   $("#tree-count").textContent = `${n} of ${MAX_TREES} trees`;
   if (n >= MAX_TREES) {
     plantMode.disabled = true;
     $<HTMLButtonElement>("#plant-one").disabled = true;
     setPlanting(false);
-    announce("The garden is full. 24 trees planted.");
-  } else announce(`Tree planted. ${n} of ${MAX_TREES}.`);
+    if (planted) announce("The garden is full. 24 trees planted.");
+  } else if (planted) announce(`Tree planted. ${n} of ${MAX_TREES}.`);
+  if (planted) soundscape.planted();
 }
 function setPlanting(on: boolean) {
   plantMode.setAttribute("aria-pressed", String(on));
@@ -893,6 +979,71 @@ $("#turn").addEventListener("click", () => garden?.rotate());
 addEventListener("keydown", (e) => {
   if (e.key === "Escape" && root.classList.contains("planting"))
     setPlanting(false);
+});
+
+/* A postcard of the garden as the visitor has framed it: the sky, the
+   garden and a caption with the portfolio's address, made only when asked
+   and downloaded as a PNG. Nothing is sent anywhere. */
+const postcardButton = $<HTMLButtonElement>("#postcard");
+postcardButton.addEventListener("click", async () => {
+  const failed = () => announce("The postcard couldn’t be made in this browser. The garden is unchanged.");
+  if (!garden) return failed();
+  postcardButton.disabled = true;
+  try {
+    const stage = $("#stage").getBoundingClientRect();
+    const scale = Math.min(2, devicePixelRatio || 1);
+    // Only the band the garden is framed in, as on a phone above its cards.
+    const [top, bottom] = gardenBand();
+    const cropTop = top * stage.height;
+    const width = Math.round(stage.width * scale), height = Math.round((bottom - top) * stage.height * scale);
+    // Tall enough to read on a wide, short phone card too.
+    const band = Math.round(Math.max(height * 0.13, width * 0.09));
+    const card = document.createElement("canvas");
+    card.width = width;
+    card.height = height + band;
+    const ctx = card.getContext("2d");
+    if (!ctx) return failed();
+    const css = getComputedStyle(root);
+    ctx.fillStyle = css.getPropertyValue("--paper").trim() || "#1f4a7a";
+    ctx.fillRect(0, 0, card.width, card.height);
+    const place = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return [(r.left - stage.left) * scale, (r.top - stage.top - cropTop) * scale, r.width * scale, r.height * scale] as const;
+    };
+    ctx.drawImage($<HTMLCanvasElement>(".sky-back"), ...place($(".sky-back")));
+    garden.drawInto(ctx, ...place($("#scene")));
+    ctx.drawImage($<HTMLCanvasElement>(".sky-front"), ...place($(".sky-front")));
+    // The caption, in the page's ink and type, on a band of paper.
+    ctx.fillStyle = css.getPropertyValue("--paper").trim() || "#1f4a7a";
+    ctx.fillRect(0, height, width, band);
+    ctx.fillStyle = css.getPropertyValue("--ink").trim() || "#f4efe4";
+    ctx.direction = root.dir === "rtl" ? "rtl" : "ltr";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    // The caption is set as large as fits the card's width.
+    const caption = translate("A garden I tended in Chakib Belgaid’s living notebook");
+    let size = Math.round(band * 0.3);
+    do ctx.font = `italic ${size}px Newsreader, Georgia, serif`;
+    while (ctx.measureText(caption).width > width * 0.9 && --size > 8);
+    ctx.fillText(caption, width / 2, height + band * 0.38);
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href ?? location.origin;
+    ctx.font = `${Math.round(band * 0.2)}px Newsreader, Georgia, serif`;
+    ctx.fillText(canonical.replace(/^https?:\/\//, "").replace(/\/$/, ""), width / 2, height + band * 0.72);
+    const blob = await new Promise<Blob | null>((resolve) => card.toBlob(resolve, "image/png"));
+    if (!blob) return failed();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "living-notebook-garden.png";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    announce("Your garden postcard is saved.");
+  } catch (error) {
+    console.warn("The postcard could not be made.", error);
+    failed();
+  } finally {
+    postcardButton.disabled = false;
+  }
 });
 
 /* The carbon counter's slip closes like a popover: on Escape, or a press
@@ -926,16 +1077,23 @@ function setIdle(on: boolean) {
   root.dataset.idle = String(on);
   syncStory();
   cancelAnimationFrame(drift);
-  if (on && !(paused || reduced) && stage === 3 && !beats[beat]?.spot) {
-    let last = performance.now();
-    const turn = (now: number) => {
-      garden?.rotateBy(((now - last) / 1000) * 0.03);
-      last = now;
-      drift = requestAnimationFrame(turn);
-    };
-    drift = requestAnimationFrame(turn);
-  }
+  drift = 0;
+  if (on && !(paused || reduced) && stage === 3 && !beats[beat]?.spot) startDrift();
 }
+// The slow turn stops in a hidden tab and picks up where it was on return.
+function startDrift() {
+  let last = performance.now();
+  const turn = (now: number) => {
+    if (document.hidden) { drift = 0; return; }
+    garden?.rotateBy((Math.min(now - last, 50) / 1000) * 0.03);
+    last = now;
+    drift = requestAnimationFrame(turn);
+  };
+  drift = requestAnimationFrame(turn);
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && idle && !drift && !(paused || reduced) && stage === 3 && !beats[beat]?.spot) startDrift();
+});
 function wake() {
   setIdle(false);
   // Pointer moves come many to a frame; the timer is reset at most every 200 ms.
@@ -1032,8 +1190,8 @@ function renderWork(): ComputeWork | null {
   const g = garden?.stats();
   const s = sky?.stats();
   return {
-    cpuMs: (g?.cpuMs ?? 0) + (s?.cpuMs ?? 0),
-    gpuMs: g ? g.gpuMs : null,
+    cpuMs: (g?.cpuMs ?? 0) + (s?.cpuMs ?? 0) + retiredWork.cpuMs,
+    gpuMs: g && g.gpuMs !== null ? g.gpuMs + retiredWork.gpuMs : null,
   };
 }
 function drawCarbon() {
@@ -1323,6 +1481,7 @@ function syncPresentation() {
   // On phones the switch shows only an icon, so its name is kept explicit.
   toggle.setAttribute("aria-label", toggle.textContent);
   if (previous !== reading) {
+    if (insideStep !== null) showInside(null);
     noteWidget.dispose();
     illustration.dispose();
     if (activeIllustration) activeIllustration.open = false;
@@ -1361,6 +1520,8 @@ $$<HTMLAnchorElement>("[data-view]").forEach(a => a.addEventListener("click", e 
 }));
 compact.addEventListener("change", () => {
   const section = navigation.section;
+  // Auto follows the screen in how it draws; what was built stays.
+  garden?.setQuality(qualityNow());
   syncPresentation();
   navigation.go(section, false, false);
   if (!reading || previewEnabled) void loadGarden();
@@ -1395,6 +1556,95 @@ function leaveLiveGarden(message: string) {
   announce(message);
 }
 
+/* Drawing quality. Auto draws phones light and everything else in full; the
+   visitor's choice is remembered on this device. Light changes how the built
+   garden is drawn. A phone builds a lighter garden too, so moving a phone
+   between Full and Light rebuilds it, keeping its trees, turn and place. */
+type QualityChoice = "auto" | Quality;
+const QUALITY_KEY = "notebook:quality";
+const qualityParam = new URL(location.href).searchParams.get("quality");
+let qualityChoice: QualityChoice = qualityParam === "low" || qualityParam === "light" ? "light" : qualityParam === "full" ? "full" : (() => {
+  try {
+    const saved = localStorage.getItem(QUALITY_KEY);
+    return saved === "full" || saved === "light" ? saved : "auto";
+  } catch { return "auto"; }
+})();
+const qualityNow = (): Quality => (qualityChoice === "auto" ? (compact.matches ? "light" : "full") : qualityChoice);
+// ?quality=low keeps asking for the lighter build on any screen.
+const detailFor = (q: Quality) => (q === "light" && (compact.matches || qualityParam === "low") ? "low" : "full");
+// Rendering already done by gardens since replaced, so the visit's total keeps counting.
+const retiredWork = { cpuMs: 0, gpuMs: 0 };
+let rebuilding: Promise<void> | undefined;
+function syncQuality() {
+  $$<HTMLButtonElement>("[data-quality]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.quality === qualityChoice)));
+}
+$$<HTMLButtonElement>("[data-quality]").forEach((b) => b.addEventListener("click", () => {
+  qualityChoice = b.dataset.quality as QualityChoice;
+  try {
+    if (qualityChoice === "auto") localStorage.removeItem(QUALITY_KEY);
+    else localStorage.setItem(QUALITY_KEY, qualityChoice);
+  } catch { /* Remembering is a convenience. */ }
+  syncQuality();
+  void applyQuality();
+}));
+syncQuality();
+async function applyQuality() {
+  if (!garden) return;
+  const quality = qualityNow();
+  if (detailFor(quality) === $("#scene").dataset.detail) {
+    garden.setQuality(quality);
+    return;
+  }
+  await rebuildGarden();
+}
+async function rebuildGarden() {
+  if (rebuilding) return rebuilding;
+  let failed = false;
+  rebuilding = (async () => {
+    const old = garden!;
+    const snapshot = old.snapshot();
+    announce("Redrawing the garden.");
+    const { createGarden } = await import("./scene");
+    const quality = qualityNow();
+    const next = await createGarden($("#scene"), hotspots, detailFor(quality), quality);
+    const work = old.stats();
+    retiredWork.cpuMs += work.cpuMs;
+    retiredWork.gpuMs += work.gpuMs ?? 0;
+    old.dispose();
+    garden = next;
+    counted(garden.restore(snapshot), false);
+    adoptGarden();
+    announce("The garden is redrawn.");
+  })().catch((error) => {
+    // The old garden stays; choosing a quality again tries once more.
+    failed = true;
+    console.warn("The garden could not be rebuilt.", error);
+    announce("The garden could not be redrawn.");
+  }).finally(() => { rebuilding = undefined; });
+  // A quality chosen while rebuilding is applied once it is done.
+  await rebuilding;
+  if (!failed && garden && detailFor(qualityNow()) !== $("#scene").dataset.detail) await rebuildGarden();
+  else garden?.setQuality(qualityNow());
+}
+/* Brings a new garden up to date with the page. */
+function adoptGarden() {
+  if (!garden) return;
+  syncTheme(); syncMotion(); setHour(Number(hourInput.value)); applyWeather(); applySeason();
+  if (journey.active) { driveLive(journey.stop); journey.setLive(previewEnabled); }
+  else if (reading) { garden.setProgress(1, reduced || paused); setGrowth(1); }
+  else {
+    // The meter needs a renderer; contact and speech already work while loading.
+    if (beats[beat]?.widget === "wattch") mountNoteWidget();
+    measure(); syncStory();
+  }
+  if (activeIllustration?.open && activeIllustration.dataset.illustration === "wattch") {
+    illustration.replace(() => mountProjectWidget("wattch", activeIllustration!.querySelector<HTMLElement>("[data-reading-widget]")!));
+  }
+  garden.setPostbox("idle");
+  garden.setNarrating(!!document.querySelector('.play[data-playing="true"]'));
+  measureFrames();
+}
+
 async function loadGarden() {
   if (gardenLoading) return gardenLoading;
   $(".garden-loading").hidden = false;
@@ -1405,8 +1655,8 @@ async function loadGarden() {
     sky = createSky($(".sky-back"), $(".sky-front"));
     syncMotion();
     const { createGarden } = await import("./scene");
-    const quality = compact.matches || new URL(location.href).searchParams.get("quality") === "low" ? "low" : "full";
-    garden = await createGarden($("#scene"), hotspots, quality);
+    const quality = qualityNow();
+    garden = await createGarden($("#scene"), hotspots, detailFor(quality), quality);
     $(".garden-loading").hidden = true;
     $(".scene-fallback").hidden = true;
     $("#scene").addEventListener("garden-context-lost", () => {
@@ -1416,20 +1666,7 @@ async function loadGarden() {
       else announce("Garden graphics unavailable. Portfolio navigation remains available.");
     });
     $("#scene").addEventListener("garden-context-restored", () => $(".scene-fallback").hidden = true);
-    syncTheme(); syncMotion(); setHour(Number(hourInput.value)); applyWeather(); applySeason();
-    if (journey.active) { driveLive(journey.stop); journey.setLive(previewEnabled); }
-    else if (reading) { garden.setProgress(1, reduced || paused); setGrowth(1); }
-    else {
-      // The meter needs a renderer; contact and speech already work while loading.
-      if (beats[beat]?.widget === "wattch") mountNoteWidget();
-      measure(); syncStory();
-    }
-    if (activeIllustration?.open && activeIllustration.dataset.illustration === "wattch") {
-      illustration.replace(() => mountProjectWidget("wattch", activeIllustration!.querySelector<HTMLElement>("[data-reading-widget]")!));
-    }
-    garden.setPostbox("idle");
-    garden.setNarrating(!!document.querySelector('.play[data-playing="true"]'));
-    measureFrames();
+    adoptGarden();
     void startWeather();
   })().catch(error => {
     $(".garden-loading").hidden = true;
@@ -1448,6 +1685,8 @@ async function loadGarden() {
 }
 // scripts/capture-stills.mjs drives the garden through this, in development only.
 if (import.meta.env.DEV) Object.assign(window, { __notebook: { get garden() { return garden; } } });
+// tests/performance.mjs reads the drawing totals in production builds too.
+Object.assign(window, { __notebookStats: () => ({ garden: garden?.stats() ?? null, sky: sky?.stats() ?? null }) });
 
 // Commit enhancement only after the controllers have initialized.
 initEvidence();

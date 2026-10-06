@@ -99,8 +99,10 @@ export function createSky(
     dark = false,
     paused = false,
     time = 0,
-    last = performance.now(),
+    // -1 after the loop has slept: its next frame restarts the clock.
+    last = -1,
     frame = 0,
+    disposed = false,
     dirty = true,
     flash = 0,
     nextFlash = 4;
@@ -224,7 +226,7 @@ export function createSky(
       c.height = Math.round(H * dpr);
     }
     clouds.forEach(buildCloud);
-    dirty = true;
+    invalidate();
   }
   const observer = new ResizeObserver(resize);
   observer.observe(back);
@@ -561,12 +563,42 @@ export function createSky(
   }
   const night = () =>
     clamp(smooth(19.2, 21.5, hour) + (1 - smooth(5, 6.6, hour)));
+  // The weather and the clouds are still easing toward where they are going.
+  function settling() {
+    return (
+      Math.abs(target.cloud - now.cloud) > 0.002 ||
+      Math.abs(target.precip - now.precip) > 0.002 ||
+      Math.abs(target.wind - now.wind) > 0.05 ||
+      Math.abs((target.kind === "fog" ? 1 : 0) - now.fog) > 0.002 ||
+      flash > 0.01 ||
+      clouds.some((c) => Math.abs((now.cloud > c.threshold * 0.95 ? 1 : 0) - c.alpha) > 0.01)
+    );
+  }
+  /* Like the garden's, the loop runs only while there is something to draw:
+     it sleeps in a hidden tab, while paused, and in a still, clear sky, and
+     any change wakes it. */
+  function wake() {
+    if (!frame && !disposed) frame = requestAnimationFrame(loop);
+  }
+  function invalidate() {
+    dirty = true;
+    wake();
+  }
+  const onVisibility = () => {
+    if (!document.hidden) wake();
+  };
+  document.addEventListener("visibilitychange", onVisibility);
   function loop(ts: number) {
-    frame = requestAnimationFrame(loop);
-    const dt = Math.min((ts - last) / 1000, 0.05);
+    frame = 0;
+    if (document.hidden) {
+      last = -1;
+      return;
+    }
+    // The first frame after a sleep starts the clock again instead of jumping.
+    const dt = last < 0 ? 0 : Math.min((ts - last) / 1000, 0.05);
     last = ts;
-    if (document.hidden) return;
     if (paused) {
+      last = -1;
       if (!dirty) return;
       dirty = false;
       // Still frames: settle the weather immediately.
@@ -580,8 +612,11 @@ export function createSky(
       timed(0);
       return;
     }
-    if (!dirty && !needsMotion() && Math.abs(target.cloud - now.cloud) < 0.002)
+    if (!dirty && !needsMotion() && !settling()) {
+      last = -1;
       return;
+    }
+    wake();
     dirty = false;
     time += dt;
     timed(dt);
@@ -594,24 +629,25 @@ export function createSky(
     workMs += performance.now() - start;
     framesDrawn++;
   }
-  frame = requestAnimationFrame(loop);
+  wake();
 
   return {
     setGrowth(g) {
-      if (Math.abs(g - growth) > 0.0005) dirty = true;
+      const moved = Math.abs(g - growth) > 0.0005;
       growth = g;
+      if (moved) invalidate();
     },
     setHour(h) {
       hour = h;
-      dirty = true;
+      invalidate();
     },
     setWeather(w) {
       target = w;
-      dirty = true;
+      invalidate();
     },
     setMotion(value) {
       paused = value;
-      dirty = true;
+      invalidate();
     },
     refresh(isDark) {
       dark = isDark;
@@ -619,13 +655,16 @@ export function createSky(
       paper = hex(css.getPropertyValue("--paper"), paper);
       graphite = hex(css.getPropertyValue("--graphite"), graphite);
       blueprint = hex(css.getPropertyValue("--blueprint"), blueprint);
-      dirty = true;
+      invalidate();
     },
     stats() {
       return { cpuMs: workMs, frames: framesDrawn };
     },
     dispose() {
+      disposed = true;
       cancelAnimationFrame(frame);
+      frame = 0;
+      document.removeEventListener("visibilitychange", onVisibility);
       observer.disconnect();
     },
   };

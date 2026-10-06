@@ -147,6 +147,8 @@ export type Soundscape = {
   /** Plays or stops the garden. Browsers hold sound back until a click, tap
       or key press, so asking to play again from a later gesture retries. */
   setAudible: (on: boolean) => void;
+  /** A short sound for a tree just planted; silent while the garden is. */
+  planted: () => void;
   dispose: () => void;
 };
 
@@ -459,7 +461,9 @@ export function createSoundscape(read: () => SoundState, onHeard?: () => void): 
       // changing pieces at a bar line, from the top.
       if (music > 0.02) {
         const piece = mix.morningPiano > mix.rainPiano ? MORNING : RAIN;
-        if (nextBar < now) {
+        // At or before now: a fresh context starts at 0, and a grace note
+        // a moment before the first bar would fall before the start.
+        if (nextBar <= now) {
           nextBar = now + 0.3;
           barIndex = 0;
         }
@@ -482,7 +486,33 @@ export function createSoundscape(read: () => SoundState, onHeard?: () => void): 
         nextThunder = now + random(18, 45);
       }
     }
-    return { ctx, master, tick };
+    /* A tree planted: a soft thud of soil, then two bright notes rising. It
+       goes straight to the master, so it plays whatever the weather. */
+    function planted(at: number) {
+      const soil = ctx.createBufferSource();
+      soil.buffer = brown;
+      const thud = ctx.createGain();
+      thud.gain.setValueAtTime(0, at);
+      thud.gain.linearRampToValueAtTime(0.5, at + 0.01);
+      thud.gain.setTargetAtTime(0, at + 0.01, 0.05);
+      soil.connect(filter("lowpass", 300, 0.7)).connect(thud).connect(master);
+      soil.start(at, random(0, 4));
+      soil.stop(at + 0.4);
+      [[79, 0.08], [86, 0.2]].forEach(([midi, delay]) => {
+        const t = at + delay;
+        const tone = ctx.createOscillator();
+        tone.type = "sine";
+        tone.frequency.value = 440 * 2 ** ((midi - 69) / 12);
+        const level = ctx.createGain();
+        level.gain.setValueAtTime(0, t);
+        level.gain.linearRampToValueAtTime(0.09, t + 0.008);
+        level.gain.setTargetAtTime(0, t + 0.008, 0.18);
+        tone.connect(level).connect(master);
+        tone.start(t);
+        tone.stop(t + 1.2);
+      });
+    }
+    return { ctx, master, tick, planted };
   }
 
   function setAudible(on: boolean) {
@@ -513,6 +543,10 @@ export function createSoundscape(read: () => SoundState, onHeard?: () => void): 
 
   return {
     setAudible,
+    planted() {
+      if (!audible || engine?.ctx.state !== "running") return;
+      engine.planted(engine.ctx.currentTime + 0.02);
+    },
     dispose() {
       clearTimeout(sleep);
       clearInterval(timer);
