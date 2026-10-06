@@ -146,9 +146,9 @@ const desktop = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.6
 const phone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true };
 
 const scenarios = {
-  'desktop-garden': () => desktopGarden('/'),
+  'desktop-garden': () => desktopGarden('/?view=garden'),
   // The same journey drawn Light (OPTIMIZATION-PLAN.md, item 4).
-  'desktop-garden-light': () => desktopGarden('/?quality=light'),
+  'desktop-garden-light': () => desktopGarden('/?view=garden&quality=light'),
   ...phoneScenarios(),
 };
 async function desktopGarden(url) {
@@ -197,7 +197,7 @@ async function desktopGarden(url) {
 }
 function phoneScenarios() { return {
   async 'phone-journey'() {
-    const page = await newPage(phone, '/');
+    const page = await newPage(phone, '/?view=garden');
     await page.waitForFunction(() => document.querySelector('#scene')?.dataset.progress, {}, { timeout: 30000 });
     await settledShaders(page);
     const cold = { ...(await sceneInfo(page)), tasks: await page.evaluate(() => window.__perf.longtasks) };

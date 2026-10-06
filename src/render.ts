@@ -1,4 +1,4 @@
-import { beats, projects, contactMarkup, scrollCue, insideMarkup } from "./content";
+import { beats, projects, research, contactMarkup, scrollCue, insideMarkup } from "./content";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -17,7 +17,7 @@ export function renderPortfolio() {
     <header class="masthead">
       <a class="owner" href="#intro">Chakib Belgaid</a>
       <nav aria-label="Sections"><a href="#work">Work</a><a href="#about">About</a><a href="#contact">Contact</a></nav>
-      <a class="view-switch script-only" href="?view=read" data-view="read">Read portfolio</a>
+      <a class="view-switch script-only" href="?view=garden" data-view="garden">Explore garden</a>
       <label class="language-picker script-only"><span class="sr-only">Language</span><select data-language aria-label="Language"><option value="en" lang="en" data-no-translate>EN</option><option value="fr" lang="fr" data-no-translate>FR</option><option value="ar" lang="ar" data-no-translate>العربية</option></select></label>
       <div class="read-ruler script-only" aria-hidden="true"><span class="read-fill"></span>${["intro", "work", "about", "contact"].map(id => `<i data-at="${id}"></i>`).join("")}</div>
     </header>
@@ -43,15 +43,23 @@ export function renderPortfolio() {
             <p class="work-copy">${e(workCopy)}</p>
             <p class="stop-line">${e(workCopy.split(". ").slice(0, 2).join(". "))}.</p>
           </div>
-          <nav class="project-shortcuts project-index" aria-label="Selected projects">${Object.entries(projects).map(([id, p], i) => `<a href="#${id}"><span class="index-number">0${i + 1}</span><span class="index-title">${e(p.title)}</span><span class="index-field">${e(p.field)}</span></a>`).join("")}</nav>
+          <nav class="project-shortcuts project-index" aria-label="Selected projects">${Object.entries(projects).map(([id, p], i) => `<a href="#${id}"><span class="index-number">0${i + 1}</span><span class="index-title">${e(p.title)}</span><span class="index-field">${e(p.summary)}</span><span class="index-status">${e(p.availability)}</span></a>`).join("")}</nav>
+          <aside class="research-highlights journey-hidden" aria-labelledby="research-title">
+            <h3 id="research-title">Open-source research</h3>
+            <p>My energy-measurement work also lives in the PowerAPI organization. These links lead to the canonical repositories.</p>
+            <ul>${research.map(p => `<li><a href="${p.url}" target="_blank" rel="noopener noreferrer">${e(p.title)} ↗</a><span>${e(p.summary)}</span><small>${e(p.status)}</small></li>`).join("")}</ul>
+          </aside>
         </div>
         ${Object.entries(projects).map(([id, p]) => `
           <article class="reading-project" id="${id}" data-stop="${id}" aria-labelledby="${id}-title">
             <div class="project-copy">
               <div class="stop-card"><p class="eyebrow">${e(p.field)}</p><h3 id="${id}-title" tabindex="-1">${e(p.title)}</h3>
-                <p class="reading-lede">${e(p.lede)}</p></div>
+                <p class="reading-lede">${e(p.summary)}</p><p class="project-availability">${e(p.availability)}</p></div>
               <div class="stop-detail" data-detail="${id}"><p>${e(p.intro)}</p>
-                <h4>Project status</h4><p>${e(p.status)}</p><h4>Outcome</h4><p>${e(p.outcome)}</p><h4>Scope and limits</h4><p>${e(p.limits)}</p>
+                <h4>Project status</h4><p>${e(p.status)}</p>
+                <div class="project-access">${p.access.map(a => `<a href="${a.url}" target="_blank" rel="noopener noreferrer">${e(a.label)}</a>`).join("")}</div>
+                <p class="release-note">${e(p.releaseNote)}</p>
+                <h4>Outcome</h4><p>${e(p.outcome)}</p><h4>Performance evidence</h4><p>${e(p.performance)}</p><h4>Scope and limits</h4><p>${e(p.limits)}</p>
                 <h4>What I built</h4><p>${e(p.built)}</p>${id === "whisperbook" ? insideMarkup("page", "h4", false) : ""}<h4>The decision that shaped it</h4><p>${e(p.decision)}</p>
                 <p class="project-tech">${e(p.tech.join(" · "))}</p><a class="source-link" href="${p.url}" target="_blank" rel="noopener noreferrer">Read ${e(p.title)} on GitHub ↗</a>
                 <details class="reading-illustration script-only" data-illustration="${id}"><summary>${id === "whisperbook" ? "Hear a passage in your browser" : "Measure what drawing this page costs"}</summary><p>${e(id === "whisperbook" ? "Hear an excerpt in your browser’s local voice. Whisperbook uses its own on-device narration on Android." : "Watch what drawing this page costs your device: CPU and GPU time, and the estimated carbon of that work. Enable the garden preview to measure it.")}</p><div data-reading-widget="${id}"></div></details>

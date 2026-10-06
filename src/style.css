@@ -1397,6 +1397,19 @@ button {
 .index-title { font-size: 1.25rem; font-weight: 550; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 0.18em; }
 .project-index a:hover .index-title { text-decoration-color: var(--blueprint); }
 .index-field { grid-column: 2; font-size: 0.9375rem; font-style: italic; color: var(--muted); }
+.index-status { grid-column: 2; font-size: 0.875rem; color: var(--blueprint); margin-top: 0.25rem; }
+.project-availability { display: inline-block; font-size: 0.875rem; border: 1px solid var(--hairline); border-radius: 0.3rem; padding: 0.2rem 0.6rem; margin-block: 0.7rem; }
+.project-access { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; margin-top: 0.6rem; }
+.project-access a { display: inline-flex; align-items: center; min-height: 2.75rem; font-weight: 600; }
+.release-note { font-size: 0.9375rem; color: var(--muted); }
+.research-highlights { margin-top: 2rem; }
+.portfolio .research-highlights h3 { font-size: 1.35rem; margin-bottom: 0.5rem; }
+.research-highlights > p { font-size: 1rem; color: var(--muted); }
+.research-highlights ul { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin-top: 0.8rem; }
+.research-highlights li { display: flex; flex-direction: column; border-top: 1px solid var(--hairline); font-size: 1rem; }
+.research-highlights a { display: flex; align-items: center; min-height: 2.75rem; font-weight: 600; }
+.research-highlights small { margin-top: 0.4rem; color: var(--muted); }
+@media (max-width: 600px) { .research-highlights ul { grid-template-columns: 1fr; gap: 1rem; } }
 .garden-preview { min-width: 0; }
 .preview-frame { position: relative; width: 100%; aspect-ratio: 8/5; border-radius: 1rem; overflow: hidden; background: #24486e; }
 .static-garden { display: block; width: 100%; height: 100%; object-fit: contain; }

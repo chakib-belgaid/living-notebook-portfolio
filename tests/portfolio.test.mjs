@@ -20,7 +20,10 @@ async function page(options = {}) {
   return p;
 }
 async function ready(p, path = '') {
-  await p.goto(base + '/' + path);
+  // These fixtures exercise the opt-in garden (or an explicitly requested reader).
+  const url = new URL(base + '/' + path);
+  if (!url.searchParams.has('view')) url.searchParams.set('view', 'garden');
+  await p.goto(url.href);
   await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
 }
 async function go(p, id) {
@@ -60,7 +63,7 @@ test('every journey stop and its details are in the served page', async () => {
   assert.match(html, /class="static-garden"[^>]*loading="lazy"/);
 });
 
-test('desktop entry, project links, wheel chaining and clean landmarks', async () => {
+test('opt-in desktop garden, project links, wheel chaining and clean landmarks', async () => {
   const p = await page();
   try {
     await ready(p);
@@ -72,10 +75,14 @@ test('desktop entry, project links, wheel chaining and clean landmarks', async (
     assert.match(p.url(), /#whisperbook$/);
     assert.equal(await p.locator('.chapter:not(.active):not([inert])').count(), 0);
     assert.equal(await p.locator('.chapter.active h2').innerText(), 'Whisperbook');
+    const note = p.locator('.chapter.active .note');
+    await note.hover();
+    // A wheel event chains once the note has reached its own bottom. Whether
+    // this longer project note overflows depends on font/layout completion.
+    await note.evaluate(e => { e.scrollTop = e.scrollHeight; });
     const before = await p.evaluate(() => scrollY);
-    await p.locator('.chapter.active .note').hover();
     await p.mouse.wheel(0, 800);
-    await p.waitForTimeout(500);
+    await p.waitForFunction(before => scrollY > before, before);
     assert.ok(await p.evaluate(() => scrollY) > before, 'wheel over a note advances the document');
     await snap(p, output + '/desktop-story.png');
     healthy(p);
@@ -352,7 +359,7 @@ test('on phones the live garden grows with the scroll, and ?view=stills keeps th
     await p.waitForFunction(()=>!!document.querySelector('.journey[data-live] #scene canvas'), undefined, {timeout:15000});
     assert.equal(await p.locator('html').getAttribute('data-journey'),'true');
     assert.equal(await p.locator('#stage').isVisible(),true);
-    assert.doesNotMatch(p.url(),/view=/);
+    assert.match(p.url(),/view=garden/);
     // Halfway between two stops the garden is between their stages, and no card shows.
     const between = await p.evaluate(()=>{const t=document.querySelector('[data-stop="blueprint"]').getBoundingClientRect().top+scrollY;scrollTo(0,t-innerHeight*0.7);return t;});
     await p.waitForTimeout(300);
@@ -383,7 +390,9 @@ test('WebGL unavailable, context loss/restoration and offline weather preserve n
     assert.equal(await failed.locator('.chapter.active .note-email a').isVisible(),true);
     healthy(failed);
   } finally {await failed.context().close();}
-  const p=await page();
+  // UTC does not identify a city and correctly skips the weather request.
+  // Use a named city time zone so the aborted request exercises offline weather.
+  const p=await page({timezoneId:'Europe/Paris'});
   try {
     await ready(p,'#contact');
     await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
@@ -664,7 +673,7 @@ test('on phones a live garden that cannot be drawn gives way to the stills and i
     });
     await ready(p);
     await p.waitForFunction(()=>document.querySelector('#announce').textContent.includes('can’t be drawn'), undefined, {timeout:10000});
-    assert.doesNotMatch(p.url(), /view=/);
+    assert.match(p.url(), /view=stills/);
     assert.equal(await p.locator('html').getAttribute('data-preview'), 'false');
     assert.equal(await p.locator('.journey-toast').isVisible(), true, 'the header shows it too');
     healthy(p);
@@ -717,7 +726,6 @@ test('garden sound is on by default, starts on the first gesture, follows the pa
   try {
     await p.addInitScript(countAudio);
     await ready(p, '#contact');
-    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
     assert.deepEqual(await audioState(p), [], 'no audio engine before the visitor interacts');
     assert.equal(await p.locator('html').getAttribute('data-sound'), 'waiting');
     assert.equal(await p.locator('#sound-toggle').getAttribute('aria-pressed'), 'false', 'nothing is heard yet');
@@ -728,6 +736,7 @@ test('garden sound is on by default, starts on the first gesture, follows the pa
     await p.waitForFunction(() => window.audioContexts[0]?.state === 'running');
     await p.waitForFunction(() => document.documentElement.dataset.sound === 'playing');
     assert.equal(await hint.isVisible(), false, 'the note goes once the garden plays');
+    await p.waitForFunction(()=>document.querySelector('#scene').dataset.progress==='1.000');
     const stop = p.getByRole('button',{name:'Stop garden sounds',exact:true});
     assert.equal(await stop.getAttribute('aria-pressed'), 'true');
     await p.getByRole('button',{name:'Pause motion',exact:true}).click();
@@ -803,7 +812,11 @@ test('left alone, the garden view quiets its controls and note, and Bloom slowly
     const turned = Number(await p.locator('#scene').getAttribute('data-rotation'));
     assert.ok(Number(await p.locator('#scene').getAttribute('data-shift')) > 0.05, 'the garden sits beside the note');
     await p.waitForFunction(() => document.documentElement.dataset.idle === 'true', undefined, {timeout: 25000});
-    await p.waitForTimeout(2500);
+    await p.waitForFunction(turned =>
+      Math.abs(Number(document.querySelector('#scene').dataset.shift)) < 0.01 &&
+      Number(document.querySelector('#scene').dataset.rotation) > turned + 0.02 &&
+      getComputedStyle(document.querySelector('.ruler')).opacity === '0' &&
+      getComputedStyle(document.querySelector('.chapter.active .note')).opacity === '0', turned);
     assert.ok(Math.abs(Number(await p.locator('#scene').getAttribute('data-shift'))) < 0.01, 'idle, the garden is centred');
     assert.equal(await p.locator('.ruler').evaluate(e => getComputedStyle(e).opacity), '0');
     assert.equal(await p.locator('.chapter.active .note').evaluate(e => getComputedStyle(e).opacity), '0', 'the note steps back too');
