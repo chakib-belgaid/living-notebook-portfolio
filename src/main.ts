@@ -408,8 +408,30 @@ function syncStory() {
   $(".overview-return").hidden = reading || !(b?.spot === "whisperbook" || b?.spot === "wattch");
   // Idle, the note steps back too, so the garden comes to the centre.
   const side = narrow.matches || idle ? 0 : 1;
-  if (b?.spot) garden?.focus(b.spot, 0.16 * side, 0.04 * side);
-  else garden?.focus(null, wholeShift() * side);
+  const [shift, room] = besideDock(b?.spot ? 0.16 * side : wholeShift() * side, !!b?.spot);
+  if (b?.spot) garden?.focus(b.spot, shift, 0.04 * side);
+  else garden?.focus(null, shift, 0, room);
+}
+$(".dock").addEventListener("toggle", () => { if (!reading && !journey.active) syncStory(); });
+/* With the controls open, the garden moves into the space between the note
+   and the controls, and the whole garden is drawn smaller if that space is
+   too narrow for it. */
+function besideDock(shift: number, spot: boolean): [number, number] {
+  const dock = $<HTMLDetailsElement>(".dock");
+  if (reading || narrow.matches || idle || !dock.open) return [shift, 1];
+  const stage = $("#stage").getBoundingClientRect();
+  const right = dock.getBoundingClientRect().left - stage.left;
+  if (!stage.width || right <= 0 || right >= stage.width) return [shift, 1];
+  const note = chapterEls[beat]?.querySelector<HTMLElement>(".note")?.getBoundingClientRect();
+  const left = note?.width ? Math.max(0, note.right - stage.left) : 0;
+  const free = right - left;
+  if (free <= 0) return [shift, 1];
+  const centred = (left + right) / 2 / stage.width - 0.5;
+  if (spot) return [centred, 1];
+  // The whole garden is about as wide as its frame is tall.
+  const [top, bottom] = gardenBand();
+  const wide = 0.95 * (bottom - top) * stage.height;
+  return [centred, Math.max(0.6, Math.min(1, free / wide))];
 }
 
 /* The dock's widgets come out with the stage. The carbon counter is on the
@@ -702,6 +724,7 @@ addEventListener("resize", () => {
   const changed = reading !== (compact.matches || requestedView === "read");
   if (changed) syncPresentation();
   measureFrames();
+  if (!reading && !journey.active) syncStory();
   // A phone's URL bar showing or hiding changes only the height: the reader stays put.
   if (reading && !wider && !changed) return;
   navigation.go(section, false, false);

@@ -28,8 +28,8 @@ export interface Garden {
   setHour: (hour: number) => void;
   /** Cloud cover and rain or snow, both 0–1. Clouds soften the sun and its shadows; snow settles on the foliage and terraces. */
   setWeather: (cloud: number, precip: number, snowing?: boolean) => void;
-  /** Glide the camera to a named spot, or back to the whole garden. Shift moves the garden on screen as a fraction of the view. */
-  focus: (spot: string | null, shiftX?: number, shiftY?: number) => void;
+  /** Glide the camera to a named spot, or back to the whole garden. Shift moves the garden on screen as a fraction of the view; `room` below 1 draws it smaller, to fit a narrower space. */
+  focus: (spot: string | null, shiftX?: number, shiftY?: number, room?: number) => void;
   /** The band of the view the garden is framed in, top and bottom as fractions of the container's height (0–1). The camera eases to a new frame. */
   frame: (top: number, bottom: number) => void;
   /** The visitor's own zoom, 1–4x, multiplied by `factor`. A point (relative to the container) stays under the fingers; without one the view zooms about its centre. */
@@ -3389,7 +3389,7 @@ export async function createGarden(
     dirty = true;
   // What the materials and the camera were last set from (see render).
   const styled = { progress: NaN, snow: NaN, fog: NaN, night: NaN, shadow: NaN, stale: true };
-  const framed = new Float64Array(18).fill(NaN);
+  const framed = new Float64Array(19).fill(NaN);
   /* The loop runs only while there is something to draw. It stops off screen,
      in a hidden tab, and once a paused or unfinished garden has settled; any
      change wakes it. */
@@ -3444,6 +3444,9 @@ export async function createGarden(
     focusZoomGoal = 0.4,
     shift = new T.Vector2(),
     shiftGoal = new T.Vector2();
+  // How much of its usual size the garden is drawn at, to fit beside the controls.
+  let room = 1,
+    roomGoal = 1;
   // The band the garden is framed in: top and bottom, as fractions.
   const view = new T.Vector2(0, 1),
     viewGoal = new T.Vector2(0, 1);
@@ -3621,14 +3624,14 @@ export async function createGarden(
   // updated only when one of its inputs changes.
   let drawnShown = -1;
   const look = new T.Vector3();
-  const frameInputs = new Float64Array(18);
+  const frameInputs = new Float64Array(19);
   function cameraMoved(drawn: number) {
     const k = frameInputs;
     k[0] = width; k[1] = height; k[2] = view.x; k[3] = view.y;
     k[4] = shift.x; k[5] = shift.y; k[6] = focusAmount; k[7] = focusZoom;
     k[8] = userZoom; k[9] = pan.x; k[10] = pan.y; k[11] = focusPoint.x;
     k[12] = focusPoint.y; k[13] = focusPoint.z; k[14] = progress; k[15] = drawn;
-    k[16] = rotation; k[17] = renderer.getPixelRatio();
+    k[16] = rotation; k[17] = renderer.getPixelRatio(); k[18] = room;
     let moved = false;
     for (let i = 0; i < k.length; i++)
       if (k[i] !== framed[i]) {
@@ -3682,6 +3685,7 @@ export async function createGarden(
       Math.abs(focusZoomGoal - focusZoom) > 0.0005 ||
       Math.abs(fogTarget - fogAmount) > 0.002 ||
       shift.distanceTo(shiftGoal) > 0.0005 ||
+      Math.abs(roomGoal - room) > 0.0005 ||
       view.distanceTo(viewGoal) > 0.0005 ||
       Math.abs(userZoomGoal - userZoom) > 0.0005 ||
       pan.distanceTo(panGoal) > 0.0005 ||
@@ -3725,11 +3729,13 @@ export async function createGarden(
     // than sliding over from the centre.
     if (firstRender) {
       shift.copy(shiftGoal);
+      room = roomGoal;
       view.copy(viewGoal);
     }
     focusAmount = lerp(focusAmount, focusGoal, ease);
     focusZoom = lerp(focusZoom, focusZoomGoal, ease);
     shift.lerp(shiftGoal, ease);
+    room = lerp(room, roomGoal, ease);
     view.lerp(viewGoal, ease);
     const quick = reduced ? 1 : Math.min(dt * 14, 1);
     userZoom = lerp(userZoom, userZoomGoal, quick);
@@ -3870,7 +3876,7 @@ export async function createGarden(
       const band = Math.max(0.05, view.y - view.x);
       const aspect = width / (height * band);
       const span = gardenSpan(aspect);
-      const half = span / 2 / (1 + focusAmount * focusZoom) / userZoom;
+      const half = span / 2 / (1 + focusAmount * focusZoom) / userZoom / room;
       const full = half / band;
       camera.left = -half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
       camera.right = half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
@@ -4147,7 +4153,7 @@ export async function createGarden(
       panGoal.set(0, 0);
       invalidate();
     },
-    focus(spot, shiftX = 0, shiftY = 0) {
+    focus(spot, shiftX = 0, shiftY = 0, roomX = 1) {
       if (spot && points[spot]) {
         const room = rooms[spot];
         focusTarget
@@ -4158,6 +4164,7 @@ export async function createGarden(
         focusZoomGoal = room?.zoom ?? 0.4;
       } else focusGoal = 0;
       shiftGoal.set(shiftX, shiftY);
+      roomGoal = roomX;
       invalidate();
     },
     stats() {
