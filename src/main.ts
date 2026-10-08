@@ -147,7 +147,7 @@ let hourNow = 13;
 let nightNow = 0;
 function setGrowth(growth: number) {
   growthNow = growth;
-  sky?.setGrowth(growth);
+  sky?.setGrowth(growth, reduced || paused);
 }
 const compact = matchMedia("(max-width: 899px), (max-height: 599px)");
 let reading = true;
