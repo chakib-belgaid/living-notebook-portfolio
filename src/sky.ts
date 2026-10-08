@@ -5,7 +5,8 @@ import { moonPhase, presets, type Weather } from "./weather";
    `growth` uses the same 0–1 scale as the scene. */
 
 export interface Sky {
-  setGrowth: (g: number) => void;
+  /** Eases toward `g` at the garden's rate, or jumps there when `immediate`. */
+  setGrowth: (g: number, immediate?: boolean) => void;
   setHour: (h: number) => void;
   setWeather: (w: Weather) => void;
   setMotion: (paused: boolean) => void;
@@ -95,6 +96,7 @@ export function createSky(
     H = 1,
     dpr = 1;
   let growth = 0,
+    growthGoal = 0,
     hour = 13,
     dark = false,
     paused = false,
@@ -566,6 +568,7 @@ export function createSky(
   // The weather and the clouds are still easing toward where they are going.
   function settling() {
     return (
+      Math.abs(growthGoal - growth) > 0.0005 ||
       Math.abs(target.cloud - now.cloud) > 0.002 ||
       Math.abs(target.precip - now.precip) > 0.002 ||
       Math.abs(target.wind - now.wind) > 0.05 ||
@@ -601,7 +604,8 @@ export function createSky(
       last = -1;
       if (!dirty) return;
       dirty = false;
-      // Still frames: settle the weather immediately.
+      // Still frames: settle the growth and the weather immediately.
+      growth = growthGoal;
       now.cloud = target.cloud;
       now.precip = target.precip;
       now.wind = target.wind;
@@ -619,6 +623,9 @@ export function createSky(
     wake();
     dirty = false;
     time += dt;
+    // Growth eases at the garden's rate, so the sky and the garden fill in
+    // together rather than the sky stepping with each notch of a wheel.
+    growth += (growthGoal - growth) * Math.min(dt * 7, 1);
     timed(dt);
   }
   let workMs = 0,
@@ -632,9 +639,10 @@ export function createSky(
   wake();
 
   return {
-    setGrowth(g) {
-      const moved = Math.abs(g - growth) > 0.0005;
-      growth = g;
+    setGrowth(g, immediate = false) {
+      const moved = Math.abs(g - growthGoal) > 0.0005;
+      growthGoal = g;
+      if (immediate) growth = g;
       if (moved) invalidate();
     },
     setHour(h) {
