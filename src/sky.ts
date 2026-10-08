@@ -640,7 +640,8 @@ export function createSky(
 
   return {
     setGrowth(g, immediate = false) {
-      const moved = Math.abs(g - growthGoal) > 0.0005;
+      // Against what is drawn, so a sleeping sky still wakes for many small steps.
+      const moved = Math.abs(g - growth) > 0.0005;
       growthGoal = g;
       if (immediate) growth = g;
       if (moved) invalidate();
