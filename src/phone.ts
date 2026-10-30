@@ -53,6 +53,7 @@ export type Journey = {
 };
 
 const details: Partial<Record<StopName, { key: string; title: string; text: string; label?: string }>> = {
+  build: { key: "recent", title: "Recent projects and experiments", text: "View recent projects", label: "View recent projects and experiments" },
   blueprint: { key: "about", title: "Background", text: "View background", label: "View details about my background" },
   whisperbook: { key: "whisperbook", title: "Whisperbook", text: "View project", label: "View details about Whisperbook" },
   wattch: { key: "wattch", title: "Wattch Core", text: "View project", label: "View details about Wattch Core" },

@@ -1,3 +1,4 @@
+import { recentWorkMarkup, practiceMarkup } from "./recent.ts";
 import { beats, projects, research, contactMarkup, scrollCue, insideMarkup } from "./content";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -44,6 +45,7 @@ export function renderPortfolio() {
             <p class="stop-line">${e(workCopy.split(". ").slice(0, 2).join(". "))}.</p>
           </div>
           <nav class="project-shortcuts project-index" aria-label="Selected projects">${Object.entries(projects).map(([id, p], i) => `<a href="#${id}"><span class="index-number">0${i + 1}</span><span class="index-title">${e(p.title)}</span><span class="index-field">${e(p.summary)}</span><span class="index-status">${e(p.availability)}</span></a>`).join("")}</nav>
+          <div class="stop-detail" data-detail="recent">${recentWorkMarkup()}</div>
           <aside class="research-highlights journey-hidden" aria-labelledby="research-title">
             <h3 id="research-title">Open-source research</h3>
             <p>My energy-measurement work also lives in the PowerAPI organization. These links lead to the canonical repositories.</p>
@@ -73,6 +75,7 @@ export function renderPortfolio() {
       <section class="reading-section" id="about" data-stop="blueprint" aria-labelledby="about-title">
         <div class="stop-card"><p class="eyebrow">Current work and background</p><h2 id="about-title" tabindex="-1">${e(beats[1].title)}</h2></div>
         <div class="stop-detail" data-detail="about"><p>${e(beats[1].copy)}</p>
+          ${practiceMarkup()}
           <ol class="career-list">${career.map(b => `<li><p class="eyebrow">${e(b.label!)}</p><h3>${role(b.title)}</h3><p>${e(b.copy)}</p></li>`).join("")}</ol>
         </div>
       </section>

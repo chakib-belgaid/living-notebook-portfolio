@@ -1,3 +1,4 @@
+import { recentWorkMarkup, practiceMarkup } from "./recent.ts";
 export type Spot = "whisperbook" | "wattch" | "about" | "contact";
 
 export const projects = {
@@ -48,7 +49,7 @@ export const projects = {
     intro:
       "Wattch Core helps developers bring machine energy data into their workflow. A Rust daemon reads Linux hardware counters and makes the raw trace available to command-line, Python, and VS Code tools.",
     built:
-      "I built the boundary between privileged measurement and everyday tools: the daemon, typed protocol, capture and validation commands, replayable traces, Python client, and Energy Tests view in VS Code.",
+      "I designed the acquisition boundary, protocol, and validation workflow, and developed the implementation with AI coding assistance. The Python client includes a pyJoules-compatible API, a profiler with explicitly labeled time-share attribution, and Energy Tests in VS Code.",
     decision:
       "I wanted a result you could inspect later. The daemon collects data; clients interpret it. Raw traces remain replayable, and deterministic test data is marked as synthetic rather than presented as a hardware reading.",
     tech: ["Rust", "Linux RAPL", "Python", "VS Code"],
@@ -203,6 +204,7 @@ export const beats: Beat[] = [
   {
     stage: 1,
     title: "I start with the question",
+    body: practiceMarkup(),
     copy: "Can a phone narrate a book without uploading it? What can an energy trace actually tell us? I work from questions like these through the interface, model or measurement system they need. I like making the whole thing usable, then checking whether it does what I claim.",
     hint: "The tower holds the path so far, from the ground up.",
   },
@@ -210,7 +212,7 @@ export const beats: Beat[] = [
     stage: 1,
     label: "2014–2018",
     title: "Co-founder and CTO, Funecs",
-    copy: "I co-founded a serious-games advertising startup and led its product, engineering, and client delivery.",
+    copy: "I co-founded a serious-games advertising startup, led six employees and two interns, and delivered two Unity games after winning Ooredoo T-Start in 2014. Our 2016 national campaign attracted more than 300,000 unique subscriber numbers.",
     path: 0,
   },
   {
@@ -223,8 +225,8 @@ export const beats: Beat[] = [
   {
     stage: 1,
     label: "2022–2024",
-    title: "Research engineer, Qarnot Computing and Inria",
-    copy: "I helped turn energy-measurement research into working infrastructure, including a PowerAPI deployment across more than 100 computing nodes.",
+    title: "Research engineer, Inria · ANR project with Qarnot Computing",
+    copy: "At Inria, on an ANR project with Qarnot Computing as the industrial partner, I contributed to deploying PowerAPI on Qarnot’s infrastructure and reduced its binary size by roughly 300×.",
     body: researchLinks,
     path: 2,
   },
@@ -232,13 +234,13 @@ export const beats: Beat[] = [
     stage: 1,
     label: "2024–now",
     title: "Lead AI engineer, MCQ Scan",
-    copy: "I work across agent workflows, model optimization, APIs, interfaces, and deployment to bring applied AI into production use.",
+    copy: "I lead a two-person technical team under the CTO, across multi-agent workflows, APIs, interfaces, and deployment. A dependency graph, smaller-model routing, and caching reduced end-to-end workflow processing time by 60% in internal measurements.",
     path: 3,
   },
   {
     stage: 2,
     title: "The boundaries matter",
-    body: `<p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a></p>`,
+    body: `${recentWorkMarkup()}<p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a></p>`,
     copy: "An offline promise should be enforced by the app. An energy claim should lead back to its source data. Those choices shape the systems I build as much as the screens you can see.",
   },
   ...projectBeats("whisperbook"),

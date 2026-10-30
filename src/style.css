@@ -1708,3 +1708,14 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 @media (prefers-reduced-motion: reduce) {
   .inside-steps li[aria-current] { animation: none; }
 }
+
+/* Recent work shares the notebook typography and remains readable in garden sheets. */
+.recent-work { margin-block: 2rem; }
+.recent-grid { display: grid; gap: 1.5rem; }
+.recent-card { border-top: 1px solid var(--hairline); padding-top: 1rem; min-width: 0; }
+.recent-card h4 { margin: 0.3rem 0 0.6rem; font-size: 1.25rem; }
+.recent-card p, .practice p { font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
+.recent-card .eyebrow, .recent-evidence, .recent-intro { color: var(--muted); }
+.recent-card a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+.practice { margin-block: 1.5rem; }
+@media (min-width: 1000px) { .portfolio .recent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

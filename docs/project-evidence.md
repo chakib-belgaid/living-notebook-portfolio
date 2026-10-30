@@ -1,5 +1,25 @@
 # Project presentation evidence
 
+## October 2026 content refresh
+
+Updated against the owner's 30 October 2026 dossier de compétences, accompanying technology clarifications, and the current public project READMEs. These are evidence checks, not fresh device benchmarks.
+
+- BP Log: [public implementation and evaluation](https://github.com/chakib-belgaid/bp-tracker). Distinguish 91% whole-reading accuracy on 55 development photos from 99.5% digit accuracy on 187 held-out digits. One monitor only; the full-reading set informed pipeline development. The reported 268 ms phone median covers three runs on Android 10.
+- Store Chat: Llama 3.1 8B LoRA, local vLLM, evaluation and integration of LM Format Enforcer (not an original custom sampler). Internal results are 97% structurally valid and enum-compliant requests and 95% semantic accuracy per attribute, not 100% schema success.
+- MCQ Scan: 60% is an internal end-to-end processing-time reduction from dependency-aware parallelism, smaller-model routing and caching; it is not an isolated model-inference benchmark.
+- AgentDiet: concept, Python/FastAPI authorization demonstrator, technical proposal, market analysis, budget and project plan; 2026 Hyper Open X grant financed by France 2030. MCP/A2A integration is the target, not a claimed production deployment.
+- [Whispbook web studio](https://github.com/chakib-belgaid/whispbook): current README explicitly says the separate model-based annotation provider is not wired into the app. Keep the LoRA experiment separate from current studio features and from Whisperbook Android.
+- [Wattch Core](https://github.com/chakib-belgaid/wattch-core): public acquisition code reviewed here contains Linux RAPL and synthetic backends. Do not advertise Apple powermetrics support from the dossier alone. The Python profiler's time-share attribution is an estimate, not direct process energy measurement. The Rust implementation was developed with AI coding assistance; it does not establish Rust expertise equivalent to Python.
+- [Pocket TTS benchmark](https://github.com/chakib-belgaid/pocket-tts-android-benchmark): pinned English INT8 conversion, OnePlus 6T / Android 11 / CPU / two threads, one observed run per setting. Not a benchmark of Whisperbook or of the latest multilingual model.
+- [Speculative decoding with MLX](https://github.com/chakib-belgaid/speculative-decoding-mlx): no speedup in the recorded protocol. Forty unique samples; model loading included in per-call timing; short outputs. Do not present this as warmed-up production-serving performance.
+- Z-Image-Turbo Android: described as personal experimental work from the October dossier; no public source URL verified. Do not infer end-to-end speedup from single-block NPU/GPU timings.
+- Inria / Qarnot: Inria research role on an ANR project with Qarnot as industrial partner; approximately 300× smaller PowerAPI binary, not a blanket container-size claim.
+- Funecs: co-founder and CTO, 2014–2018; Ooredoo T-Start 2014; 2016 campaign with more than 300,000 unique participating subscriber numbers, not verified contract conversions. Engineering degree: 2017.
+
+Legacy case studies and CVs are maintained in `public/` so future deployments preserve these corrections. Legacy case studies are static HTML to prevent the old JavaScript bundle from restoring superseded claims. PDF editions are regenerated with `python scripts/render-public-resumes.py` (ReportLab required). The old `/live` landing pages lead to the maintained portfolio.
+
+The dated checks below remain historical evidence for distribution and benchmark limitations.
+
 Checked against the public upstream repositories on 6 October 2026. These are documentation and distribution checks, not hands-on Android or hardware performance tests.
 
 ## Distribution
