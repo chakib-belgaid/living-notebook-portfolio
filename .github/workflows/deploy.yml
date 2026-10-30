@@ -53,7 +53,8 @@ jobs:
           # The verify job waits for the live site to serve this file.
           printf '%s\n' "$SOURCE_SHA" > dist/version.txt
           # Preserve existing case studies, evidence assets, and resume URLs.
-          rsync -a dist/ .pages-deploy/
+          # Compare contents: checkout and build can share a timestamp and size.
+          rsync -a --checksum dist/ .pages-deploy/
           cat > .pages-deploy/README.md <<EOF
           # Chakib Belgaid — personal website
 
