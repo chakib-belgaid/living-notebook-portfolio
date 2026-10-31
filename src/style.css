@@ -1612,13 +1612,13 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 }
 
 .masthead { top: 0; }
-.reading-section, .reading-project { scroll-margin-top: calc(var(--header-clearance, 9rem) + 1rem); }
+.reading-section, .reading-project, .recent-card[id] { scroll-margin-top: calc(var(--header-clearance, 9rem) + 1rem); }
 :root[data-view="read"] .ruler-ticks { display: none; }
 .portfolio { overflow-wrap: anywhere; }
 .project-copy, .reading-proof, .career-list li { min-width: 0; }
 @media (max-height: 450px) {
   .masthead { position: relative; }
-  .reading-section, .reading-project { scroll-margin-top: 1rem; }
+  .reading-section, .reading-project, .recent-card[id] { scroll-margin-top: 1rem; }
 }
 @media print {
   :root { --paper: #fff !important; --ink: #162536 !important; --muted: #37495b !important; }
@@ -1718,4 +1718,10 @@ summary { cursor: pointer; min-height: 2.75rem; align-content: center; }
 .recent-card .eyebrow, .recent-evidence, .recent-intro { color: var(--muted); }
 .recent-card a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .practice { margin-block: 1.5rem; }
+/* A garden region's note lists the projects its building stands for, in the card style. */
+.region-entry { border-top: 1px solid var(--hairline); padding-top: 1rem; margin-top: 1rem; min-width: 0; }
+.region-entry h3 { margin: 0.3rem 0 0.6rem; font-size: 1.25rem; }
+.region-entry p { font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
+.region-entry .eyebrow { color: var(--muted); }
+.region-entry a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 @media (min-width: 1000px) { .portfolio .recent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

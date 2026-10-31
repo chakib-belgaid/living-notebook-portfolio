@@ -54,6 +54,9 @@ const nearWater: Record<Spot | "garden", number> = {
   whisperbook: 0.45,
   wattch: 0.9,
   contact: 0.95,
+  // The tiles beside Mansourah, across the garden from the canal.
+  workshop: 0.35,
+  bplog: 0.4,
 };
 
 /** Follows the garden as it is drawn: water arrives with the stone at Build

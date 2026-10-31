@@ -45,7 +45,7 @@ export function renderPortfolio() {
             <p class="stop-line">${e(workCopy.split(". ").slice(0, 2).join(". "))}.</p>
           </div>
           <nav class="project-shortcuts project-index" aria-label="Selected projects">${Object.entries(projects).map(([id, p], i) => `<a href="#${id}"><span class="index-number">0${i + 1}</span><span class="index-title">${e(p.title)}</span><span class="index-field">${e(p.summary)}</span><span class="index-status">${e(p.availability)}</span></a>`).join("")}</nav>
-          <div class="stop-detail" data-detail="recent">${recentWorkMarkup()}</div>
+          <div class="stop-detail" data-detail="recent">${recentWorkMarkup(true)}</div>
           <aside class="research-highlights journey-hidden" aria-labelledby="research-title">
             <h3 id="research-title">Open-source research</h3>
             <p>My energy-measurement work also lives in the PowerAPI organization. These links lead to the canonical repositories.</p>

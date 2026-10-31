@@ -35,7 +35,7 @@ Share a specific language with `?lang=en`, `?lang=fr`, or `?lang=ar`, combined w
 
 `src/translations.ts` holds the French and Arabic source-message catalog, including named placeholders for live measurements. `src/i18n.ts` binds English text and accessibility attributes to translations without replacing interactive DOM nodes; newly mounted widgets are localized too. Add catalog entries when editing English copy. The generated HTML remains readable in English when JavaScript is unavailable; translated titles and descriptions are applied during enhancement. `tests/localization.test.mjs` checks content coverage, language precedence, switching in place, RTL reflow, and narration.
 
-Both projects are linked on entry. Stable fragments are `#work`, `#whisperbook`, `#wattch`, `#about`, and `#contact`. Explicit navigation adds a history entry and focuses the destination heading. Passive scrolling replaces the current fragment without moving focus. Refresh and Back/Forward restore the section; resizing preserves it.
+Both projects are linked on entry. Stable fragments are `#work`, `#whisperbook`, `#wattch`, `#workshop`, `#bplog`, `#about`, and `#contact`. On the reading page, `#workshop` and `#bplog` land on their recent-work cards. Explicit navigation adds a history entry and focuses the destination heading. Passive scrolling replaces the current fragment without moving focus. Refresh and Back/Forward restore the section; resizing preserves it.
 
 Explicit view choices use `?view=read` or `?view=garden`. Compact windows always retain flowing content. The header wraps; the garden ruler provides four evenly spaced stage buttons and a separate progress slider. Optional weather, planting, and transfer information sit under **Garden controls**.
 
@@ -57,7 +57,7 @@ Availability was checked on 6 October 2026. [Project evidence and benchmark requ
 
 ## The garden
 
-Scrolling carries one garden through Sketch, Blueprint, Build, and Bloom. Only the opening headline uses letter-by-letter animation. Inactive chapters are inert and hidden from assistive navigation.
+Scrolling carries one garden through Sketch, Blueprint, Build, and Bloom. Beside Mansourah, two tiles hold recent work: the building site doubles as **the workshop**, a bench of local-inference rigs (Z-Image-Turbo on a phone, Pocket TTS on an older Android phone, speculative decoding on MLX), and the plot that was left empty is now **the apothecary** for BP Log. Each has a label and one note in Build, written from its recent-work cards. Whispbook's web studio sits on the reading pavilion's table as an open laptop, with a line in Whisperbook's note. Only the opening headline uses letter-by-letter animation. Inactive chapters are inert and hidden from assistive navigation.
 
 The original terraces, canal, waterfall, drones, reading pavilion, drum-recorder observatory, atelier tower, greenhouse, seasonal foliage, birds, ducks, fennecs, cat, planting, and rotation remain. The sky follows time of day, moon phase, and weather from [Open-Meteo](https://open-meteo.com). The timezone supplies an approximate place; **Use my exact location** requests device location. Unavailable weather has an explicit fallback. Weather and seasons can be previewed from the controls.
 

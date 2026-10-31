@@ -198,6 +198,9 @@ async function buildGarden(
     // The warm, rosy stone of Mansourah, and its shade for carved relief.
     sandstone: 0xd8a87c,
     sandstoneDark: 0xb98559,
+    // A pharmacy green for signs and screens: a prop colour, so it neither
+    // sways nor turns with the seasons like the leaves.
+    signGreen: 0x5f9b6e,
   };
   type ColorName = keyof typeof colors;
   const batches = new Map<ColorName, T.BufferGeometry[]>();
@@ -1023,6 +1026,19 @@ async function buildGarden(
     cylinder(x, 1.43, 0.02, 0.07, 0.04, "dark");
     add(new T.SphereGeometry(0.075, 14, 10).scale(1, 0.85, 1), x, 1.5, 0.02, c, [0, 0, 0], false);
   }
+  // At the end of the table, an open laptop: Whispbook's web studio, where a
+  // book's voices are assigned and its chapters rendered. A waveform runs
+  // across its screen.
+  const studioX = 3.96,
+    studioZ = 0.1;
+  box(studioX, 1.42, studioZ, 0.25, 0.014, 0.17, "dark");
+  add(new T.BoxGeometry(0.25, 0.16, 0.01), studioX, 1.5, studioZ - 0.1, "dark", [-0.2, 0, 0]);
+  add(new T.PlaneGeometry(0.22, 0.13), studioX, 1.5 + 0.006 * Math.sin(0.2), studioZ - 0.1 + 0.006 * Math.cos(0.2), "glass", [-0.2, 0, 0], false);
+  if (!lite)
+    for (let i = 0; i < 9; i++) {
+      const h = 0.02 + 0.07 * Math.abs(Math.sin(i * 1.7 + 0.4));
+      add(new T.PlaneGeometry(0.012, h), studioX - 0.088 + i * 0.022, 1.5 + 0.008 * Math.sin(0.2), studioZ - 0.1 + 0.008 * Math.cos(0.2), "ochre", [-0.2, 0, 0], false);
+    }
   steps(3.35, 0.34, 1.6, 1.8, 4);
   await checkpoint("greenhouse");
   // Bridges connect the plots; slatted surfaces catch moving light. A footbridge
@@ -1489,6 +1505,148 @@ async function buildGarden(
   for (let i = 0; i < (lite ? 0 : 6); i++)
     box(tileX - 0.29 + i * 0.08 + 0.04, 0.48, siteZ + 1.25, 0.08, 0.07, 0.025,
       i % 2 ? "dark" : "ochre", false);
+
+  // The workshop: local-inference experiments, still under construction, so
+  // they are set up inside the half-built walls. One bench, three rigs: a
+  // phone on a stand showing a generated picture (image generation on a phone
+  // NPU), a horn speaker on an older phone (text-to-speech on Android), and a
+  // large and a small chip beside a stopwatch (speculative decoding). Fixed
+  // values only, no random(), so the rest of the garden keeps its sequence.
+  const benchY = siteY + 0.42,
+    benchZ = z0 + 0.3;
+  box(tileX - 0.05, benchY, benchZ, 1.1, 0.05, 0.36, "wood");
+  for (const x of [tileX - 0.55, tileX + 0.45])
+    for (const z of [benchZ - 0.13, benchZ + 0.13])
+      box(x, (siteY + benchY) / 2, z, 0.04, benchY - siteY, 0.04, "dark");
+  box(tileX - 0.05, siteY + 0.12, benchZ, 1.0, 0.025, 0.3, "wood", false);
+  // A pegboard on the back wall, with a few tools hung on it.
+  box(tileX - 0.05, benchY + 0.36, z0 + 0.085, 0.95, 0.42, 0.025, "wood");
+  if (!lite)
+    for (const [dx, h] of [[-0.35, 0.18], [-0.22, 0.12], [0.12, 0.2], [0.3, 0.14]] as const)
+      box(tileX - 0.05 + dx, benchY + 0.42 - h / 2, z0 + 0.105, 0.025, h, 0.02, "dark", false);
+  // Rig 1: a phone on a stand, its screen a small generated picture.
+  const rig1 = tileX - 0.38;
+  box(rig1, benchY + 0.04, benchZ + 0.02, 0.12, 0.03, 0.1, "dark");
+  add(new T.BoxGeometry(0.13, 0.24, 0.018), rig1, benchY + 0.17, benchZ - 0.01, "dark", [-0.25, 0, 0]);
+  const screenTilt = -0.25,
+    screenFront = benchZ - 0.01 + 0.011 * Math.cos(screenTilt),
+    screenUp = benchY + 0.17 + 0.011 * Math.sin(-screenTilt);
+  if (!lite) {
+    const tiles: ColorName[] = ["ochre", "signGreen", "terracotta", "glass", "sandstone", "signGreen", "terracotta", "ochre", "dark"];
+    tiles.forEach((c, i) => {
+      const u = (i % 3) - 1,
+        v = 1 - Math.floor(i / 3);
+      add(
+        new T.PlaneGeometry(0.034, 0.05),
+        rig1 + u * 0.036,
+        screenUp + v * 0.052 * Math.cos(screenTilt),
+        screenFront - v * 0.052 * Math.sin(-screenTilt),
+        c,
+        [screenTilt, 0, 0],
+        false,
+      );
+    });
+  } else add(new T.PlaneGeometry(0.11, 0.2), rig1, screenUp, screenFront, "glass", [screenTilt, 0, 0], false);
+  // Rig 2: an older phone lying flat, wired to a horn speaker.
+  const rig2 = tileX - 0.02;
+  box(rig2 - 0.08, benchY + 0.035, benchZ + 0.06, 0.09, 0.015, 0.16, "dark");
+  box(rig2 + 0.1, benchY + 0.06, benchZ - 0.02, 0.1, 0.07, 0.1, "wood");
+  add(new T.ConeGeometry(0.1, 0.2, 12, 1, true), rig2 + 0.1, benchY + 0.19, benchZ + 0.02, "ochre", [0.5, 0, 0]);
+  beam(new T.Vector3(rig2 - 0.04, benchY + 0.035, benchZ + 0.06), new T.Vector3(rig2 + 0.06, benchY + 0.04, benchZ + 0.01), 0.006, "dark", false);
+  // Rig 3: a large chip and a small one side by side, and a stopwatch.
+  const rig3 = tileX + 0.3;
+  box(rig3 - 0.03, benchY + 0.05, benchZ, 0.16, 0.05, 0.16, "terracotta");
+  box(rig3 + 0.13, benchY + 0.04, benchZ + 0.03, 0.07, 0.03, 0.07, "ochre");
+  if (!lite)
+    for (let i = 0; i < 4; i++)
+      for (const side of [-1, 1]) box(rig3 - 0.09 + i * 0.04, benchY + 0.035, benchZ + side * 0.09, 0.015, 0.01, 0.025, "light", false);
+  cylinder(rig3 + 0.05, benchY + 0.035, benchZ + 0.13, 0.045, 0.02, "light");
+  box(rig3 + 0.05, benchY + 0.06, benchZ + 0.13, 0.012, 0.03, 0.012, "dark", false);
+  // A stool, and a lamp on a jointed arm clamped to the bench.
+  cylinder(tileX + 0.05, siteY + 0.2, benchZ + 0.45, 0.11, 0.035, "wood");
+  for (const a of [0.4, 2.5, 4.6])
+    beam(new T.Vector3(tileX + 0.05, siteY + 0.19, benchZ + 0.45), new T.Vector3(tileX + 0.05 + Math.cos(a) * 0.11, siteY, benchZ + 0.45 + Math.sin(a) * 0.11), 0.01, "dark", false);
+  const lampFoot = new T.Vector3(tileX + 0.48, benchY + 0.03, benchZ - 0.1),
+    lampKnee = new T.Vector3(tileX + 0.44, benchY + 0.32, benchZ - 0.05),
+    lampHead = new T.Vector3(tileX + 0.3, benchY + 0.4, benchZ + 0.02);
+  beam(lampFoot, lampKnee, 0.008, "dark");
+  beam(lampKnee, lampHead, 0.008, "dark");
+  add(new T.ConeGeometry(0.05, 0.07, 10, 1, true), lampHead.x, lampHead.y - 0.02, lampHead.z, "ochre", [0, 0, 0.6]);
+
+  // The apothecary, on the plot that was left empty: BP Log, which reads a
+  // blood-pressure monitor's display from a photo. A small stone shop with a
+  // striped awning and a green cross; on its counter, a monitor with a phone
+  // held over its display, and jars on the shelves behind. Fixed values only.
+  const shopX = tileX + 0.05,
+    shopZ = siteZ + 2.85,
+    shopY = 0.16,
+    shopW = 1.3,
+    shopD = 1.0,
+    shopH = 1.0,
+    shopBack = shopZ - shopD / 2,
+    shopFront = shopZ + shopD / 2;
+  box(shopX, shopY + 0.03, shopZ, shopW + 0.1, 0.06, shopD + 0.1, "trim");
+  box(shopX, shopY + shopH / 2, shopBack + 0.07, shopW, shopH, 0.14, "sandstone");
+  // A solid wall on the left; on the right, the side the garden sees, a low
+  // sill between two posts, so the shelves and counter show through.
+  box(shopX - (shopW / 2 - 0.07), shopY + shopH / 2, shopZ, 0.14, shopH, shopD, "sandstone");
+  const rightX = shopX + shopW / 2 - 0.07;
+  box(rightX, shopY + 0.2, shopZ, 0.14, 0.4, shopD, "sandstone");
+  for (const z of [shopBack + 0.07, shopFront - 0.07])
+    box(rightX, shopY + shopH / 2, z, 0.14, shopH, 0.14, "sandstone");
+  box(rightX, shopY + shopH - 0.06, shopZ, 0.14, 0.12, shopD, "sandstone");
+  box(shopX, shopY + shopH + 0.04, shopZ - 0.04, shopW + 0.16, 0.08, shopD + 0.1, "trim");
+  box(shopX, shopY + shopH + 0.1, shopZ - 0.04, shopW - 0.1, 0.04, shopD - 0.16, "sandstoneDark", false);
+  // A striped awning over the open front, tipped down towards the street.
+  const stripes = lite ? 4 : 8;
+  for (let i = 0; i < stripes; i++) {
+    const w = (shopW + 0.16) / stripes;
+    add(
+      new T.BoxGeometry(w, 0.02, 0.3),
+      shopX - (shopW + 0.16) / 2 + w * (i + 0.5),
+      shopY + shopH + 0.0,
+      shopFront + 0.12,
+      i % 2 ? "light" : "terracotta",
+      [0.3, 0, 0],
+      i === 0,
+    );
+  }
+  // The green cross, on a bracket at the front corner.
+  const crossX = shopX + shopW / 2 + 0.12,
+    crossY = shopY + shopH - 0.12,
+    crossZ = shopFront - 0.05;
+  box(crossX - 0.07, crossY + 0.1, crossZ, 0.14, 0.02, 0.02, "dark", false);
+  box(crossX, crossY, crossZ, 0.04, 0.22, 0.075, "signGreen");
+  box(crossX, crossY, crossZ, 0.04, 0.075, 0.22, "signGreen", false);
+  // Shelves of jars on the back wall.
+  for (const y of [0.52, 0.82]) {
+    box(shopX, shopY + y, shopBack + 0.2, shopW - 0.3, 0.03, 0.12, "wood");
+    if (!lite)
+      for (let i = 0; i < 6; i++)
+        cylinder(shopX - 0.42 + i * 0.17, shopY + y + 0.065, shopBack + 0.2, 0.035, 0.1,
+          (["terracotta", "glass", "ochre", "glass", "sandstone", "signGreen"] as const)[(i + (y > 0.6 ? 2 : 0)) % 6], 0.03, false);
+  }
+  // The counter, and on it the monitor, its cuff, and a phone reading the display.
+  const counterZ = shopFront - 0.2,
+    counterTop = shopY + 0.44;
+  box(shopX, shopY + 0.22, counterZ, shopW - 0.34, 0.44, 0.26, "wood");
+  box(shopX, counterTop + 0.015, counterZ, shopW - 0.28, 0.03, 0.32, "light");
+  const monitorX = shopX - 0.12;
+  box(monitorX, counterTop + 0.07, counterZ, 0.2, 0.08, 0.16, "light");
+  add(new T.BoxGeometry(0.15, 0.08, 0.012), monitorX, counterTop + 0.105, counterZ + 0.02, "dark", [-1.1, 0, 0], false);
+  if (!lite)
+    for (const [dx, dz] of [[-0.04, 0.0], [0.0, 0.0], [0.04, 0.0], [-0.02, 0.03], [0.02, 0.03]] as const)
+      add(new T.PlaneGeometry(0.025, 0.012), monitorX + dx, counterTop + 0.118, counterZ + 0.005 + dz, "signGreen", [-Math.PI / 2 + 0.47, 0, 0], false);
+  cylinder(monitorX + 0.26, counterTop + 0.045, counterZ + 0.02, 0.055, 0.09, "terracotta");
+  beam(new T.Vector3(monitorX + 0.1, counterTop + 0.06, counterZ + 0.02), new T.Vector3(monitorX + 0.21, counterTop + 0.06, counterZ + 0.02), 0.008, "dark", false);
+  // The phone on a small arm, face down over the display.
+  beam(new T.Vector3(monitorX - 0.16, counterTop + 0.03, counterZ - 0.06), new T.Vector3(monitorX - 0.1, counterTop + 0.3, counterZ - 0.02), 0.009, "dark");
+  add(new T.BoxGeometry(0.1, 0.012, 0.18), monitorX - 0.02, counterTop + 0.31, counterZ + 0.01, "dark", [0.25, 0, 0]);
+  // A bench by the door, and a potted plant.
+  box(shopX - 0.25, shopY + 0.16, shopFront + 0.55, 0.6, 0.04, 0.16, "wood");
+  for (const dx of [-0.5, 0]) box(shopX + dx, shopY + 0.08, shopFront + 0.55, 0.04, 0.14, 0.12, "dark");
+  cylinder(shopX + 0.62, shopY + 0.1, shopFront + 0.5, 0.08, 0.16, "terracotta", 0.1);
+  add(new T.IcosahedronGeometry(0.14, lite ? 0 : 1).scale(1, 1.2, 1), shopX + 0.62, shopY + 0.33, shopFront + 0.5, "leaf", [0, 0, 0], false);
 
   await checkpoint("geometry-batches");
   const solidMeshes: T.Mesh[] = [];
@@ -3562,16 +3720,22 @@ async function buildGarden(
     // About me belongs to Mansourah, Chakib's home city.
     about: new T.Vector3(minX, minY + minH, front),
     contact: new T.Vector3(2.02, 2.5, 3.11),
+    // The two tiles beside Mansourah: the workshop inside the building site,
+    // and the apothecary on the plot that was left empty.
+    workshop: new T.Vector3(6.65, 1.45, -0.25),
+    bplog: new T.Vector3(6.75, 1.55, 2.75),
   };
   // A project's notes look into its room rather than at its label: the
   // reading table under the open book, the drum, daemon and dial in the ring.
   const rooms: Record<string, { at: T.Vector3; zoom: number }> = {
     whisperbook: { at: new T.Vector3(3.4, 1.7, -0.55), zoom: 1.6 },
     wattch: { at: new T.Vector3(-3.4, 1.45, 0.45), zoom: 1.8 },
+    workshop: { at: new T.Vector3(6.65, 0.75, -0.2), zoom: 2 },
+    bplog: { at: new T.Vector3(6.75, 0.75, 3.0), zoom: 2 },
   };
   /* A building answers its label being pointed at or focused: a ring of
      lantern light on the ground around it, and a faint glow inside. */
-  const hoverRadius: Record<string, number> = { whisperbook: 1.35, wattch: 1.45, about: 0.9, contact: 0.55 };
+  const hoverRadius: Record<string, number> = { whisperbook: 1.35, wattch: 1.45, about: 0.9, contact: 0.55, workshop: 1.0, bplog: 1.0 };
   const hoverLineMaterial = new T.MeshBasicMaterial({
     color: 0xffd28a,
     transparent: true,

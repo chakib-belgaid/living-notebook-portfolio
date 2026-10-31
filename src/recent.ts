@@ -3,6 +3,7 @@ const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "
 export const recentWork = [
   {
     "title": "BP Log · bp-tracker",
+    "region": "bplog",
     "status": "Public project · offline OCR in the browser",
     "text": "A phone web app that reads a blood-pressure monitor’s display from a photo, then lets the user check and correct the values before saving. Image-processing rules handle the display layout; a 10,123-parameter CNN trained on synthetic digits runs in plain JavaScript with a 54 KB weights file.",
     "evidence": "Published evaluation: 91% complete readings on 55 photos from one monitor; 99.5% digit accuracy on 187 held-out digits. The full reading set guided pipeline development, so it is not an independent holdout. Median phone latency: 268 ms across three runs on an Android 10 phone.",
@@ -31,6 +32,7 @@ export const recentWork = [
   },
   {
     "title": "Z-Image-Turbo · Android",
+    "region": "workshop",
     "status": "Personal experiment · mobile diffusion inference",
     "text": "Porting image generation to Nothing Phone 3: 512×512 output, a comparison of 100 runtime/precision configurations, INT8/INT4 quantization, and a QNN w8a16 path on the Hexagon NPU. The work includes numerical checks, activation-saturation diagnosis, and calibration across all diffusion steps.",
     "evidence": "Experimental work described in my October dossier. Single-block timings do not establish an end-to-end generation speedup; no public repository is linked here.",
@@ -38,6 +40,7 @@ export const recentWork = [
   },
   {
     "title": "Pocket TTS Android Benchmark",
+    "region": "workshop",
     "status": "Public benchmark · OnePlus 6T",
     "text": "A pinned English INT8 Pocket TTS conversion running through sherpa-onnx on Android. On a OnePlus 6T with Android 11, CPU and two threads, the recorded real-time factors are 0.94, 1.01, and 1.06 for 2, 4, and 8 diffusion steps. Audio samples and machine-readable measurements are published.",
     "evidence": "One observed run per setting; not averages or a Whisperbook benchmark. RTF is generation time divided by audio duration.",
@@ -45,6 +48,7 @@ export const recentWork = [
   },
   {
     "title": "Speculative decoding · MLX",
+    "region": "workshop",
     "status": "Public experiment · negative result documented",
     "text": "Compared Qwen3 4B with a Qwen3 0.6B draft model on 40 labeled speaker-classification samples. Both paths reached 97.5% accuracy, but speculative decoding was 28.3% slower in the recorded protocol.",
     "evidence": "Short outputs and model loading inside each timed call limit the conclusion. This is not a steady-state serving benchmark.",
@@ -56,5 +60,13 @@ export const practice = [
   "My inference experience includes local vLLM, MLX on Apple Silicon, LoRA, quantization, and calibration. I distinguish that experimental work from specialist operation of GPU LLM servers in production.",
   "I use AI coding assistants regularly and review and validate their output. Wattch’s Rust implementation was developed with AI assistance; my Rust skill is reading and understanding code, not Python-level fluency."
 ];
-export function recentWorkMarkup() { return `<section class="recent-work" aria-label="Recent projects and experiments"><h3>Recent projects and experiments</h3><p class="recent-intro">October 2026 · Applied AI, local inference, and reproducible evaluation.</p><div class="recent-grid">${recentWork.map(p => `<article class="recent-card"><p class="eyebrow">${escape(p.status)}</p><h4>${escape(p.title)}</h4><p>${escape(p.text)}</p><p class="recent-evidence">${escape(p.evidence)}</p>${p.url ? `<a href="${p.url}"${p.url.startsWith("https:") ? ' target="_blank" rel="noopener noreferrer"' : ""}>Read project and evidence ↗</a>` : ""}</article>`).join("")}</div></section>`; }
+/** The garden region a card belongs to, if any (see content.ts). */
+export type Region = "bplog" | "workshop";
+export const regionCards = (region: Region) => recentWork.filter((p) => (p as { region?: string }).region === region);
+/** On the reading page, the first card of a region carries its fragment, so #bplog and #workshop land on it. */
+const regionId = (p: (typeof recentWork)[number]) => {
+  const region = (p as { region?: Region }).region;
+  return region && regionCards(region)[0] === p ? ` id="${region}"` : "";
+};
+export function recentWorkMarkup(anchors = false) { return `<section class="recent-work" aria-label="Recent projects and experiments"><h3>Recent projects and experiments</h3><p class="recent-intro">October 2026 · Applied AI, local inference, and reproducible evaluation.</p><div class="recent-grid">${recentWork.map(p => `<article class="recent-card"${anchors ? regionId(p) : ""}><p class="eyebrow">${escape(p.status)}</p><h4${anchors && regionId(p) ? ' tabindex="-1"' : ""}>${escape(p.title)}</h4><p>${escape(p.text)}</p><p class="recent-evidence">${escape(p.evidence)}</p>${p.url ? `<a href="${p.url}"${p.url.startsWith("https:") ? ' target="_blank" rel="noopener noreferrer"' : ""}>Read project and evidence ↗</a>` : ""}</article>`).join("")}</div></section>`; }
 export function practiceMarkup() { return `<section class="practice"><h3>How I work</h3>${practice.map(p => `<p>${escape(p)}</p>`).join("")}</section>`; }

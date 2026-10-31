@@ -411,7 +411,7 @@ function syncStory() {
   const b = beats[beat];
   garden?.highlightPath(b?.path ?? null);
   // Close on a project, the way back to the whole garden is in view.
-  $(".overview-return").hidden = reading || !(b?.spot === "whisperbook" || b?.spot === "wattch");
+  $(".overview-return").hidden = reading || !(b?.spot && b.spot !== "about" && b.spot !== "contact");
   // Idle, the note steps back too, so the garden comes to the centre.
   const side = narrow.matches || idle ? 0 : 1;
   const [shift, room] = besideDock(b?.spot ? 0.16 * side : wholeShift() * side, !!b?.spot);
@@ -610,7 +610,7 @@ function measure() {
   // Once the visitor has scrolled, the cues asking them to can rest.
   if (scrollY > 40) root.classList.add("scrolled");
   if (reading) {
-    const sections: SectionId[] = ["intro", "work", "whisperbook", "wattch", "about", "contact"];
+    const sections: SectionId[] = ["intro", "work", "whisperbook", "wattch", "workshop", "bplog", "about", "contact"];
     // The section whose top most recently passed the threshold, whatever the DOM order.
     let current: SectionId = "intro";
     let best = -Infinity;
@@ -697,14 +697,16 @@ function measureReadingRuler(current: SectionId) {
     tick.classList.toggle("passed", scrollY / max >= at - 0.001);
   });
   updateChapterIndex(current);
-  const group = current === "whisperbook" || current === "wattch" ? "work" : current;
+  const group = current === "whisperbook" || current === "wattch" || current === "workshop" || current === "bplog" ? "work" : current;
   sectionLinks.forEach(a => {
     if (a.hash === "#" + group) a.setAttribute("aria-current", "location");
     else a.removeAttribute("aria-current");
   });
 }
 
-function updateChapterIndex(current: SectionId) {
+function updateChapterIndex(section: SectionId) {
+  // The two tiles beside Mansourah are part of the work; they have no tab of their own.
+  const current: SectionId = section === "workshop" || section === "bplog" ? "work" : section;
   const links = $$<HTMLAnchorElement>(".chapter-index a");
   links.forEach(a => {
     if (a.hash === "#" + current) a.setAttribute("aria-current", "location");
@@ -1426,6 +1428,8 @@ function mountProjectWidget(spot: WidgetSpot, container: HTMLElement) {
 
 function sectionForBeat(i: number): SectionId {
   if (i >= spotBeat.contact) return "contact";
+  if (i >= spotBeat.bplog) return "bplog";
+  if (i >= spotBeat.workshop) return "workshop";
   if (i >= spotBeat.wattch) return "wattch";
   if (i >= spotBeat.whisperbook) return "whisperbook";
   if (i >= stageStart[2]) return "work";
@@ -1445,7 +1449,7 @@ const navigation = createNavigation((section, focus) => {
       target.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(target).scrollMarginTop) || 0)));
     if (focus) glideTo(top);
     else scrollTo({ top, behavior: "instant" });
-    if (focus) target.querySelector<HTMLElement>("h1,h2,h3")?.focus({preventScroll:true});
+    if (focus) target.querySelector<HTMLElement>("h1,h2,h3,h4")?.focus({preventScroll:true});
   } else {
     if (focus) goTo(sectionBeat[section]);
     else { scrollTo({top:holdAt(sectionBeat[section]), behavior:"instant"}); measure(); }
