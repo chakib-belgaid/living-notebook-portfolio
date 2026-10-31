@@ -15,7 +15,7 @@ The portfolio does not provide reproducible Whisperbook device latency, narratio
 - [Reading page](https://chakib-belgaid.github.io/?view=read): Text layout for bots, accessibility, and low-end computers.
 - [Selected work](https://chakib-belgaid.github.io/?view=read#work): Whisperbook, Wattch Core, and canonical research repositories.
 - [The workshop](https://chakib-belgaid.github.io/?view=read#workshop): Local-inference experiments (Z-Image-Turbo on Android, Pocket TTS benchmark, speculative decoding on MLX), shown in the garden as a workbench inside the building site.
-- [BP Log](https://chakib-belgaid.github.io/?view=read#bplog): Offline blood-pressure display OCR in the browser, shown in the garden as a small apothecary.
+- [BP Log](https://chakib-belgaid.github.io/?view=read#bplog): Offline blood-pressure display OCR in the browser, shown in the garden as a heart with a pulse trace.
 - [Background](https://chakib-belgaid.github.io/?view=read#about): Career and software energy research.
 - [Contact](https://chakib-belgaid.github.io/?view=read#contact): Public email and social links.
 

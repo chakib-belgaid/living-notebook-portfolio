@@ -1573,80 +1573,65 @@ async function buildGarden(
   beam(lampKnee, lampHead, 0.008, "dark");
   add(new T.ConeGeometry(0.05, 0.07, 10, 1, true), lampHead.x, lampHead.y - 0.02, lampHead.z, "ochre", [0, 0, 0.6]);
 
-  // The apothecary, on the plot that was left empty: BP Log, which reads a
-  // blood-pressure monitor's display from a photo. A small stone shop with a
-  // striped awning and a green cross; on its counter, a monitor with a phone
-  // held over its display, and jars on the shelves behind. Fixed values only.
-  const shopX = tileX + 0.05,
-    shopZ = siteZ + 2.85,
-    shopY = 0.16,
-    shopW = 1.3,
-    shopD = 1.0,
-    shopH = 1.0,
-    shopBack = shopZ - shopD / 2,
-    shopFront = shopZ + shopD / 2;
-  box(shopX, shopY + 0.03, shopZ, shopW + 0.1, 0.06, shopD + 0.1, "trim");
-  box(shopX, shopY + shopH / 2, shopBack + 0.07, shopW, shopH, 0.14, "sandstone");
-  // A solid wall on the left; on the right, the side the garden sees, a low
-  // sill between two posts, so the shelves and counter show through.
-  box(shopX - (shopW / 2 - 0.07), shopY + shopH / 2, shopZ, 0.14, shopH, shopD, "sandstone");
-  const rightX = shopX + shopW / 2 - 0.07;
-  box(rightX, shopY + 0.2, shopZ, 0.14, 0.4, shopD, "sandstone");
-  for (const z of [shopBack + 0.07, shopFront - 0.07])
-    box(rightX, shopY + shopH / 2, z, 0.14, shopH, 0.14, "sandstone");
-  box(rightX, shopY + shopH - 0.06, shopZ, 0.14, 0.12, shopD, "sandstone");
-  box(shopX, shopY + shopH + 0.04, shopZ - 0.04, shopW + 0.16, 0.08, shopD + 0.1, "trim");
-  box(shopX, shopY + shopH + 0.1, shopZ - 0.04, shopW - 0.1, 0.04, shopD - 0.16, "sandstoneDark", false);
-  // A striped awning over the open front, tipped down towards the street.
-  const stripes = lite ? 4 : 8;
-  for (let i = 0; i < stripes; i++) {
-    const w = (shopW + 0.16) / stripes;
-    add(
-      new T.BoxGeometry(w, 0.02, 0.3),
-      shopX - (shopW + 0.16) / 2 + w * (i + 0.5),
-      shopY + shopH + 0.0,
-      shopFront + 0.12,
-      i % 2 ? "light" : "terracotta",
-      [0.3, 0, 0],
-      i === 0,
+  // The heart garden, on the plot that was left empty: BP Log, which reads a
+  // blood-pressure monitor's display from a photo. A heart stands on a low
+  // plinth, turned to the garden, and a pulse trace runs across the tile in
+  // front of it, flat, then the small P wave, the QRS spike and the T wave,
+  // like a monitor's line drawn in the air. Fixed values only, no random().
+  const heartX = tileX + 0.05,
+    heartZ = siteZ + 2.6,
+    heartY = 0.16,
+    // Turned to face the usual view of the garden.
+    heartTurn = 0.72;
+  box(heartX, heartY + 0.09, heartZ, 0.7, 0.18, 0.5, "light");
+  box(heartX, heartY + 0.2, heartZ, 0.6, 0.04, 0.4, "trim");
+  const heart = new T.Shape();
+  heart.moveTo(0, 0);
+  heart.bezierCurveTo(-0.05, 0.08, -0.38, 0.26, -0.38, 0.5);
+  heart.bezierCurveTo(-0.38, 0.68, -0.24, 0.76, -0.15, 0.76);
+  heart.bezierCurveTo(-0.07, 0.76, -0.02, 0.71, 0, 0.64);
+  heart.bezierCurveTo(0.02, 0.71, 0.07, 0.76, 0.15, 0.76);
+  heart.bezierCurveTo(0.24, 0.76, 0.38, 0.68, 0.38, 0.5);
+  heart.bezierCurveTo(0.38, 0.26, 0.05, 0.08, 0, 0);
+  const heartGeometry = new T.ExtrudeGeometry(heart, {
+    depth: 0.12,
+    bevelEnabled: true,
+    bevelThickness: 0.04,
+    bevelSize: 0.035,
+    bevelSegments: lite ? 1 : 3,
+    curveSegments: lite ? 8 : 18,
+  });
+  heartGeometry.translate(0, 0, -0.06);
+  add(heartGeometry, heartX, heartY + 0.25, heartZ, "terracotta", [0, heartTurn, 0]);
+  // The pulse trace: points along the tile (u across it, v up), on posts.
+  const traceZ = heartZ + 0.85,
+    traceY = heartY + 0.38,
+    trace: [number, number][] = [
+      [-0.95, 0], [-0.55, 0], [-0.45, 0.06], [-0.35, 0], [-0.25, 0],
+      [-0.19, -0.08], [-0.1, 0.62], [-0.01, -0.18], [0.06, 0],
+      [0.22, 0], [0.34, 0.13], [0.46, 0], [0.95, 0],
+    ];
+  for (let i = 1; i < trace.length; i++) {
+    const [u0, v0] = trace[i - 1],
+      [u1, v1] = trace[i];
+    beam(
+      new T.Vector3(heartX + u0, traceY + v0, traceZ),
+      new T.Vector3(heartX + u1, traceY + v1, traceZ),
+      0.022,
+      "signGreen",
+      i === 1,
     );
+    // A joint at each corner, so the line reads as one stroke.
+    if (!lite && i < trace.length - 1)
+      add(new T.SphereGeometry(0.022, 8, 6), heartX + u1, traceY + v1, traceZ, "signGreen", [0, 0, 0], false);
   }
-  // The green cross, on a bracket at the front corner.
-  const crossX = shopX + shopW / 2 + 0.12,
-    crossY = shopY + shopH - 0.12,
-    crossZ = shopFront - 0.05;
-  box(crossX - 0.07, crossY + 0.1, crossZ, 0.14, 0.02, 0.02, "dark", false);
-  box(crossX, crossY, crossZ, 0.04, 0.22, 0.075, "signGreen");
-  box(crossX, crossY, crossZ, 0.04, 0.075, 0.22, "signGreen", false);
-  // Shelves of jars on the back wall.
-  for (const y of [0.52, 0.82]) {
-    box(shopX, shopY + y, shopBack + 0.2, shopW - 0.3, 0.03, 0.12, "wood");
-    if (!lite)
-      for (let i = 0; i < 6; i++)
-        cylinder(shopX - 0.42 + i * 0.17, shopY + y + 0.065, shopBack + 0.2, 0.035, 0.1,
-          (["terracotta", "glass", "ochre", "glass", "sandstone", "signGreen"] as const)[(i + (y > 0.6 ? 2 : 0)) % 6], 0.03, false);
-  }
-  // The counter, and on it the monitor, its cuff, and a phone reading the display.
-  const counterZ = shopFront - 0.2,
-    counterTop = shopY + 0.44;
-  box(shopX, shopY + 0.22, counterZ, shopW - 0.34, 0.44, 0.26, "wood");
-  box(shopX, counterTop + 0.015, counterZ, shopW - 0.28, 0.03, 0.32, "light");
-  const monitorX = shopX - 0.12;
-  box(monitorX, counterTop + 0.07, counterZ, 0.2, 0.08, 0.16, "light");
-  add(new T.BoxGeometry(0.15, 0.08, 0.012), monitorX, counterTop + 0.105, counterZ + 0.02, "dark", [-1.1, 0, 0], false);
-  if (!lite)
-    for (const [dx, dz] of [[-0.04, 0.0], [0.0, 0.0], [0.04, 0.0], [-0.02, 0.03], [0.02, 0.03]] as const)
-      add(new T.PlaneGeometry(0.025, 0.012), monitorX + dx, counterTop + 0.118, counterZ + 0.005 + dz, "signGreen", [-Math.PI / 2 + 0.47, 0, 0], false);
-  cylinder(monitorX + 0.26, counterTop + 0.045, counterZ + 0.02, 0.055, 0.09, "terracotta");
-  beam(new T.Vector3(monitorX + 0.1, counterTop + 0.06, counterZ + 0.02), new T.Vector3(monitorX + 0.21, counterTop + 0.06, counterZ + 0.02), 0.008, "dark", false);
-  // The phone on a small arm, face down over the display.
-  beam(new T.Vector3(monitorX - 0.16, counterTop + 0.03, counterZ - 0.06), new T.Vector3(monitorX - 0.1, counterTop + 0.3, counterZ - 0.02), 0.009, "dark");
-  add(new T.BoxGeometry(0.1, 0.012, 0.18), monitorX - 0.02, counterTop + 0.31, counterZ + 0.01, "dark", [0.25, 0, 0]);
-  // A bench by the door, and a potted plant.
-  box(shopX - 0.25, shopY + 0.16, shopFront + 0.55, 0.6, 0.04, 0.16, "wood");
-  for (const dx of [-0.5, 0]) box(shopX + dx, shopY + 0.08, shopFront + 0.55, 0.04, 0.14, 0.12, "dark");
-  cylinder(shopX + 0.62, shopY + 0.1, shopFront + 0.5, 0.08, 0.16, "terracotta", 0.1);
-  add(new T.IcosahedronGeometry(0.14, lite ? 0 : 1).scale(1, 1.2, 1), shopX + 0.62, shopY + 0.33, shopFront + 0.5, "leaf", [0, 0, 0], false);
+  for (const u of [-0.9, 0.9])
+    box(heartX + u, (heartY + traceY) / 2, traceZ, 0.05, traceY - heartY, 0.05, "dark");
+  // A bench facing the heart, and a potted plant beside it.
+  box(heartX - 0.3, heartY + 0.16, heartZ - 0.95, 0.6, 0.04, 0.16, "wood");
+  for (const dx of [-0.55, -0.05]) box(heartX + dx, heartY + 0.08, heartZ - 0.95, 0.04, 0.14, 0.12, "dark");
+  cylinder(heartX + 0.62, heartY + 0.1, heartZ - 0.85, 0.08, 0.16, "terracotta", 0.1);
+  add(new T.IcosahedronGeometry(0.14, lite ? 0 : 1).scale(1, 1.2, 1), heartX + 0.62, heartY + 0.33, heartZ - 0.85, "leaf", [0, 0, 0], false);
 
   await checkpoint("geometry-batches");
   const solidMeshes: T.Mesh[] = [];
@@ -3721,9 +3706,9 @@ async function buildGarden(
     about: new T.Vector3(minX, minY + minH, front),
     contact: new T.Vector3(2.02, 2.5, 3.11),
     // The two tiles beside Mansourah: the workshop inside the building site,
-    // and the apothecary on the plot that was left empty.
+    // and the heart garden on the plot that was left empty.
     workshop: new T.Vector3(6.65, 1.45, -0.25),
-    bplog: new T.Vector3(6.75, 1.55, 2.75),
+    bplog: new T.Vector3(6.75, 1.45, 2.65),
   };
   // A project's notes look into its room rather than at its label: the
   // reading table under the open book, the drum, daemon and dial in the ring.
@@ -3731,7 +3716,7 @@ async function buildGarden(
     whisperbook: { at: new T.Vector3(3.4, 1.7, -0.55), zoom: 1.6 },
     wattch: { at: new T.Vector3(-3.4, 1.45, 0.45), zoom: 1.8 },
     workshop: { at: new T.Vector3(6.65, 0.75, -0.2), zoom: 2 },
-    bplog: { at: new T.Vector3(6.75, 0.75, 3.0), zoom: 2 },
+    bplog: { at: new T.Vector3(6.75, 0.65, 3.0), zoom: 2 },
   };
   /* A building answers its label being pointed at or focused: a ring of
      lantern light on the ground around it, and a faint glow inside. */

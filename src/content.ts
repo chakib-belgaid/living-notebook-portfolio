@@ -208,7 +208,7 @@ function regionBeats(): Beat[] {
     },
     {
       stage: 2,
-      label: "The apothecary",
+      label: "The heart garden",
       title: "BP Log",
       copy: bp.text,
       body: `<dl class="note-facts">
