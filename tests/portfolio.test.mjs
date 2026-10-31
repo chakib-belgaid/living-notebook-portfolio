@@ -860,3 +860,38 @@ test('the garden controls wait for Bloom, on the desktop and in the phone journe
     healthy(phone);
   } finally { await phone.context().close(); }
 });
+
+test('the garden regions have their fragments on the reading page, and the phone journey never lands on a hidden card', async () => {
+  const p = await page();
+  try {
+    await ready(p, '?view=read');
+    for (const id of ['workshop', 'bplog']) {
+      assert.equal(await p.locator(`#${id}`).count(), 1, `one #${id}`);
+      await p.evaluate(h => { location.hash = h; }, id);
+      await p.waitForTimeout(1200);
+      const top = await p.locator(`#${id}`).evaluate(e => e.getBoundingClientRect().top);
+      assert.ok(top >= 0 && top < 300, `#${id} lands near the top (${top})`);
+    }
+    healthy(p);
+  } finally { await p.context().close(); }
+  // In the phone journey the recent-work cards are hidden: scrolling through
+  // must not pass them, and opening their fragment lands on the Work section.
+  const phone = await page({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  try {
+    await ready(phone, '?view=stills');
+    const seen = new Set();
+    const max = await phone.evaluate(() => document.documentElement.scrollHeight - innerHeight);
+    for (let y = 0; y <= max; y += Math.max(200, max / 30)) {
+      await phone.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), y);
+      await phone.waitForTimeout(120);
+      seen.add(await phone.evaluate(() => location.hash));
+    }
+    assert.ok(!seen.has('#workshop') && !seen.has('#bplog'), [...seen].join(' '));
+    await phone.goto(base + '/?view=stills#workshop');
+    await phone.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
+    await phone.waitForTimeout(1200);
+    const offset = await phone.evaluate(() => Math.abs(document.getElementById('work').getBoundingClientRect().top));
+    assert.ok(offset < 400, `lands at the Work section (${offset})`);
+    healthy(phone);
+  } finally { await phone.context().close(); }
+});

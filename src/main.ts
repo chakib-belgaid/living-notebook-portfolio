@@ -616,6 +616,9 @@ function measure() {
     let best = -Infinity;
     for (const id of sections) {
       const section = $("#" + id);
+      // A section with no layout box (the region cards inside the phone
+      // journey's hidden details) has no place on the page to be passing.
+      if (!section.getClientRects().length) continue;
       const threshold = Math.max(innerHeight * 0.35, parseFloat(getComputedStyle(section).scrollMarginTop) || 0);
       const top = section.getBoundingClientRect().top;
       if (top <= threshold + 1 && top > best) { best = top; current = id; }
@@ -1444,7 +1447,9 @@ const navigation = createNavigation((section, focus) => {
   focusTo = -1;
   setPlanting(false);
   if (reading) {
-    const target = $("#" + section);
+    // A region card hidden by the phone journey falls back to its section.
+    const anchor = $("#" + section);
+    const target = anchor.getClientRects().length ? anchor : anchor.closest<HTMLElement>(".reading-section") ?? anchor;
     const top = section === "intro" ? 0 : Math.min(maxScroll(), Math.max(0,
       target.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(target).scrollMarginTop) || 0)));
     if (focus) glideTo(top);
