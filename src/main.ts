@@ -1567,7 +1567,8 @@ function leaveLiveGarden(message: string) {
   announce(message);
 }
 
-/* Drawing quality. Auto draws phones light and everything else in full; the
+/* Drawing quality. Auto draws phones light and everything else in full,
+   stepping down to light if full proves too slow on the device; the
    visitor's choice is remembered on this device. Light changes how the built
    garden is drawn. A phone builds a lighter garden too, so moving a phone
    between Full and Light rebuilds it, keeping its trees, turn and place. */
@@ -1580,7 +1581,10 @@ let qualityChoice: QualityChoice = qualityParam === "low" || qualityParam === "l
     return saved === "full" || saved === "light" ? saved : "auto";
   } catch { return "auto"; }
 })();
-const qualityNow = (): Quality => (qualityChoice === "auto" ? (compact.matches ? "light" : "full") : qualityChoice);
+// Auto also draws light, for the rest of the visit, once the garden reports
+// that Full cannot keep a steady pace on this device (Garden.onStruggle).
+let autoLight = false;
+const qualityNow = (): Quality => (qualityChoice === "auto" ? (compact.matches || autoLight ? "light" : "full") : qualityChoice);
 // ?quality=low keeps asking for the lighter build on any screen.
 const detailFor = (q: Quality) => (q === "light" && (compact.matches || qualityParam === "low") ? "low" : "full");
 // Rendering already done by gardens since replaced, so the visit's total keeps counting.
@@ -1651,6 +1655,11 @@ function adoptGarden() {
   if (activeIllustration?.open && activeIllustration.dataset.illustration === "wattch") {
     illustration.replace(() => mountProjectWidget("wattch", activeIllustration!.querySelector<HTMLElement>("[data-reading-widget]")!));
   }
+  garden.onStruggle(() => {
+    if (qualityChoice !== "auto" || autoLight) return;
+    autoLight = true;
+    void applyQuality();
+  });
   garden.setPostbox("idle");
   garden.setNarrating(!!document.querySelector('.play[data-playing="true"]'));
   measureFrames();

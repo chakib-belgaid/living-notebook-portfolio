@@ -46,8 +46,10 @@ export interface Garden {
   setFog: (amount: number, color: number) => void;
   /** The visit's carbon so far in g CO₂e, rolled onto the register under the Wattch dial; null shows dashes. */
   setTally: (grams: number | null) => void;
-  /** How the built garden is drawn: Full as designed, or Light (fewer pixels, 30 fps, cheaper shadows). What was built stays. */
+  /** How the built garden is drawn: Full as designed (up to 60 fps), or Light (fewer pixels, 30 fps, cheaper shadows). What was built stays. */
   setQuality: (quality: Quality) => void;
+  /** Called once if Full cannot keep a steady pace on this device (see the pace watch in createGarden). */
+  onStruggle: (callback: () => void) => void;
   /** Draws the garden as it is on screen into a 2D canvas, once: a frame is
       rendered and copied in the same task, so no drawing buffer is kept. */
   drawInto: (target: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => void;
@@ -3415,6 +3417,8 @@ async function buildGarden(
     frame = 0,
     // -1 after the loop has slept: its next frame restarts the clock.
     last = -1,
+    // When the next frame is due under the frame cap (see render).
+    due = 0,
     elapsed = 0,
     disposed = false,
     // The loop starts once the garden is built (see the end of createGarden).
@@ -3437,6 +3441,39 @@ async function buildGarden(
     if (!document.hidden) wake();
   };
   document.addEventListener("visibilitychange", onVisibility);
+  /* Pace watch. While Full draws without a break, it counts frames that took
+     longer than 25 ms (under 40 a second). If half of a 120-frame stretch is
+     that slow, the device cannot keep up and `onStruggle` is told, once. The
+     first seconds after the garden starts or wakes are not counted: shaders,
+     the first shadow map and the page's own start-up land there. */
+  const PACE_WINDOW = 120,
+    PACE_SLOW_MS = 25,
+    PACE_SETTLE_MS = 4000;
+  let paceFrom = -1,
+    pacePrev = -1,
+    paceFrames = 0,
+    paceSlow = 0,
+    struggled = false,
+    onStruggle: (() => void) | undefined;
+  function watchPace(now: number, woke: boolean) {
+    if (light || struggled || !onStruggle) return;
+    // The first frame, or one after a sleep, starts the settling period.
+    if (woke || pacePrev < 0 || paceFrom < 0) {
+      paceFrom = now + PACE_SETTLE_MS;
+      paceFrames = paceSlow = 0;
+    } else if (now >= paceFrom) {
+      paceFrames++;
+      if (now - pacePrev > PACE_SLOW_MS) paceSlow++;
+      if (paceFrames >= PACE_WINDOW) {
+        if (paceSlow * 2 >= PACE_WINDOW) {
+          struggled = true;
+          onStruggle();
+        }
+        paceFrames = paceSlow = 0;
+      }
+    }
+    pacePrev = now;
+  }
   /* Quality: how the built garden is drawn. Full is the garden as designed.
      Light draws fewer pixels at up to 30 frames a second, with a smaller
      shadow map that is redrawn only when the garden changes, and without the
@@ -3698,13 +3735,19 @@ async function buildGarden(
       last = -1;
       return;
     }
-    // Light drawing keeps to 30 frames a second.
-    if (light && last >= 0 && now - last < 1000 / 30 - 4) {
+    // Full keeps to 60 frames a second and Light to 30, whatever the screen's
+    // refresh rate: a 120 Hz display would otherwise draw the garden twice as
+    // often for no visible gain. Frames are paced against a due time rather
+    // than the last frame, so 90 and 144 Hz screens average the cap too.
+    const interval = 1000 / (light ? 30 : 60);
+    if (last >= 0 && now < due - 1) {
       wake();
       return;
     }
+    due = last >= 0 ? Math.max(due + interval, now) : now + interval;
     // The first frame after a sleep starts the clock again instead of jumping.
-    const dt = last < 0 ? 0 : Math.min((now - last) / 1000, 0.05);
+    const woke = last < 0;
+    const dt = woke ? 0 : Math.min((now - last) / 1000, 0.05);
     last = now;
     if (drawIn < 1) {
       drawIn = reduced || paused ? 1 : Math.min(1, drawIn + dt / 3.2);
@@ -3731,6 +3774,7 @@ async function buildGarden(
       return;
     }
     wake();
+    watchPace(now, woke);
     // Shadows are redrawn when the garden changes, and otherwise every
     // `shadowEvery` frames for whatever moves on its own.
     if (changed || dirty || ++shadowFrame >= shadowEvery) {
@@ -4213,6 +4257,9 @@ async function buildGarden(
     },
     setQuality(value) {
       applyQuality(value);
+    },
+    onStruggle(callback) {
+      onStruggle = callback;
     },
     drawInto(target, x, y, w, h) {
       renderer.render(scene, camera);
