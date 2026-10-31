@@ -13,6 +13,12 @@ export const translations: Record<string, readonly [string, string]> = {
   "Contact": ["Contact", "تواصل"],
   "About me": ["À propos de moi", "نبذة عني"],
   "Write to me": ["Écrivez-moi", "راسلني"],
+  // The two tiles beside Mansourah and Whispbook's web studio (content.ts).
+  "The workshop": ["Le banc d’essai", "ورشة التجارب"],
+  "The heart garden": ["Le jardin du cœur", "حديقة القلب"],
+  "Local inference experiments": ["Expériences d’inférence locale", "تجارب الاستدلال المحلي"],
+  "Three experiments in running models on the device: image generation on a phone’s NPU, text-to-speech on an older Android phone, and speculative decoding on Apple Silicon. Each records its protocol and its limits, including a negative result.": ["Trois expériences pour faire tourner des modèles sur l’appareil : génération d’images sur le NPU d’un téléphone, synthèse vocale sur un ancien téléphone Android et décodage spéculatif sur Apple Silicon. Chacune consigne son protocole et ses limites, y compris un résultat négatif.", "ثلاث تجارب لتشغيل النماذج على الجهاز نفسه: توليد الصور على وحدة NPU في هاتف، وتحويل النص إلى كلام على هاتف Android قديم، وفك الترميز التخميني على Apple Silicon. تسجّل كل تجربة منهجيتها وحدودها، بما في ذلك نتيجة سلبية."],
+  "Web studio": ["Studio web", "استوديو الويب"],
   "Read portfolio": ["Lire le portfolio", "اقرأ ملف الأعمال"],
   "Low-end mode": ["Mode léger", "الوضع الخفيف"],
   "Read the portfolio without 3D or garden audio. Recommended for low-end computers.": ["Lire le portfolio sans 3D ni sons du jardin. Recommandé pour les ordinateurs peu puissants.", "اقرأ ملف الأعمال دون رسوم ثلاثية الأبعاد أو أصوات الحديقة. موصى به للأجهزة محدودة الإمكانات."],

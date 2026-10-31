@@ -1,5 +1,5 @@
-import { recentWorkMarkup, practiceMarkup } from "./recent.ts";
-export type Spot = "whisperbook" | "wattch" | "about" | "contact";
+import { recentWorkMarkup, practiceMarkup, recentWork, regionCards, type Region } from "./recent.ts";
+export type Spot = "whisperbook" | "wattch" | "about" | "contact" | Region;
 
 export const projects = {
   whisperbook: {
@@ -70,10 +70,12 @@ export const research = [
 
 export const researchLinks = `<p class="project-shortcuts">${research.map(p => `<a href="${p.url}" target="_blank" rel="noopener noreferrer">${p.title} ↗</a>`).join(" · ")}</p>`;
 
-export const spotOrder: Spot[] = ["whisperbook", "wattch", "about", "contact"];
+export const spotOrder: Spot[] = ["whisperbook", "wattch", "workshop", "bplog", "about", "contact"];
 export const spotNames: Record<Spot, string> = {
   whisperbook: "Whisperbook",
   wattch: "Wattch Core",
+  workshop: "The workshop",
+  bplog: "BP Log",
   about: "About me",
   contact: "Write to me",
 };
@@ -84,7 +86,7 @@ export const spotNames: Record<Spot, string> = {
    to write. */
 export const stages = ["Sketch", "Blueprint", "Build", "Bloom"];
 export const stageProgress = [0, 0.33, 0.66, 1];
-export type WidgetSpot = Exclude<Spot, "about" | "contact">;
+export type WidgetSpot = Exclude<Spot, "about" | "contact" | Region>;
 export type Beat = {
   stage: number;
   title: string;
@@ -144,6 +146,7 @@ function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
           <div><dt>Outcome</dt><dd>${p.outcome}</dd></div>
           <div><dt>Scope and limits</dt><dd>${p.limits}</dd></div>
           <div><dt>Source</dt><dd><a href="${p.url}" target="_blank" rel="noopener noreferrer">Read it on GitHub</a></dd></div>
+          ${spot === "whisperbook" ? webStudioFact : ""}
         </dl>`,
       spot,
     },
@@ -176,6 +179,44 @@ function projectBeats(spot: "whisperbook" | "wattch"): Beat[] {
           <figcaption>${p.caption} <a href="${p.image}" data-evidence="${spot}">View full screenshot</a></figcaption>
         </figure>`,
       spot,
+    },
+  ];
+}
+/* Whispbook's web studio, a separate project, shown with the Android app it
+   grew beside: on the reading table it is the open laptop. Its text is the
+   recent-work card's, so nothing here is a new claim. */
+const webStudio = recentWork.find((p) => p.title.startsWith("Whispbook"))!;
+const webStudioFact = `<div><dt>Web studio</dt><dd><span>${webStudio.text}</span> <span>${webStudio.evidence}</span> <a href="${webStudio.url}" target="_blank" rel="noopener noreferrer">Read it on GitHub</a></dd></div>`;
+
+/* The two tiles beside Mansourah. Each region has one note, built from the
+   recent-work cards it stands for (recent.ts), so its claims are the cards'. */
+const regionEntry = (p: (typeof recentWork)[number], heading: "h3" | "h4") => `<article class="region-entry">
+    <p class="eyebrow">${p.status}</p><${heading}>${p.title}</${heading}>
+    <p>${p.text}</p><p class="recent-evidence">${p.evidence}</p>
+    ${p.url ? `<p><a href="${p.url}" target="_blank" rel="noopener noreferrer">Read project and evidence ↗</a></p>` : ""}
+  </article>`;
+function regionBeats(): Beat[] {
+  const bp = regionCards("bplog")[0];
+  return [
+    {
+      stage: 2,
+      label: "The workshop",
+      title: "Local inference experiments",
+      copy: "Three experiments in running models on the device: image generation on a phone’s NPU, text-to-speech on an older Android phone, and speculative decoding on Apple Silicon. Each records its protocol and its limits, including a negative result.",
+      body: regionCards("workshop").map((p) => regionEntry(p, "h3")).join(""),
+      spot: "workshop",
+    },
+    {
+      stage: 2,
+      label: "The heart garden",
+      title: "BP Log",
+      copy: bp.text,
+      body: `<dl class="note-facts">
+          <div><dt>Project status</dt><dd>${bp.status}</dd></div>
+          <div><dt>Performance evidence</dt><dd>${bp.evidence}</dd></div>
+          <div><dt>Source</dt><dd><a href="${bp.url}" target="_blank" rel="noopener noreferrer">Read it on GitHub</a></dd></div>
+        </dl>`,
+      spot: "bplog",
     },
   ];
 }
@@ -240,11 +281,12 @@ export const beats: Beat[] = [
   {
     stage: 2,
     title: "The boundaries matter",
-    body: `${recentWorkMarkup()}<p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a></p>`,
+    body: `${recentWorkMarkup()}<p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a> · <a href="#workshop">The workshop</a> · <a href="#bplog">BP Log</a></p>`,
     copy: "An offline promise should be enforced by the app. An energy claim should lead back to its source data. Those choices shape the systems I build as much as the screens you can see.",
   },
   ...projectBeats("whisperbook"),
   ...projectBeats("wattch"),
+  ...regionBeats(),
   {
     stage: 3,
     label: "The greenhouse",
@@ -259,6 +301,8 @@ export const stageStart = stages.map((_, s) => beats.findIndex((b) => b.stage ==
 export const spotBeat: Record<Spot, number> = {
   whisperbook: beats.findIndex((b) => b.spot === "whisperbook"),
   wattch: beats.findIndex((b) => b.spot === "wattch"),
+  workshop: beats.findIndex((b) => b.spot === "workshop"),
+  bplog: beats.findIndex((b) => b.spot === "bplog"),
   about: stageStart[1],
   contact: stageStart[3],
 };

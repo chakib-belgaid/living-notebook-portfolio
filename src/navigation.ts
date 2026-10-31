@@ -1,5 +1,5 @@
-export type SectionId = "intro" | "work" | "whisperbook" | "wattch" | "about" | "contact";
-export const sectionIds: SectionId[] = ["intro", "work", "whisperbook", "wattch", "about", "contact"];
+export type SectionId = "intro" | "work" | "whisperbook" | "wattch" | "workshop" | "bplog" | "about" | "contact";
+export const sectionIds: SectionId[] = ["intro", "work", "whisperbook", "wattch", "workshop", "bplog", "about", "contact"];
 export function currentSection(): SectionId {
   const hash = location.hash.slice(1) as SectionId;
   return sectionIds.includes(hash) ? hash : "intro";
