@@ -181,23 +181,74 @@ for (const javaScriptEnabled of [true, false]) {
   });
 }
 
-test('a newer navigation cancels the pending one; arriving at Contact stays at Contact', async () => {
+test('the visitor\'s own input cancels a pending re-anchor', async () => {
   const p = await open('/');
   try {
-    // A direct hash change queues a history arrival; the explicit click wins.
-    await p.evaluate(() => { location.hash = 'about'; document.querySelector('.nav-sections a[href="#contact"]').click(); });
-    await p.waitForTimeout(800);
-    assert.equal(await hash(p), '#contact');
-    assert.equal(await focusedId(p), 'contact-title');
-    // Two explicit jumps in a row: only the last one is focused and kept.
-    await p.evaluate(() => {
+    // An explicit jump leaves a pending re-anchor for the next frames; the
+    // visitor scrolls away (wheel) in the same task. Without cancellation the
+    // next frame would pull the page back to Work.
+    const away = await p.evaluate(() => {
       document.querySelector('.nav-sections a[href="#work"]').click();
-      document.querySelector('.nav-sections a[href="#about"]').click();
+      const y = document.querySelector('#about').getBoundingClientRect().top + scrollY;
+      scrollTo({ top: y, behavior: 'instant' });
+      document.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 1 }));
+      return scrollY;
     });
-    await p.waitForTimeout(800);
+    await settle(p); await settle(p); await p.waitForTimeout(100);
+    assert.equal(await p.evaluate(() => scrollY), away, 'not pulled back to #work');
+    assert.deepEqual(p.errors, []);
+  } finally { await close(p); }
+});
+
+test('a newer visit cancels the previous visit\'s pending landing', async () => {
+  const p = await open('/');
+  try {
+    // Record every landing made after the second visit started: none may
+    // go back to the first destination (its fonts.ready/frame callbacks are
+    // still queued when the second visit runs in the same task).
+    const late = await p.evaluate(async () => {
+      const landings = [];
+      const original = Element.prototype.scrollIntoView;
+      let second = false;
+      Element.prototype.scrollIntoView = function (...args) { if (second) landings.push(this.id); return original.apply(this, args); };
+      document.querySelector('.nav-sections a[href="#work"]').click();
+      second = true;
+      document.querySelector('.nav-sections a[href="#about"]').click();
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r))));
+      Element.prototype.scrollIntoView = original;
+      return landings;
+    });
+    assert.ok(late.length > 0 && late.every(id => id === 'about'), late.join(','));
     assert.equal(await hash(p), '#about');
     assert.equal(await focusedId(p), 'about-title');
-    assert.ok((await clearOfHeader(p, '#about-title')).ok);
+    assert.deepEqual(p.errors, []);
+  } finally { await close(p); }
+});
+
+test('an explicit jump wins over a history arrival queued before it', async () => {
+  const p = await open('/');
+  try {
+    // A history arrival for #about is queued (it runs on the next frame);
+    // the explicit click to Contact in the same task must win.
+    await p.evaluate(() => {
+      history.replaceState(null, '', '#about');
+      dispatchEvent(new PopStateEvent('popstate'));
+      document.querySelector('.nav-sections a[href="#contact"]').click();
+    });
+    await settle(p); await settle(p); await p.waitForTimeout(300);
+    assert.equal(await hash(p), '#contact');
+    assert.equal(await focusedId(p), 'contact-title');
+    assert.ok((await clearOfHeader(p, '#contact-title')).ok, 'still at Contact');
+    assert.deepEqual(p.errors, []);
+  } finally { await close(p); }
+});
+
+test('a malformed fragment still lands on the readable default', async () => {
+  const p = await open('/#%zz');
+  try {
+    assert.equal(await p.evaluate(() => document.documentElement.classList.contains('enhanced')), true);
+    await p.locator('.nav-sections a[href="#about"]').click();
+    assert.equal(await focusedId(p), 'about-title');
     assert.deepEqual(p.errors, []);
   } finally { await close(p); }
 });

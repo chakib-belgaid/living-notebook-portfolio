@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { chapterIds, resolveFragment, nextChapterId, activeNavHref, fragmentAliases, chapterOrder } from '../src/narrative/model.ts';
 import { chapters } from '../src/narrative/content.ts';
 import { hrefForTarget, inPageDestination, isCaseLink } from '../src/navigation.ts';
+import { sceneCues } from '../src/narrative/scene-adapter.ts';
 import { parseReturnRecord, parseRestoreRecord, returnQuery, caseKey, CASE_PATH, RESTORE_TTL_MS } from '../src/narrative/return-state.ts';
 
 test('resolveFragment: empty and #intro are the opening', () => {
@@ -31,6 +32,8 @@ test('resolveFragment: unknown, case-only and prototype names resolve to nothing
   for (const hash of ['#nope', '#whispbook', '#Work', '#constructor', '#toString', '#__proto__', '#context']) {
     assert.equal(resolveFragment(hash), null, hash);
   }
+  // A malformed escape names nothing and does not throw.
+  for (const hash of ['#%zz', '#%', '#work%E0%A4%A']) assert.equal(resolveFragment(hash), null, hash);
   // Percent-encoded ids are decoded once.
   assert.deepEqual(resolveFragment('#energy%2Dtools'), { chapter: 'energy-tools', target: 'energy-tools' });
 });
@@ -103,4 +106,12 @@ test('restore records expire', () => {
   assert.equal(parseRestoreRecord(JSON.stringify({ ...record, t: now - RESTORE_TTL_MS - 1 }), now), null);
   assert.equal(parseRestoreRecord(JSON.stringify({ ...record, t: now + 5000 }), now), null);
   assert.equal(parseRestoreRecord(JSON.stringify({ ...record, chapter: 'garden' }), now), null);
+});
+
+test('the model and the scene adapter agree on progress and phase for every chapter', () => {
+  for (const c of chapters) {
+    assert.equal(sceneCues[c.id].progress, c.scene.progress, `${c.id} progress`);
+    assert.equal(sceneCues[c.id].stage, c.scene.phase, `${c.id} phase`);
+  }
+  assert.equal(sceneCues.about.stage, 'build', 'Bloom is held back for Contact');
 });
