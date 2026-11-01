@@ -136,6 +136,22 @@ Render windows (median of 5 runs). `draws/s` counts animation frames that actual
 | phone-stills / stills-scroll | 0 | 26.6 | n/a | n/a | 0 |
 | reading / reading-navigation | 0 | 236.2 | n/a | n/a | 0 |
 
+Per-run values for the key windows (runs 1 to 5, in order; the window medians above are derived from these; `.qa/` is git-ignored, so this is the only repository record of them). Long task = longest main-thread task in the window, ms.
+
+| Scenario / window | draws/s per run | raf/s per run | Long task ms per run |
+| --- | --- | --- | --- |
+| desktop-garden / bloom-settled | 5.3, 6.1, 5.9, 6.1, 6.1 | 10.5, 12.2, 11.9, 12.3, 12.2 | 462, 204, 247, 203, 225 |
+| desktop-garden / paused-settled | 0, 0, 0, 0, 0 | 0, 0, 0, 0, 0 | 0, 0, 0, 0, 0 |
+| desktop-garden / hidden (simulated) | 0.3, 0.3, 0.3, 0.3, 0.3 | 0.6, 0.6, 0.6, 0.6, 0.6 | 148, 145, 144, 142, 144 |
+| desktop-garden-light / bloom-settled | 9.1, 8.9, 8.8, 9.0, 8.8 | 18.1, 17.9, 17.7, 17.9, 17.5 | 144, 144, 147, 151, 161 |
+| desktop-garden-light / paused-settled | 0, 0, 0, 0, 0 | 0, 0, 0, 0, 0 | 0, 0, 0, 0, 0 |
+| desktop-garden-light / hidden (simulated) | 0.3, 0.3, 0.3, 0.3, 0.3 | 0.6, 0.6, 0.6, 0.6, 0.6 | 97, 96, 101, 105, 101 |
+| phone-journey / bloom-settled | 29.3, 29.3, 28.7, 29.0, 28.9 | 60.6, 58.5, 67.9, 66.6, 67.1 | 0, 0, 0, 0, 0 |
+| phone-journey / paused-settled | 0, 0, 0, 0, 0 | 0, 0, 0, 0, 0 | 0, 0, 0, 0, 0 |
+| phone-journey / hidden (simulated) | 0.3, 0.3, 0.3, 0.3, 0.3 | 0.7, 0.7, 0.7, 0.7, 0.7 | 0, 0, 0, 0, 0 |
+
+For the other windows in the table above only the median is recorded here; the raw per-run values were in the local `.qa/baseline/performance.json`.
+
 How to read these: the desktop rows draw at 4 to 9 frames per second because SwiftShader is rasterizing in software; that figure is a property of this environment, not of the code. The scheduling facts survive that caveat and are the useful baseline: a paused, settled scene issues zero draws and zero rAF callbacks; simulated hidden is down to about 0.3 draws/s; `stills` and `reading` issue zero draws. What the current code does **not** do, and the redesign must: the built scene (`bloom-settled`) keeps drawing continuously after it has settled (6.1 draws/s on desktop, 29 draws/s on phone), against the target of 0 recurring draws during a guided reading hold. The phone `opening-sketch` window draws at 30 draws/s with a very high rAF request rate (228/s) because of the harness's own probe and the page's loops.
 
 The earlier November review's table (Chrome 156, throttled, LCP/CLS/first-draw) is context only; this refresh is not comparable to it because of different browser, no throttling, software GL and no LCP/CLS.
@@ -208,7 +224,7 @@ Note: `npm test` with `QA_OUTPUT=.qa/baseline` also wrote its own screenshots (c
 | Chapter list in two divergent models | `src/main.ts:613` (section ids), `src/content.ts:73,304` (`spotOrder`, `spotBeat`) | unify (P2) |
 | Locale (en/fr/ar, URL then saved then browser then en) | `src/i18n.ts:5-16`, `LOCALE_STORAGE_KEY` `:4` | retain |
 | Evidence image dialog | `src/evidence.ts` (uses `projects[].image` = `public/assets/whisperbook.webp` `src/content.ts:28`, `public/assets/wattch.png` `:57`) | retain for secondary images |
-| Dev scene hook for stills | `src/main.ts:1706`; `scripts/capture-stills.mjs`, `scripts/capture-loading-still.mjs` | update in P4 |
+| Dev scene hook for stills | `src/main.ts:1707`; `scripts/capture-stills.mjs`, `scripts/capture-loading-still.mjs` | update in P4 |
 | Tests/perf hooks | `window.__notebookStats` (used by `tests/performance.mjs`), `#scene[data-*]` attributes | keep for instrumentation |
 
 ## 7. Retained-case dependency inventory (missing local files vs live-site availability)
@@ -234,6 +250,7 @@ Candidates were fetched read-only from the Pages repository `chakib-belgaid/chak
 
 - The Pages repository's history for all six files points to one commit, `8f7db996` (2026-08-21, "update: publish Whisperbook and Wattch Core portfolio"), i.e. the earlier portfolio that predates the living notebook. They are in no commit of this repository (`git log --all -- public/assets/projects` finds none).
 - **Two of the six are byte-identical to root-level assets already in this checkout:** `whisperbook/now-playing.webp` equals `public/assets/whisperbook.webp` (same SHA-256 `ec740fea...`, 941x1672; the ledger says this file was added 1 October 2026 and its build is unconfirmed) and `wattch/energy-tests.png` equals `public/assets/wattch.png` (`7dfbd30b...`, 1440x900). The ledger instructs that the root and `projects/` files are different files and must not be silently substituted. For these two the bytes are in fact identical, which means they carry the same unresolved provenance question: the whisperbook screen existed by 21 August 2026, and the October copy is not a newer capture.
+- **Issue for the controller/P3:** the ledger statement in `CONTENT_AND_EVIDENCE.md` (retained-case assets section, "The two root-level assets above are different files") is factually wrong for these two files, because they are byte-identical to the root assets. The handoff text should be corrected or the substitution question decided explicitly in P3.
 - The Wattch images are self-labelled. `deterministic-trace.png` (1600x1000) is a terminal transcript of a dry run, captioned inside the image "Recorded from the checked-in Wattch Core deterministic test daemon on 2026-07-14. ... not a hardware-energy measurement." `energy-tests.png` is the Energy Tests surface labelled "DETERMINISTIC DAEMON", captioned "Captured on 21 August 2026 ... synthetic counter values ... not measurements of physical hardware." Those labels support keeping them as synthetic workflow evidence. They do not by themselves prove the capture method.
 - The four Whisperbook images are 941x1672 phone-aspect screens of a sample book ("The Moonlit Wood", "Alice's Adventures", "The Secret Garden") with illustrated art. I did not establish whether they are device captures, an emulator or mock-ups, which build produced them, or their public-use status. The case page captions describe them as "the production Compose surface"; that is an old caption and is not evidence.
 - Deployed Pages also holds unlinked extras: `assets/projects/wattch/deterministic-trace.svg` (sha `ac0b49b0...`) and `deterministic-trace.txt` (sha `6f3ecd9c...`), which are not referenced by any retained page.
