@@ -25,7 +25,8 @@ export type FramingKind = "world" | "focus" | "wide";
 /** The wide layout: one sticky scene rail (`[data-scene-host="rail"]`) beside
  * the chapters; per-chapter hosts are hidden. Otherwise (portrait/narrow)
  * each chapter's inline `[data-scene-host="<chapterId>"]` is the mount point.
- * Use with matchMedia; src/narrative/style.css uses the same query. */
+ * Use with matchMedia; src/narrative/style.css uses the same query (for
+ * screen media). From 900px the text column is 420–520px, never narrower. */
 export const WIDE_LAYOUT_QUERY = "(min-width: 900px) and (min-height: 500px)";
 export const RAIL_HOST = "rail";
 

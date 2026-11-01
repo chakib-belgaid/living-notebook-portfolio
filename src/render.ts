@@ -22,11 +22,17 @@ export function renderAction(a: Action, className = "action") {
 }
 const actions = (list: Action[]) => list.length ? `<div class="chapter-actions">${list.map(a => renderAction(a)).join("")}</div>` : "";
 
+/** A poster is described once, by the first chapter that shows it; later
+ * chapters with the same still (BP Log, MCQ Scan and About share Build) mark
+ * it decorative, so their own text is what a screen reader hears. */
+const describedBy = (c: Chapter) => chapters.find(other => other.scene.poster === c.scene.poster)!.id === c.id;
+
 function sceneHost(c: Chapter) {
   const { poster } = c.scene;
   const lazy = c.id === "intro" ? "" : ` loading="lazy"`;
+  const alt = describedBy(c) ? e(posterAlt[poster]) : "";
   return `<div class="scene-host" data-scene-host="${c.id}" data-phase="${c.scene.phase}" data-poster="${poster}">
-        <img class="scene-poster" src="${posterSrc(poster)}" width="${POSTER_SIZE.width}" height="${POSTER_SIZE.height}" alt="${e(posterAlt[poster])}"${lazy} decoding="async" />
+        <img class="scene-poster" src="${posterSrc(poster)}" width="${POSTER_SIZE.width}" height="${POSTER_SIZE.height}" alt="${alt}"${lazy} decoding="async" />
       </div>`;
 }
 
@@ -62,7 +68,7 @@ function aboutExtras() {
   const notes = notebook.entries.map(n => `<li><h4>${e(n.title)}</h4><p>${e(n.text)}</p><a href="${e(n.href)}" target="_blank" rel="noopener">${e(n.label)}${icon("↗")}<span class="sr-only"> (opens in a new tab)</span></a></li>`).join("");
   return {
     timeline: `<ol class="timeline" aria-label="Career">${years}</ol>`,
-    notebook: `<aside class="notebook" id="workshop" aria-labelledby="workshop-title"><h3 id="workshop-title">${e(notebook.heading)}</h3><ul>${notes}</ul></aside>`,
+    notebook: `<aside class="notebook" id="workshop" aria-labelledby="workshop-title"><h3 id="workshop-title" tabindex="-1">${e(notebook.heading)}</h3><ul>${notes}</ul></aside>`,
   };
 }
 
@@ -111,8 +117,7 @@ export function renderPortfolio() {
     <a class="skip-link" href="#intro">Skip to portfolio</a>
     <header class="masthead">
       <a class="owner" href="#intro">${e(identity.name)}</a>
-      <nav class="primary-nav" aria-label="Sections">${nav}</nav>
-      <a class="cv-link" href="${cv.en}" type="application/pdf" hreflang="en" data-href-en="${cv.en}" data-href-fr="${cv.fr}">CV</a>
+      <nav class="primary-nav" aria-label="Sections"><div class="nav-sections">${nav}</div><a class="cv-link" href="${cv.en}" type="application/pdf" hreflang="en" data-href-en="${cv.en}" data-href-fr="${cv.fr}">CV</a></nav>
       <label class="language-picker"><span class="sr-only">Language</span><select data-language aria-label="Language"><option value="en" lang="en" data-no-translate>EN</option><option value="fr" lang="fr" data-no-translate>FR</option><option value="ar" lang="ar" data-no-translate>AR</option></select></label>
     </header>
     <main id="portfolio" class="narrative">${chapters.map(renderChapter).join("")}

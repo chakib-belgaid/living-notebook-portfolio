@@ -1,58 +1,94 @@
 /* The narrative document: one sticky header, eight chapters in ordinary
    flow, and reserved scene geometry. Every host reserves its size here,
    before any script, font, poster or canvas arrives.
-   Narrow/portrait: each chapter's own host sits inline between motivation
-   and decision; the rail is not displayed.
-   Wide (WIDE_LAYOUT_QUERY in model.ts, (min-width: 900px) and
-   (min-height: 500px)): one sticky rail beside the whole run of chapters;
-   the per-chapter hosts are not displayed. */
+
+   Responsive contract (IMPLEMENTATION_PLAN §4.2), one rule set per range:
+   - < 700px (portrait/small): 20px gutters, 17px body, 38–44px opening
+     heading; each chapter's own scene slot (~45svh, 220–400px) sits inline
+     between its lead and body; two-row header.
+   - 700–899px: the same stacked narrative with a one-row header (a split
+     would leave the text column under 420px).
+   - >= 900px and >= 500px tall (WIDE_LAYOUT_QUERY in model.ts): a text
+     column of 420–520px beside one sticky scene rail (about 50–60% of the
+     width from 1100px); the per-chapter hosts are not displayed.
+   - Short landscape (< 500px tall): stacked, compact scene slot, the header
+     scrolls away instead of covering a third of the screen.
+   Explicit jumps and fragment landings clear the header through
+   --header-clearance (0 when the header is not sticky). */
 :root {
-  --header-clearance: 6rem;
+  --header-height: 6rem;
+  --header-clearance: var(--header-height);
   --gutter: 1.25rem;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 @media (min-width: 700px) {
-  :root { --header-clearance: 4.5rem; --gutter: 2rem; }
+  :root { --header-height: 4.5rem; --gutter: 2rem; }
+}
+@media (max-height: 499.98px) and (orientation: landscape) {
+  :root { --header-clearance: 0px; }
 }
 
-/* Header: name, Work · About · Contact, CV, language. Its height is fixed so
-   fragment and focus offsets can rely on --header-clearance. */
+/* Header: name; the Sections landmark (Work · About · Contact, then CV);
+   language. Its height is fixed so fragment and focus offsets can rely on
+   --header-clearance. */
 .masthead {
   position: sticky; top: 0; z-index: 10;
-  height: var(--header-clearance);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  grid-template-rows: 3.25rem 2.75rem;
-  grid-template-areas: "owner lang cv" "nav nav nav";
-  align-items: center; column-gap: 0.6rem;
+  height: var(--header-height);
+  display: grid; align-items: center; column-gap: 0.6rem;
   padding-inline: max(var(--gutter), calc((100% - 82rem) / 2));
   background: var(--paper);
   border-bottom: 1px solid var(--hairline);
 }
-.owner { grid-area: owner; justify-self: start; font-size: 1.125rem; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; min-height: 2.75rem; }
-.primary-nav { grid-area: nav; display: flex; justify-content: space-around; align-self: stretch; }
-.primary-nav a {
+@media (max-height: 499.98px) and (orientation: landscape) {
+  .masthead { position: relative; }
+}
+/* Above the Sections landmark where, on narrow screens, its box spans the header. */
+.owner, .masthead .language-picker { position: relative; z-index: 1; }
+.owner {
+  justify-self: start; display: inline-flex; align-items: center; min-height: 2.75rem;
+  font-size: 1.125rem; line-height: 1.15; text-decoration: none;
+}
+.nav-sections a {
   display: inline-flex; align-items: center; min-height: 2.75rem; padding-inline: 0.75rem;
   font-family: var(--sans); font-size: 0.9375rem; text-decoration: none;
 }
-.primary-nav a:hover, .primary-nav a[aria-current] { text-decoration: underline; text-underline-offset: 0.45em; }
+.nav-sections a:hover, .nav-sections a[aria-current] { text-decoration: underline; text-underline-offset: 0.45em; }
 .cv-link {
-  grid-area: cv; display: inline-flex; align-items: center; justify-content: center;
-  min-height: 2.5rem; min-width: 2.75rem; padding-inline: 0.75rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 2.5rem; min-width: 2.75rem; max-width: 11rem; padding: 0.2rem 0.75rem;
   border: 1px solid color-mix(in srgb, var(--ink) 45%, transparent); border-radius: 2px;
-  font-family: var(--sans); font-size: 0.875rem; text-decoration: none; white-space: nowrap;
+  font-family: var(--sans); font-size: 0.875rem; line-height: 1.2; text-align: center; text-decoration: none;
 }
 .cv-link:hover { border-color: var(--ink); }
-.masthead .language-picker { grid-area: lang; }
 .masthead .language-picker select { font-family: var(--sans); font-size: 0.8125rem; }
-@media (min-width: 700px) {
+
+/* Narrow: name, CV and language on the first row; the sections on the
+   second. The Sections landmark spans both rows as a subgrid so the CV link
+   sits in it while lining up with the name. */
+@media (max-width: 699.98px) {
   .masthead {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-rows: 1fr;
-    grid-template-areas: "owner nav cv lang";
-    column-gap: 1.25rem;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: 3.25rem 2.75rem;
   }
-  .primary-nav { justify-self: end; justify-content: flex-end; gap: 0.25rem; align-self: center; }
+  .owner { grid-area: 1 / 1; }
+  .masthead .language-picker { grid-area: 1 / 3; }
+  .primary-nav {
+    grid-row: 1 / 3; grid-column: 1 / -1; align-self: stretch;
+    display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; align-items: center;
+  }
+  .nav-sections { grid-row: 2; grid-column: 1 / -1; align-self: stretch; display: flex; justify-content: space-around; }
+  .cv-link { grid-area: 1 / 2; }
+  @supports not (grid-template-rows: subgrid) {
+    .primary-nav { grid-row: 2; display: flex; justify-content: space-around; align-items: center; }
+  }
+}
+/* From 700px: one row, name · sections and CV · language. */
+@media (min-width: 700px) {
+  .masthead { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 1.25rem; }
+  .owner { white-space: nowrap; }
+  .primary-nav { display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; min-width: 0; }
+  .nav-sections { display: flex; gap: 0.25rem; }
+  .cv-link { white-space: nowrap; max-width: none; }
 }
 
 /* Chapters. */
@@ -72,7 +108,7 @@
   color: var(--muted);
 }
 .chapter h1, .chapter h2 { letter-spacing: -0.01em; text-wrap: balance; }
-.chapter h1 { font-size: clamp(2.375rem, 1.6rem + 3vw, 4.25rem); line-height: 1.04; font-weight: 450; margin-bottom: 1.1rem; }
+.chapter h1 { font-size: clamp(2.375rem, 1.7rem + 2.4vw, 4.25rem); line-height: 1.04; font-weight: 450; margin-bottom: 1.1rem; }
 .chapter h2 { font-size: clamp(2.125rem, 1.5rem + 2.2vw, 3.25rem); line-height: 1.08; font-weight: 450; margin-bottom: 0.75rem; }
 .chapter-subtitle { font-size: clamp(1.3rem, 1.1rem + 0.6vw, 1.6rem); line-height: 1.25; margin-bottom: 1.1rem; text-wrap: balance; }
 .chapter-motivation, .chapter-decision p, .timeline p { font-size: 1.0625rem; line-height: 1.6; }
@@ -143,17 +179,26 @@
 }
 .scene-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 36%; }
 .chapter-whisperbook .scene-poster, .chapter-energy-tools .scene-poster { object-position: 50% 30%; }
+/* Reserved for P4: on stacked layouts the active slot is sticky below the
+   header only while a scroll-driven transition runs (the controller sets
+   data-scene-transition), then returns to the flow. */
+.chapter .scene-host[data-scene-transition] { position: sticky; top: var(--header-clearance); z-index: 1; }
+/* Short landscape: a compact, content-led slot. */
+@media (max-height: 499.98px) and (orientation: landscape) {
+  .scene-host { height: clamp(10rem, 55svh, 15rem); max-width: 36rem; }
+}
 
 /* The rail exists only on wide layouts. */
 .scene-rail { display: none; }
 
-/* Wide: a text column (420–520px at >= 1100px) beside one sticky rail of
-   roughly 50–60% of the width, spanning all eight chapter rows so it stays
-   put for the whole run. */
-@media (min-width: 900px) and (min-height: 500px) {
+/* Wide: a text column of 420–520px (never narrower on this layout; capped
+   at 55% so enlarged text cannot squeeze the rail away) beside one sticky
+   rail spanning all eight chapter rows, so it stays put for the whole run.
+   At 1100px the rail is ~54% of the content width, at 1440px ~52%. */
+@media screen and (min-width: 900px) and (min-height: 500px) {
   .narrative {
     display: grid;
-    grid-template-columns: [text] minmax(0, clamp(22rem, 36vw, 32.5rem)) [scene] minmax(0, 1fr);
+    grid-template-columns: [text] minmax(0, min(clamp(26.25rem, 36vw, 32.5rem), 55%)) [scene] minmax(0, 1fr);
     column-gap: clamp(2rem, 5vw, 5rem);
   }
   .chapter {
@@ -184,8 +229,9 @@
 :root[dir="rtl"] .action-icon { transform: scaleX(-1); }
 
 @media print {
-  .masthead { position: static; height: auto; }
-  .scene-host, .scene-rail, .chapter-foot { display: none !important; }
+  .masthead { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding-block: 0.5rem; }
+  .scene-host, .scene-rail, .chapter-foot, .skip-link { display: none !important; }
+  .primary-nav, .nav-sections { display: flex; flex-wrap: wrap; gap: 0 1rem; }
   .chapter { display: block; min-height: 0; padding-block: 1rem; break-inside: avoid-page; }
   .action-primary { background: none; color: inherit; padding: 0; text-decoration: underline; }
 }
