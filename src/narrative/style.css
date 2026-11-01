@@ -1,13 +1,15 @@
 /* The narrative document: one sticky header, eight chapters in ordinary
-   flow, and a dimensioned scene host per chapter. Every host reserves its
-   size here, before any script, font, poster or canvas arrives.
-   Portrait (< 900px): the host sits inline between motivation and decision.
-   Wide (>= 900px): text column beside a sticky visual rail. */
+   flow, and reserved scene geometry. Every host reserves its size here,
+   before any script, font, poster or canvas arrives.
+   Narrow/portrait: each chapter's own host sits inline between motivation
+   and decision; the rail is not displayed.
+   Wide (WIDE_LAYOUT_QUERY in model.ts, (min-width: 900px) and
+   (min-height: 500px)): one sticky rail beside the whole run of chapters;
+   the per-chapter hosts are not displayed. */
 :root {
   --header-clearance: 6rem;
   --gutter: 1.25rem;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  scroll-padding-top: var(--header-clearance);
 }
 @media (min-width: 700px) {
   :root { --header-clearance: 4.5rem; --gutter: 2rem; }
@@ -56,10 +58,13 @@
 /* Chapters. */
 .narrative { max-width: 82rem; margin-inline: auto; padding-inline: var(--gutter); }
 .chapter { position: relative; display: flex; flex-direction: column; padding-block: 2.25rem 1.5rem; border-bottom: 1px solid var(--hairline); }
-.chapter:last-child { border-bottom: 0; }
+.chapter-contact { border-bottom: 0; }
 .chapter-lead, .chapter-body { min-width: 0; overflow-wrap: break-word; }
-/* Alias targets (#wattch) sit at the chapter top, outside the grid flow. */
+/* Alias targets (#wattch) sit at the chapter top, outside the flow. */
 .fragment-alias { position: absolute; top: 0; inset-inline-start: 0; width: 1px; height: 1px; }
+/* Every fragment and focus target clears the sticky header, with a little
+   air: chapters, alias anchors, the notebook and headings with ids. */
+.chapter, .fragment-alias, .notebook, .chapter :is(h1, h2, h3)[id] { scroll-margin-top: calc(var(--header-clearance) + 0.75rem); }
 
 .chapter-label {
   margin-bottom: 0.9rem;
@@ -139,28 +144,37 @@
 .scene-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 36%; }
 .chapter-whisperbook .scene-poster, .chapter-energy-tools .scene-poster { object-position: 50% 30%; }
 
-/* Wide: a text column (420–520px at >= 1100px) beside a sticky visual rail
-   of roughly 50–60% of the width. */
+/* The rail exists only on wide layouts. */
+.scene-rail { display: none; }
+
+/* Wide: a text column (420–520px at >= 1100px) beside one sticky rail of
+   roughly 50–60% of the width, spanning all eight chapter rows so it stays
+   put for the whole run. */
 @media (min-width: 900px) and (min-height: 500px) {
-  .chapter {
+  .narrative {
     display: grid;
-    grid-template-columns: minmax(0, clamp(22rem, 36vw, 32.5rem)) minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-    grid-template-areas: "lead scene" "body scene";
+    grid-template-columns: [text] minmax(0, clamp(22rem, 36vw, 32.5rem)) [scene] minmax(0, 1fr);
     column-gap: clamp(2rem, 5vw, 5rem);
+  }
+  .chapter {
+    grid-column: text;
     min-height: calc(100vh - var(--header-clearance));
     min-height: calc(100svh - var(--header-clearance));
     padding-block: 2.5rem;
   }
-  .chapter-lead { grid-area: lead; }
-  .chapter-body { grid-area: body; }
-  .chapter-intro { grid-template-rows: auto auto; align-content: center; }
-  .scene-host {
-    grid-area: scene; align-self: start;
+  .chapter-body { flex: 1; display: flex; flex-direction: column; }
+  .chapter-foot { margin-top: auto; }
+  .chapter-intro { justify-content: center; }
+  .chapter-intro .chapter-body { flex: 0; }
+  .chapter .scene-host { display: none; }
+  .scene-rail {
+    display: block; grid-column: scene; grid-row: 1 / span 8; align-self: start;
     position: sticky; top: calc(var(--header-clearance) + 1.25rem);
     height: calc(100vh - var(--header-clearance) - 5rem);
     height: calc(100svh - var(--header-clearance) - 5rem);
-    min-height: 20rem; margin: 0;
+    min-height: 20rem; margin-block: 1.25rem;
+    overflow: hidden; contain: layout paint;
+    background: var(--scene-bg); border-radius: 3px;
   }
   .chapter-motivation, .chapter-decision p { font-size: 1.125rem; }
 }
@@ -171,7 +185,7 @@
 
 @media print {
   .masthead { position: static; height: auto; }
-  .scene-host, .chapter-foot { display: none; }
+  .scene-host, .scene-rail, .chapter-foot { display: none !important; }
   .chapter { display: block; min-height: 0; padding-block: 1rem; break-inside: avoid-page; }
   .action-primary { background: none; color: inherit; padding: 0; text-decoration: underline; }
 }

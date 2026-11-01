@@ -22,6 +22,13 @@ export type SceneSpot = "whisperbook" | "wattch" | "about" | "contact" | "worksh
  * wider view around a place (About's terrace and tower). */
 export type FramingKind = "world" | "focus" | "wide";
 
+/** The wide layout: one sticky scene rail (`[data-scene-host="rail"]`) beside
+ * the chapters; per-chapter hosts are hidden. Otherwise (portrait/narrow)
+ * each chapter's inline `[data-scene-host="<chapterId>"]` is the mount point.
+ * Use with matchMedia; src/narrative/style.css uses the same query. */
+export const WIDE_LAYOUT_QUERY = "(min-width: 900px) and (min-height: 500px)";
+export const RAIL_HOST = "rail";
+
 /** Existing stills in public/assets/stills/ (780×1688 portrait crops). */
 export type PosterKey = "sketch" | "blueprint" | "build" | "whisperbook" | "wattch" | "bloom";
 export const posterSrc = (key: PosterKey) => `/assets/stills/${key}.webp`;

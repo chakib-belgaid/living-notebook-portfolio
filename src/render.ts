@@ -30,6 +30,18 @@ function sceneHost(c: Chapter) {
       </div>`;
 }
 
+/** Wide layouts (WIDE_LAYOUT_QUERY): one sticky rail beside the whole run of
+ * chapters, the single mount point for the live scene. Decorative: the
+ * chapter text is the content, and each chapter's own host (hidden on wide
+ * layouts) carries the described poster. Without JS it shows the opening
+ * sketch; P4 switches its poster and pose by chapter. */
+function sceneRail() {
+  const poster = chapter("intro").scene.poster;
+  return `<aside class="scene-rail" data-scene-host="rail" data-phase="${chapter("intro").scene.phase}" data-poster="${poster}" aria-hidden="true">
+        <img class="scene-poster" src="${posterSrc(poster)}" width="${POSTER_SIZE.width}" height="${POSTER_SIZE.height}" alt="" decoding="async" />
+      </aside>`;
+}
+
 function chapterFoot(c: Chapter) {
   const next = nextChapterId(c.id);
   const link = next
@@ -104,5 +116,6 @@ export function renderPortfolio() {
       <label class="language-picker"><span class="sr-only">Language</span><select data-language aria-label="Language"><option value="en" lang="en" data-no-translate>EN</option><option value="fr" lang="fr" data-no-translate>FR</option><option value="ar" lang="ar" data-no-translate>AR</option></select></label>
     </header>
     <main id="portfolio" class="narrative">${chapters.map(renderChapter).join("")}
+      ${sceneRail()}
     </main>`;
 }
