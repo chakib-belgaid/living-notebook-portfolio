@@ -1,0 +1,2719 @@
+{
+  "date": "2026-11-01",
+  "browser": "156.0.8078.76",
+  "cpu": "Apple M5",
+  "conditions": "Cold HTTP cache per run. Desktop no throttling; mobile 4x CPU, 1.6 Mbit/s down, 150ms latency. Open-Meteo blocked. Browser mobile emulation, not physical phone. 7s after load observation plus 2s frame sample.",
+  "rows": [
+    {
+      "name": "desktop-default",
+      "run": 1,
+      "fcp": 140,
+      "lcp": {
+        "start": 160,
+        "duration": 0,
+        "element": "P garden-loading"
+      },
+      "clsSum": 0.014047409924165703,
+      "shifts": [
+        {
+          "start": 139.39999999990687,
+          "duration": 0,
+          "value": 0.013535709635416667,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "NAV ",
+              "previous": {
+                "x": 629.90625,
+                "y": 20,
+                "width": 199.0625,
+                "height": 45,
+                "top": 20,
+                "right": 828.96875,
+                "bottom": 65,
+                "left": 629.90625
+              },
+              "current": {
+                "x": 194.90625,
+                "y": 20,
+                "width": 199.0625,
+                "height": 45,
+                "top": 20,
+                "right": 393.96875,
+                "bottom": 65,
+                "left": 194.90625
+              }
+            },
+            {
+              "node": "A view-switch script-only",
+              "previous": {
+                "x": 1281.09375,
+                "y": 20,
+                "width": 126.90625,
+                "height": 44,
+                "top": 20,
+                "right": 1408,
+                "bottom": 64,
+                "left": 1281.09375
+              },
+              "current": {
+                "x": 409.96875,
+                "y": 20,
+                "width": 125.15625,
+                "height": 44,
+                "top": 20,
+                "right": 535.125,
+                "bottom": 64,
+                "left": 409.96875
+              }
+            }
+          ]
+        },
+        {
+          "start": 777.0999999998603,
+          "duration": 0,
+          "value": 0.0005117002887490354,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "DETAILS tally",
+              "previous": {
+                "x": 726.734375,
+                "y": 817.8125,
+                "width": 169.890625,
+                "height": 44,
+                "top": 817.8125,
+                "right": 896.625,
+                "bottom": 861.8125,
+                "left": 726.734375
+              },
+              "current": {
+                "x": 787.75,
+                "y": 817.8125,
+                "width": 108.875,
+                "height": 44,
+                "top": 817.8125,
+                "right": 896.625,
+                "bottom": 861.8125,
+                "left": 787.75
+              }
+            },
+            {
+              "node": "BUTTON ",
+              "previous": {
+                "x": 685.21875,
+                "y": 833.421875,
+                "width": 52.3125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 737.53125,
+                "bottom": 871.8125,
+                "left": 685.21875
+              },
+              "current": {
+                "x": 717.15625,
+                "y": 833.421875,
+                "width": 64.984375,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 782.140625,
+                "bottom": 871.8125,
+                "left": 717.15625
+              }
+            },
+            {
+              "node": "BUTTON ",
+              "previous": {
+                "x": 564.046875,
+                "y": 833.421875,
+                "width": 71.8125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 635.859375,
+                "bottom": 871.8125,
+                "left": 564.046875
+              },
+              "current": {
+                "x": 575.5625,
+                "y": 833.421875,
+                "width": 71.8125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 647.375,
+                "bottom": 871.8125,
+                "left": 575.5625
+              }
+            },
+            {
+              "node": "BUTTON ",
+              "previous": {
+                "x": 638.25,
+                "y": 833.421875,
+                "width": 44.578125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 682.828125,
+                "bottom": 871.8125,
+                "left": 638.25
+              },
+              "current": {
+                "x": 649.765625,
+                "y": 833.421875,
+                "width": 65,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 714.765625,
+                "bottom": 871.8125,
+                "left": 649.765625
+              }
+            },
+            {
+              "node": "undefined undefined",
+              "previous": {
+                "x": 508.1875,
+                "y": 844.984375,
+                "width": 53.46875,
+                "height": 15,
+                "top": 844.984375,
+                "right": 561.65625,
+                "bottom": 859.984375,
+                "left": 508.1875
+              },
+              "current": {
+                "x": 508.1875,
+                "y": 844.984375,
+                "width": 64.984375,
+                "height": 15,
+                "top": 844.984375,
+                "right": 573.171875,
+                "bottom": 859.984375,
+                "left": 508.1875
+              }
+            }
+          ]
+        }
+      ],
+      "longTasks": [],
+      "maxLongTask": 0,
+      "blockingSum": 0,
+      "bytes": 947992,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-preview.webp",
+          "transfer": 67854,
+          "decoded": 67554
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/whisperbook.webp",
+          "transfer": 177308,
+          "decoded": 177008
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-loading.webp",
+          "transfer": 68698,
+          "decoded": 68398
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/wattch.png",
+          "transfer": 95752,
+          "decoded": 95452
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/scene-U4cGokUO.js",
+          "transfer": 165503,
+          "decoded": 604126
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        },
+        {
+          "name": "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=Paris",
+          "transfer": 0,
+          "decoded": 0
+        }
+      ],
+      "sceneFirstRender": 770.5999999998603,
+      "stats": {
+        "garden": {
+          "triangles": 4880,
+          "calls": 62,
+          "ms": 0.4609361543450209,
+          "gpuFrameMs": 1.6744406935198577,
+          "cpuMs": 185.09999999939464,
+          "gpuMs": 197.09007882722517,
+          "frames": 192
+        },
+        "sky": {
+          "cpuMs": 34.699999999953434,
+          "frames": 385
+        }
+      },
+      "scene": {
+        "detail": "full",
+        "smallCasters": "22",
+        "quality": "full",
+        "progress": "0.000",
+        "drawCalls": "62",
+        "triangles": "4880",
+        "geometries": "183",
+        "textures": "1",
+        "waterfall": "0.00",
+        "drones": "3",
+        "animationTime": "3.216",
+        "rotation": "0.000",
+        "shift": "0.120",
+        "meter": "0.059",
+        "narrating": "0.00",
+        "explaining": "none",
+        "path": "none",
+        "postbox": "idle",
+        "flag": "0.00",
+        "hover": "none"
+      },
+      "root": {
+        "motionPaused": "false",
+        "sound": "waiting",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "garden",
+        "preview": "false",
+        "stage": "0"
+      },
+      "idleWindow": {
+        "seconds": 2.0035,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0.014047409924165703
+    },
+    {
+      "name": "desktop-read",
+      "run": 1,
+      "fcp": 160,
+      "lcp": {
+        "start": 196,
+        "duration": 0,
+        "element": "IMG static-garden"
+      },
+      "clsSum": 0,
+      "shifts": [],
+      "longTasks": [],
+      "maxLongTask": 0,
+      "blockingSum": 0,
+      "bytes": 440731,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/?view=read",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-preview.webp",
+          "transfer": 67854,
+          "decoded": 67554
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        }
+      ],
+      "sceneFirstRender": null,
+      "stats": {
+        "garden": null,
+        "sky": null
+      },
+      "scene": {},
+      "root": {
+        "motionPaused": "false",
+        "sound": "paused",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "read",
+        "preview": "false"
+      },
+      "idleWindow": {
+        "seconds": 2.0033000000000465,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0
+    },
+    {
+      "name": "mobile-default",
+      "run": 1,
+      "fcp": 752,
+      "lcp": {
+        "start": 1992,
+        "duration": 0,
+        "element": "IMG journey-still"
+      },
+      "clsSum": 0.8819095013286729,
+      "shifts": [
+        {
+          "start": 1343.3000000000466,
+          "duration": 0,
+          "value": 0.8815165876777251,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "MAIN portfolio",
+              "previous": {
+                "x": 0,
+                "y": 100,
+                "width": 390,
+                "height": 744,
+                "top": 100,
+                "right": 390,
+                "bottom": 844,
+                "left": 0
+              },
+              "current": {
+                "x": 0,
+                "y": 126.40625,
+                "width": 390,
+                "height": 717.59375,
+                "top": 126.40625,
+                "right": 390,
+                "bottom": 844,
+                "left": 0
+              }
+            },
+            {
+              "node": "SECTION reading-section",
+              "previous": {
+                "x": 15,
+                "y": 520.703125,
+                "width": 359,
+                "height": 323.296875,
+                "top": 520.703125,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              },
+              "current": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ]
+        },
+        {
+          "start": 2377.9000000001397,
+          "duration": 0,
+          "value": 0.00039291365094778097,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "A script-only journey-only",
+              "previous": {
+                "x": 209.875,
+                "y": 734.265625,
+                "width": 112.5625,
+                "height": 44,
+                "top": 734.265625,
+                "right": 322.4375,
+                "bottom": 778.265625,
+                "left": 209.875
+              },
+              "current": {
+                "x": 190.9375,
+                "y": 734.265625,
+                "width": 107,
+                "height": 44,
+                "top": 734.265625,
+                "right": 297.9375,
+                "bottom": 778.265625,
+                "left": 190.9375
+              }
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 1264.7000000001863,
+          "duration": 73,
+          "element": "undefined undefined"
+        },
+        {
+          "start": 3940.2000000001863,
+          "duration": 81,
+          "element": "undefined undefined"
+        }
+      ],
+      "maxLongTask": 81,
+      "blockingSum": 54,
+      "bytes": 621188,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/stills/sketch.webp",
+          "transfer": 18202,
+          "decoded": 17902
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/stills/blueprint.webp",
+          "transfer": 64606,
+          "decoded": 64306
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/scene-U4cGokUO.js",
+          "transfer": 165503,
+          "decoded": 604126
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        },
+        {
+          "name": "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=Paris",
+          "transfer": 0,
+          "decoded": 0
+        }
+      ],
+      "sceneFirstRender": 3999.100000000093,
+      "stats": {
+        "garden": {
+          "triangles": 2232,
+          "calls": 50,
+          "ms": 0.8739411941861553,
+          "gpuFrameMs": 1.1527775095222517,
+          "cpuMs": 200.99999999953434,
+          "gpuMs": 80.50834897916663,
+          "frames": 97
+        },
+        "sky": {
+          "cpuMs": 19.499999998370185,
+          "frames": 367
+        }
+      },
+      "scene": {
+        "detail": "low",
+        "smallCasters": "1",
+        "quality": "light",
+        "progress": "0.000",
+        "drawCalls": "50",
+        "triangles": "2232",
+        "geometries": "81",
+        "textures": "1",
+        "waterfall": "0.00",
+        "drones": "1",
+        "animationTime": "3.233",
+        "rotation": "0.000",
+        "shift": "0.000",
+        "meter": "0.108",
+        "narrating": "0.00",
+        "explaining": "none",
+        "path": "none",
+        "postbox": "idle",
+        "flag": "0.00",
+        "hover": "none"
+      },
+      "root": {
+        "journey": "true",
+        "motionPaused": "false",
+        "sound": "waiting",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "read",
+        "preview": "true"
+      },
+      "idleWindow": {
+        "seconds": 2.001,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0.8815165876777251
+    },
+    {
+      "name": "mobile-read",
+      "run": 1,
+      "fcp": 732,
+      "lcp": {
+        "start": 2044,
+        "duration": 0,
+        "element": "IMG static-garden"
+      },
+      "clsSum": 0.026995760882108935,
+      "shifts": [
+        {
+          "start": 1434,
+          "duration": 0,
+          "value": 0.007441717174018714,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "SECTION reading-section",
+              "previous": {
+                "x": 15,
+                "y": 775.703125,
+                "width": 359,
+                "height": 68.296875,
+                "top": 775.703125,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              },
+              "current": {
+                "x": 15,
+                "y": 838.34375,
+                "width": 359,
+                "height": 5.65625,
+                "top": 838.34375,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              }
+            },
+            {
+              "node": "P preview-caption",
+              "previous": {
+                "x": 16,
+                "y": 720.453125,
+                "width": 358,
+                "height": 23.25,
+                "top": 720.453125,
+                "right": 374,
+                "bottom": 743.703125,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 783.09375,
+                "width": 358,
+                "height": 23.25,
+                "top": 783.09375,
+                "right": 374,
+                "bottom": 806.34375,
+                "left": 16
+              }
+            }
+          ]
+        },
+        {
+          "start": 2276.8000000000466,
+          "duration": 0,
+          "value": 0.019314355609301923,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "DIV garden-preview",
+              "previous": {
+                "x": 16,
+                "y": 496.703125,
+                "width": 358,
+                "height": 309.640625,
+                "top": 496.703125,
+                "right": 374,
+                "bottom": 806.34375,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 468.859375,
+                "width": 358,
+                "height": 309.640625,
+                "top": 468.859375,
+                "right": 374,
+                "bottom": 778.5,
+                "left": 16
+              }
+            },
+            {
+              "node": "DIV entry-actions",
+              "previous": {
+                "x": 16,
+                "y": 376,
+                "width": 358,
+                "height": 47.125,
+                "top": 376,
+                "right": 374,
+                "bottom": 423.125,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 348.15625,
+                "width": 358,
+                "height": 47.125,
+                "top": 348.15625,
+                "right": 374,
+                "bottom": 395.28125,
+                "left": 16
+              }
+            },
+            {
+              "node": "P project-shortcuts",
+              "previous": {
+                "x": 15,
+                "y": 434.3125,
+                "width": 359,
+                "height": 44,
+                "top": 434.3125,
+                "right": 374,
+                "bottom": 478.3125,
+                "left": 15
+              },
+              "current": {
+                "x": 15,
+                "y": 406.46875,
+                "width": 359,
+                "height": 44,
+                "top": 406.46875,
+                "right": 374,
+                "bottom": 450.46875,
+                "left": 15
+              }
+            },
+            {
+              "node": "undefined undefined",
+              "previous": {
+                "x": 16,
+                "y": 151.28125,
+                "width": 358,
+                "height": 44,
+                "top": 151.28125,
+                "right": 374,
+                "bottom": 195.28125,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 154.28125,
+                "width": 358,
+                "height": 44,
+                "top": 154.28125,
+                "right": 374,
+                "bottom": 198.28125,
+                "left": 16
+              }
+            },
+            {
+              "node": "SECTION reading-section",
+              "previous": {
+                "x": 15,
+                "y": 838.34375,
+                "width": 359,
+                "height": 5.65625,
+                "top": 838.34375,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              },
+              "current": {
+                "x": 15,
+                "y": 810.5,
+                "width": 359,
+                "height": 33.5,
+                "top": 810.5,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              }
+            }
+          ]
+        },
+        {
+          "start": 2534.8000000000466,
+          "duration": 0,
+          "value": 0.0002396880987882987,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "undefined undefined",
+              "previous": {
+                "x": 16,
+                "y": 758.25,
+                "width": 358,
+                "height": 15,
+                "top": 758.25,
+                "right": 374,
+                "bottom": 773.25,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 759.25,
+                "width": 358,
+                "height": 15,
+                "top": 759.25,
+                "right": 374,
+                "bottom": 774.25,
+                "left": 16
+              }
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 1370.3999999999069,
+          "duration": 63,
+          "element": "undefined undefined"
+        }
+      ],
+      "maxLongTask": 63,
+      "blockingSum": 13,
+      "bytes": 440731,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/?view=read",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-preview.webp",
+          "transfer": 67854,
+          "decoded": 67554
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        }
+      ],
+      "sceneFirstRender": null,
+      "stats": {
+        "garden": null,
+        "sky": null
+      },
+      "scene": {},
+      "root": {
+        "motionPaused": "false",
+        "sound": "paused",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "read",
+        "preview": "false"
+      },
+      "idleWindow": {
+        "seconds": 2.002,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0.026995760882108935
+    },
+    {
+      "name": "desktop-default",
+      "run": 2,
+      "fcp": 144,
+      "lcp": {
+        "start": 160,
+        "duration": 0,
+        "element": "P garden-loading"
+      },
+      "clsSum": 0.014047409924165703,
+      "shifts": [
+        {
+          "start": 147.80000000004657,
+          "duration": 0,
+          "value": 0.013535709635416667,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "NAV ",
+              "previous": {
+                "x": 629.90625,
+                "y": 20,
+                "width": 199.0625,
+                "height": 45,
+                "top": 20,
+                "right": 828.96875,
+                "bottom": 65,
+                "left": 629.90625
+              },
+              "current": {
+                "x": 194.90625,
+                "y": 20,
+                "width": 199.0625,
+                "height": 45,
+                "top": 20,
+                "right": 393.96875,
+                "bottom": 65,
+                "left": 194.90625
+              }
+            },
+            {
+              "node": "A view-switch script-only",
+              "previous": {
+                "x": 1281.09375,
+                "y": 20,
+                "width": 126.90625,
+                "height": 44,
+                "top": 20,
+                "right": 1408,
+                "bottom": 64,
+                "left": 1281.09375
+              },
+              "current": {
+                "x": 409.96875,
+                "y": 20,
+                "width": 125.15625,
+                "height": 44,
+                "top": 20,
+                "right": 535.125,
+                "bottom": 64,
+                "left": 409.96875
+              }
+            }
+          ]
+        },
+        {
+          "start": 801.6000000000931,
+          "duration": 0,
+          "value": 0.0005117002887490354,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "DETAILS tally",
+              "previous": {
+                "x": 726.734375,
+                "y": 817.8125,
+                "width": 169.890625,
+                "height": 44,
+                "top": 817.8125,
+                "right": 896.625,
+                "bottom": 861.8125,
+                "left": 726.734375
+              },
+              "current": {
+                "x": 787.75,
+                "y": 817.8125,
+                "width": 108.875,
+                "height": 44,
+                "top": 817.8125,
+                "right": 896.625,
+                "bottom": 861.8125,
+                "left": 787.75
+              }
+            },
+            {
+              "node": "BUTTON ",
+              "previous": {
+                "x": 685.21875,
+                "y": 833.421875,
+                "width": 52.3125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 737.53125,
+                "bottom": 871.8125,
+                "left": 685.21875
+              },
+              "current": {
+                "x": 717.15625,
+                "y": 833.421875,
+                "width": 64.984375,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 782.140625,
+                "bottom": 871.8125,
+                "left": 717.15625
+              }
+            },
+            {
+              "node": "BUTTON ",
+              "previous": {
+                "x": 564.046875,
+                "y": 833.421875,
+                "width": 71.8125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 635.859375,
+                "bottom": 871.8125,
+                "left": 564.046875
+              },
+              "current": {
+                "x": 575.5625,
+                "y": 833.421875,
+                "width": 71.8125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 647.375,
+                "bottom": 871.8125,
+                "left": 575.5625
+              }
+            },
+            {
+              "node": "BUTTON ",
+              "previous": {
+                "x": 638.25,
+                "y": 833.421875,
+                "width": 44.578125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 682.828125,
+                "bottom": 871.8125,
+                "left": 638.25
+              },
+              "current": {
+                "x": 649.765625,
+                "y": 833.421875,
+                "width": 65,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 714.765625,
+                "bottom": 871.8125,
+                "left": 649.765625
+              }
+            },
+            {
+              "node": "undefined undefined",
+              "previous": {
+                "x": 508.1875,
+                "y": 844.984375,
+                "width": 53.46875,
+                "height": 15,
+                "top": 844.984375,
+                "right": 561.65625,
+                "bottom": 859.984375,
+                "left": 508.1875
+              },
+              "current": {
+                "x": 508.1875,
+                "y": 844.984375,
+                "width": 64.984375,
+                "height": 15,
+                "top": 844.984375,
+                "right": 573.171875,
+                "bottom": 859.984375,
+                "left": 508.1875
+              }
+            }
+          ]
+        }
+      ],
+      "longTasks": [],
+      "maxLongTask": 0,
+      "blockingSum": 0,
+      "bytes": 947992,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-preview.webp",
+          "transfer": 67854,
+          "decoded": 67554
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/whisperbook.webp",
+          "transfer": 177308,
+          "decoded": 177008
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/wattch.png",
+          "transfer": 95752,
+          "decoded": 95452
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-loading.webp",
+          "transfer": 68698,
+          "decoded": 68398
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/scene-U4cGokUO.js",
+          "transfer": 165503,
+          "decoded": 604126
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        },
+        {
+          "name": "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=Paris",
+          "transfer": 0,
+          "decoded": 0
+        }
+      ],
+      "sceneFirstRender": 794.8999999999069,
+      "stats": {
+        "garden": {
+          "triangles": 4880,
+          "calls": 62,
+          "ms": 0.46025503688060787,
+          "gpuFrameMs": 1.7349467850710223,
+          "cpuMs": 222.79999999934807,
+          "gpuMs": 259.21986808421065,
+          "frames": 191
+        },
+        "sky": {
+          "cpuMs": 33.59999999939464,
+          "frames": 382
+        }
+      },
+      "scene": {
+        "detail": "full",
+        "smallCasters": "22",
+        "quality": "full",
+        "progress": "0.000",
+        "drawCalls": "62",
+        "triangles": "4880",
+        "geometries": "183",
+        "textures": "1",
+        "waterfall": "0.00",
+        "drones": "3",
+        "animationTime": "3.217",
+        "rotation": "0.000",
+        "shift": "0.120",
+        "meter": "0.062",
+        "narrating": "0.00",
+        "explaining": "none",
+        "path": "none",
+        "postbox": "idle",
+        "flag": "0.00",
+        "hover": "none"
+      },
+      "root": {
+        "motionPaused": "false",
+        "sound": "waiting",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "garden",
+        "preview": "false",
+        "stage": "0"
+      },
+      "idleWindow": {
+        "seconds": 2.003399999999907,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0.014047409924165703
+    },
+    {
+      "name": "desktop-read",
+      "run": 2,
+      "fcp": 148,
+      "lcp": {
+        "start": 180,
+        "duration": 0,
+        "element": "IMG static-garden"
+      },
+      "clsSum": 0,
+      "shifts": [],
+      "longTasks": [],
+      "maxLongTask": 0,
+      "blockingSum": 0,
+      "bytes": 440731,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/?view=read",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-preview.webp",
+          "transfer": 67854,
+          "decoded": 67554
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        }
+      ],
+      "sceneFirstRender": null,
+      "stats": {
+        "garden": null,
+        "sky": null
+      },
+      "scene": {},
+      "root": {
+        "motionPaused": "false",
+        "sound": "paused",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "read",
+        "preview": "false"
+      },
+      "idleWindow": {
+        "seconds": 2.0033000000000465,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0
+    },
+    {
+      "name": "mobile-default",
+      "run": 2,
+      "fcp": 724,
+      "lcp": {
+        "start": 1988,
+        "duration": 0,
+        "element": "IMG journey-still"
+      },
+      "clsSum": 0.8819095013286729,
+      "shifts": [
+        {
+          "start": 1340.2000000001863,
+          "duration": 0,
+          "value": 0.8815165876777251,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "MAIN portfolio",
+              "previous": {
+                "x": 0,
+                "y": 100,
+                "width": 390,
+                "height": 744,
+                "top": 100,
+                "right": 390,
+                "bottom": 844,
+                "left": 0
+              },
+              "current": {
+                "x": 0,
+                "y": 126.40625,
+                "width": 390,
+                "height": 717.59375,
+                "top": 126.40625,
+                "right": 390,
+                "bottom": 844,
+                "left": 0
+              }
+            },
+            {
+              "node": "SECTION reading-section",
+              "previous": {
+                "x": 15,
+                "y": 520.703125,
+                "width": 359,
+                "height": 323.296875,
+                "top": 520.703125,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              },
+              "current": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ]
+        },
+        {
+          "start": 2342,
+          "duration": 0,
+          "value": 0.00039291365094778097,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "A script-only journey-only",
+              "previous": {
+                "x": 209.875,
+                "y": 734.265625,
+                "width": 112.5625,
+                "height": 44,
+                "top": 734.265625,
+                "right": 322.4375,
+                "bottom": 778.265625,
+                "left": 209.875
+              },
+              "current": {
+                "x": 190.9375,
+                "y": 734.265625,
+                "width": 107,
+                "height": 44,
+                "top": 734.265625,
+                "right": 297.9375,
+                "bottom": 778.265625,
+                "left": 190.9375
+              }
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 1258.7000000001863,
+          "duration": 75,
+          "element": "undefined undefined"
+        },
+        {
+          "start": 3921.100000000093,
+          "duration": 81,
+          "element": "undefined undefined"
+        }
+      ],
+      "maxLongTask": 81,
+      "blockingSum": 56,
+      "bytes": 621188,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/stills/sketch.webp",
+          "transfer": 18202,
+          "decoded": 17902
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/stills/blueprint.webp",
+          "transfer": 64606,
+          "decoded": 64306
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/scene-U4cGokUO.js",
+          "transfer": 165503,
+          "decoded": 604126
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        },
+        {
+          "name": "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=Paris",
+          "transfer": 0,
+          "decoded": 0
+        }
+      ],
+      "sceneFirstRender": 3981.3000000000466,
+      "stats": {
+        "garden": {
+          "triangles": 2232,
+          "calls": 50,
+          "ms": 0.7425534251782294,
+          "gpuFrameMs": 1.0345632270798777,
+          "cpuMs": 189.00000000023283,
+          "gpuMs": 75.0674704479167,
+          "frames": 97
+        },
+        "sky": {
+          "cpuMs": 17.800000000279397,
+          "frames": 366
+        }
+      },
+      "scene": {
+        "detail": "low",
+        "smallCasters": "1",
+        "quality": "light",
+        "progress": "0.000",
+        "drawCalls": "50",
+        "triangles": "2232",
+        "geometries": "81",
+        "textures": "1",
+        "waterfall": "0.00",
+        "drones": "1",
+        "animationTime": "3.233",
+        "rotation": "0.000",
+        "shift": "0.000",
+        "meter": "0.099",
+        "narrating": "0.00",
+        "explaining": "none",
+        "path": "none",
+        "postbox": "idle",
+        "flag": "0.00",
+        "hover": "none"
+      },
+      "root": {
+        "journey": "true",
+        "motionPaused": "false",
+        "sound": "waiting",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "read",
+        "preview": "true"
+      },
+      "idleWindow": {
+        "seconds": 2.002,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0.8815165876777251
+    },
+    {
+      "name": "mobile-read",
+      "run": 2,
+      "fcp": 744,
+      "lcp": {
+        "start": 2064,
+        "duration": 0,
+        "element": "IMG static-garden"
+      },
+      "clsSum": 0.026995760882108935,
+      "shifts": [
+        {
+          "start": 1469,
+          "duration": 0,
+          "value": 0.007441717174018714,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "SECTION reading-section",
+              "previous": {
+                "x": 15,
+                "y": 775.703125,
+                "width": 359,
+                "height": 68.296875,
+                "top": 775.703125,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              },
+              "current": {
+                "x": 15,
+                "y": 838.34375,
+                "width": 359,
+                "height": 5.65625,
+                "top": 838.34375,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              }
+            },
+            {
+              "node": "P preview-caption",
+              "previous": {
+                "x": 16,
+                "y": 720.453125,
+                "width": 358,
+                "height": 23.25,
+                "top": 720.453125,
+                "right": 374,
+                "bottom": 743.703125,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 783.09375,
+                "width": 358,
+                "height": 23.25,
+                "top": 783.09375,
+                "right": 374,
+                "bottom": 806.34375,
+                "left": 16
+              }
+            }
+          ]
+        },
+        {
+          "start": 2274,
+          "duration": 0,
+          "value": 0.019314355609301923,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "DIV garden-preview",
+              "previous": {
+                "x": 16,
+                "y": 496.703125,
+                "width": 358,
+                "height": 309.640625,
+                "top": 496.703125,
+                "right": 374,
+                "bottom": 806.34375,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 468.859375,
+                "width": 358,
+                "height": 309.640625,
+                "top": 468.859375,
+                "right": 374,
+                "bottom": 778.5,
+                "left": 16
+              }
+            },
+            {
+              "node": "DIV entry-actions",
+              "previous": {
+                "x": 16,
+                "y": 376,
+                "width": 358,
+                "height": 47.125,
+                "top": 376,
+                "right": 374,
+                "bottom": 423.125,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 348.15625,
+                "width": 358,
+                "height": 47.125,
+                "top": 348.15625,
+                "right": 374,
+                "bottom": 395.28125,
+                "left": 16
+              }
+            },
+            {
+              "node": "P project-shortcuts",
+              "previous": {
+                "x": 15,
+                "y": 434.3125,
+                "width": 359,
+                "height": 44,
+                "top": 434.3125,
+                "right": 374,
+                "bottom": 478.3125,
+                "left": 15
+              },
+              "current": {
+                "x": 15,
+                "y": 406.46875,
+                "width": 359,
+                "height": 44,
+                "top": 406.46875,
+                "right": 374,
+                "bottom": 450.46875,
+                "left": 15
+              }
+            },
+            {
+              "node": "undefined undefined",
+              "previous": {
+                "x": 16,
+                "y": 151.28125,
+                "width": 358,
+                "height": 44,
+                "top": 151.28125,
+                "right": 374,
+                "bottom": 195.28125,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 154.28125,
+                "width": 358,
+                "height": 44,
+                "top": 154.28125,
+                "right": 374,
+                "bottom": 198.28125,
+                "left": 16
+              }
+            },
+            {
+              "node": "SECTION reading-section",
+              "previous": {
+                "x": 15,
+                "y": 838.34375,
+                "width": 359,
+                "height": 5.65625,
+                "top": 838.34375,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              },
+              "current": {
+                "x": 15,
+                "y": 810.5,
+                "width": 359,
+                "height": 33.5,
+                "top": 810.5,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              }
+            }
+          ]
+        },
+        {
+          "start": 2540.6999999999534,
+          "duration": 0,
+          "value": 0.0002396880987882987,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "undefined undefined",
+              "previous": {
+                "x": 16,
+                "y": 758.25,
+                "width": 358,
+                "height": 15,
+                "top": 758.25,
+                "right": 374,
+                "bottom": 773.25,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 759.25,
+                "width": 358,
+                "height": 15,
+                "top": 759.25,
+                "right": 374,
+                "bottom": 774.25,
+                "left": 16
+              }
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 1401.7999999998137,
+          "duration": 65,
+          "element": "undefined undefined"
+        }
+      ],
+      "maxLongTask": 65,
+      "blockingSum": 15,
+      "bytes": 440731,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/?view=read",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-preview.webp",
+          "transfer": 67854,
+          "decoded": 67554
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        }
+      ],
+      "sceneFirstRender": null,
+      "stats": {
+        "garden": null,
+        "sky": null
+      },
+      "scene": {},
+      "root": {
+        "motionPaused": "false",
+        "sound": "paused",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "read",
+        "preview": "false"
+      },
+      "idleWindow": {
+        "seconds": 2.002,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0.026995760882108935
+    },
+    {
+      "name": "desktop-default",
+      "run": 3,
+      "fcp": 144,
+      "lcp": {
+        "start": 144,
+        "duration": 0,
+        "element": "P garden-loading"
+      },
+      "clsSum": 0.0007382543493200231,
+      "shifts": [
+        {
+          "start": 157.10000000009313,
+          "duration": 0,
+          "value": 0.00022655406057098766,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "P ",
+              "previous": {
+                "x": 521.5625,
+                "y": 856.015625,
+                "width": 396.875,
+                "height": 43.984375,
+                "top": 856.015625,
+                "right": 918.4375,
+                "bottom": 900,
+                "left": 521.5625
+              },
+              "current": {
+                "x": 545.828125,
+                "y": 856.015625,
+                "width": 348.328125,
+                "height": 43.984375,
+                "top": 856.015625,
+                "right": 894.15625,
+                "bottom": 900,
+                "left": 545.828125
+              }
+            }
+          ]
+        },
+        {
+          "start": 761.8999999999069,
+          "duration": 0,
+          "value": 0.0005117002887490354,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "DETAILS tally",
+              "previous": {
+                "x": 726.734375,
+                "y": 817.8125,
+                "width": 169.890625,
+                "height": 44,
+                "top": 817.8125,
+                "right": 896.625,
+                "bottom": 861.8125,
+                "left": 726.734375
+              },
+              "current": {
+                "x": 787.75,
+                "y": 817.8125,
+                "width": 108.875,
+                "height": 44,
+                "top": 817.8125,
+                "right": 896.625,
+                "bottom": 861.8125,
+                "left": 787.75
+              }
+            },
+            {
+              "node": "BUTTON ",
+              "previous": {
+                "x": 685.21875,
+                "y": 833.421875,
+                "width": 52.3125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 737.53125,
+                "bottom": 871.8125,
+                "left": 685.21875
+              },
+              "current": {
+                "x": 717.15625,
+                "y": 833.421875,
+                "width": 64.984375,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 782.140625,
+                "bottom": 871.8125,
+                "left": 717.15625
+              }
+            },
+            {
+              "node": "BUTTON ",
+              "previous": {
+                "x": 564.046875,
+                "y": 833.421875,
+                "width": 71.8125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 635.859375,
+                "bottom": 871.8125,
+                "left": 564.046875
+              },
+              "current": {
+                "x": 575.5625,
+                "y": 833.421875,
+                "width": 71.8125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 647.375,
+                "bottom": 871.8125,
+                "left": 575.5625
+              }
+            },
+            {
+              "node": "BUTTON ",
+              "previous": {
+                "x": 638.25,
+                "y": 833.421875,
+                "width": 44.578125,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 682.828125,
+                "bottom": 871.8125,
+                "left": 638.25
+              },
+              "current": {
+                "x": 649.765625,
+                "y": 833.421875,
+                "width": 65,
+                "height": 38.390625,
+                "top": 833.421875,
+                "right": 714.765625,
+                "bottom": 871.8125,
+                "left": 649.765625
+              }
+            },
+            {
+              "node": "undefined undefined",
+              "previous": {
+                "x": 508.1875,
+                "y": 844.984375,
+                "width": 53.46875,
+                "height": 15,
+                "top": 844.984375,
+                "right": 561.65625,
+                "bottom": 859.984375,
+                "left": 508.1875
+              },
+              "current": {
+                "x": 508.1875,
+                "y": 844.984375,
+                "width": 64.984375,
+                "height": 15,
+                "top": 844.984375,
+                "right": 573.171875,
+                "bottom": 859.984375,
+                "left": 508.1875
+              }
+            }
+          ]
+        }
+      ],
+      "longTasks": [],
+      "maxLongTask": 0,
+      "blockingSum": 0,
+      "bytes": 880138,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/whisperbook.webp",
+          "transfer": 177308,
+          "decoded": 177008
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-loading.webp",
+          "transfer": 68698,
+          "decoded": 68398
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/wattch.png",
+          "transfer": 95752,
+          "decoded": 95452
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/scene-U4cGokUO.js",
+          "transfer": 165503,
+          "decoded": 604126
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        },
+        {
+          "name": "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=Paris",
+          "transfer": 0,
+          "decoded": 0
+        }
+      ],
+      "sceneFirstRender": 755.5,
+      "stats": {
+        "garden": {
+          "triangles": 4880,
+          "calls": 62,
+          "ms": 0.49309814759540677,
+          "gpuFrameMs": 1.5686442294769116,
+          "cpuMs": 249.4999999993015,
+          "gpuMs": 243.92726912105266,
+          "frames": 191
+        },
+        "sky": {
+          "cpuMs": 32.50000000023283,
+          "frames": 384
+        }
+      },
+      "scene": {
+        "detail": "full",
+        "smallCasters": "22",
+        "quality": "full",
+        "progress": "0.000",
+        "drawCalls": "62",
+        "triangles": "4880",
+        "geometries": "183",
+        "textures": "1",
+        "waterfall": "0.00",
+        "drones": "3",
+        "animationTime": "3.217",
+        "rotation": "0.000",
+        "shift": "0.120",
+        "meter": "0.076",
+        "narrating": "0.00",
+        "explaining": "none",
+        "path": "none",
+        "postbox": "idle",
+        "flag": "0.00",
+        "hover": "none"
+      },
+      "root": {
+        "motionPaused": "false",
+        "sound": "waiting",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "garden",
+        "preview": "false",
+        "stage": "0"
+      },
+      "idleWindow": {
+        "seconds": 2.0048000000000465,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0.0007382543493200231
+    },
+    {
+      "name": "desktop-read",
+      "run": 3,
+      "fcp": 160,
+      "lcp": {
+        "start": 192,
+        "duration": 0,
+        "element": "IMG static-garden"
+      },
+      "clsSum": 0,
+      "shifts": [],
+      "longTasks": [],
+      "maxLongTask": 0,
+      "blockingSum": 0,
+      "bytes": 440731,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/?view=read",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-preview.webp",
+          "transfer": 67854,
+          "decoded": 67554
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        }
+      ],
+      "sceneFirstRender": null,
+      "stats": {
+        "garden": null,
+        "sky": null
+      },
+      "scene": {},
+      "root": {
+        "motionPaused": "false",
+        "sound": "paused",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "read",
+        "preview": "false"
+      },
+      "idleWindow": {
+        "seconds": 2.00359999999986,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0
+    },
+    {
+      "name": "mobile-default",
+      "run": 3,
+      "fcp": 776,
+      "lcp": {
+        "start": 1992,
+        "duration": 0,
+        "element": "IMG journey-still"
+      },
+      "clsSum": 0.8819095013286729,
+      "shifts": [
+        {
+          "start": 1340.8999999999069,
+          "duration": 0,
+          "value": 0.8815165876777251,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "MAIN portfolio",
+              "previous": {
+                "x": 0,
+                "y": 100,
+                "width": 390,
+                "height": 744,
+                "top": 100,
+                "right": 390,
+                "bottom": 844,
+                "left": 0
+              },
+              "current": {
+                "x": 0,
+                "y": 126.40625,
+                "width": 390,
+                "height": 717.59375,
+                "top": 126.40625,
+                "right": 390,
+                "bottom": 844,
+                "left": 0
+              }
+            },
+            {
+              "node": "SECTION reading-section",
+              "previous": {
+                "x": 15,
+                "y": 520.703125,
+                "width": 359,
+                "height": 323.296875,
+                "top": 520.703125,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              },
+              "current": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ]
+        },
+        {
+          "start": 2344,
+          "duration": 0,
+          "value": 0.00039291365094778097,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "A script-only journey-only",
+              "previous": {
+                "x": 209.875,
+                "y": 734.265625,
+                "width": 112.5625,
+                "height": 44,
+                "top": 734.265625,
+                "right": 322.4375,
+                "bottom": 778.265625,
+                "left": 209.875
+              },
+              "current": {
+                "x": 190.9375,
+                "y": 734.265625,
+                "width": 107,
+                "height": 44,
+                "top": 734.265625,
+                "right": 297.9375,
+                "bottom": 778.265625,
+                "left": 190.9375
+              }
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 1265.8999999999069,
+          "duration": 70,
+          "element": "undefined undefined"
+        },
+        {
+          "start": 3937.899999999907,
+          "duration": 81,
+          "element": "undefined undefined"
+        }
+      ],
+      "maxLongTask": 81,
+      "blockingSum": 51,
+      "bytes": 621188,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/stills/sketch.webp",
+          "transfer": 18202,
+          "decoded": 17902
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/stills/blueprint.webp",
+          "transfer": 64606,
+          "decoded": 64306
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/scene-U4cGokUO.js",
+          "transfer": 165503,
+          "decoded": 604126
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        },
+        {
+          "name": "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=Paris",
+          "transfer": 0,
+          "decoded": 0
+        }
+      ],
+      "sceneFirstRender": 3998.0999999998603,
+      "stats": {
+        "garden": {
+          "triangles": 2232,
+          "calls": 50,
+          "ms": 0.5285188497447495,
+          "gpuFrameMs": 1.0313361555709348,
+          "cpuMs": 165.79999999864958,
+          "gpuMs": 73.402131,
+          "frames": 97
+        },
+        "sky": {
+          "cpuMs": 16.299999999813735,
+          "frames": 368
+        }
+      },
+      "scene": {
+        "detail": "low",
+        "smallCasters": "1",
+        "quality": "light",
+        "progress": "0.000",
+        "drawCalls": "50",
+        "triangles": "2232",
+        "geometries": "81",
+        "textures": "1",
+        "waterfall": "0.00",
+        "drones": "1",
+        "animationTime": "3.233",
+        "rotation": "0.000",
+        "shift": "0.000",
+        "meter": "0.063",
+        "narrating": "0.00",
+        "explaining": "none",
+        "path": "none",
+        "postbox": "idle",
+        "flag": "0.00",
+        "hover": "none"
+      },
+      "root": {
+        "journey": "true",
+        "motionPaused": "false",
+        "sound": "waiting",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "read",
+        "preview": "true"
+      },
+      "idleWindow": {
+        "seconds": 2.001600000000093,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0.8815165876777251
+    },
+    {
+      "name": "mobile-read",
+      "run": 3,
+      "fcp": 756,
+      "lcp": {
+        "start": 2048,
+        "duration": 0,
+        "element": "IMG static-garden"
+      },
+      "clsSum": 0.026995760882108935,
+      "shifts": [
+        {
+          "start": 1428.5,
+          "duration": 0,
+          "value": 0.007441717174018714,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "SECTION reading-section",
+              "previous": {
+                "x": 15,
+                "y": 775.703125,
+                "width": 359,
+                "height": 68.296875,
+                "top": 775.703125,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              },
+              "current": {
+                "x": 15,
+                "y": 838.34375,
+                "width": 359,
+                "height": 5.65625,
+                "top": 838.34375,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              }
+            },
+            {
+              "node": "P preview-caption",
+              "previous": {
+                "x": 16,
+                "y": 720.453125,
+                "width": 358,
+                "height": 23.25,
+                "top": 720.453125,
+                "right": 374,
+                "bottom": 743.703125,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 783.09375,
+                "width": 358,
+                "height": 23.25,
+                "top": 783.09375,
+                "right": 374,
+                "bottom": 806.34375,
+                "left": 16
+              }
+            }
+          ]
+        },
+        {
+          "start": 2270.8000000000466,
+          "duration": 0,
+          "value": 0.019314355609301923,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "DIV garden-preview",
+              "previous": {
+                "x": 16,
+                "y": 496.703125,
+                "width": 358,
+                "height": 309.640625,
+                "top": 496.703125,
+                "right": 374,
+                "bottom": 806.34375,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 468.859375,
+                "width": 358,
+                "height": 309.640625,
+                "top": 468.859375,
+                "right": 374,
+                "bottom": 778.5,
+                "left": 16
+              }
+            },
+            {
+              "node": "DIV entry-actions",
+              "previous": {
+                "x": 16,
+                "y": 376,
+                "width": 358,
+                "height": 47.125,
+                "top": 376,
+                "right": 374,
+                "bottom": 423.125,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 348.15625,
+                "width": 358,
+                "height": 47.125,
+                "top": 348.15625,
+                "right": 374,
+                "bottom": 395.28125,
+                "left": 16
+              }
+            },
+            {
+              "node": "P project-shortcuts",
+              "previous": {
+                "x": 15,
+                "y": 434.3125,
+                "width": 359,
+                "height": 44,
+                "top": 434.3125,
+                "right": 374,
+                "bottom": 478.3125,
+                "left": 15
+              },
+              "current": {
+                "x": 15,
+                "y": 406.46875,
+                "width": 359,
+                "height": 44,
+                "top": 406.46875,
+                "right": 374,
+                "bottom": 450.46875,
+                "left": 15
+              }
+            },
+            {
+              "node": "undefined undefined",
+              "previous": {
+                "x": 16,
+                "y": 151.28125,
+                "width": 358,
+                "height": 44,
+                "top": 151.28125,
+                "right": 374,
+                "bottom": 195.28125,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 154.28125,
+                "width": 358,
+                "height": 44,
+                "top": 154.28125,
+                "right": 374,
+                "bottom": 198.28125,
+                "left": 16
+              }
+            },
+            {
+              "node": "SECTION reading-section",
+              "previous": {
+                "x": 15,
+                "y": 838.34375,
+                "width": 359,
+                "height": 5.65625,
+                "top": 838.34375,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              },
+              "current": {
+                "x": 15,
+                "y": 810.5,
+                "width": 359,
+                "height": 33.5,
+                "top": 810.5,
+                "right": 374,
+                "bottom": 844,
+                "left": 15
+              }
+            }
+          ]
+        },
+        {
+          "start": 2539.4000000001397,
+          "duration": 0,
+          "value": 0.0002396880987882987,
+          "recent": false,
+          "element": "undefined undefined",
+          "sources": [
+            {
+              "node": "undefined undefined",
+              "previous": {
+                "x": 16,
+                "y": 758.25,
+                "width": 358,
+                "height": 15,
+                "top": 758.25,
+                "right": 374,
+                "bottom": 773.25,
+                "left": 16
+              },
+              "current": {
+                "x": 16,
+                "y": 759.25,
+                "width": 358,
+                "height": 15,
+                "top": 759.25,
+                "right": 374,
+                "bottom": 774.25,
+                "left": 16
+              }
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 1362.9000000001397,
+          "duration": 64,
+          "element": "undefined undefined"
+        }
+      ],
+      "maxLongTask": 64,
+      "blockingSum": 14,
+      "bytes": 440731,
+      "resources": [
+        {
+          "name": "https://chakib-belgaid.github.io/?view=read",
+          "transfer": 9184,
+          "decoded": 26337
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-normal.woff2",
+          "transfer": 132148,
+          "decoded": 131848
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DRNjYxZ2.css",
+          "transfer": 12685,
+          "decoded": 57285
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/index-DNZyptrl.js",
+          "transfer": 71003,
+          "decoded": 191429
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/fonts/newsreader-italic.woff2",
+          "transfer": 147360,
+          "decoded": 147060
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/assets/garden-preview.webp",
+          "transfer": 67854,
+          "decoded": 67554
+        },
+        {
+          "name": "https://chakib-belgaid.github.io/favicon.svg",
+          "transfer": 497,
+          "decoded": 256
+        }
+      ],
+      "sceneFirstRender": null,
+      "stats": {
+        "garden": null,
+        "sky": null
+      },
+      "scene": {},
+      "root": {
+        "motionPaused": "false",
+        "sound": "paused",
+        "weather": "partly",
+        "season": "autumn",
+        "idle": "false",
+        "view": "read",
+        "preview": "false"
+      },
+      "idleWindow": {
+        "seconds": 2.0017999999998137,
+        "frames": 0,
+        "cpuMs": 0
+      },
+      "clsSessionMax": 0.026995760882108935
+    }
+  ],
+  "summary": {
+    "desktop-default": {
+      "runs": 3,
+      "fcp": 144,
+      "lcp": 160,
+      "cls": 0.014047409924165703,
+      "bytes": 947992,
+      "scene": 770.5999999998603,
+      "maxTask": 0,
+      "blocking": 0
+    },
+    "desktop-read": {
+      "runs": 3,
+      "fcp": 160,
+      "lcp": 192,
+      "cls": 0,
+      "bytes": 440731,
+      "scene": null,
+      "maxTask": 0,
+      "blocking": 0
+    },
+    "mobile-default": {
+      "runs": 3,
+      "fcp": 752,
+      "lcp": 1992,
+      "cls": 0.8815165876777251,
+      "bytes": 621188,
+      "scene": 3998.0999999998603,
+      "maxTask": 81,
+      "blocking": 54
+    },
+    "mobile-read": {
+      "runs": 3,
+      "fcp": 744,
+      "lcp": 2048,
+      "cls": 0.026995760882108935,
+      "bytes": 440731,
+      "scene": null,
+      "maxTask": 64,
+      "blocking": 14
+    }
+  }
+}
