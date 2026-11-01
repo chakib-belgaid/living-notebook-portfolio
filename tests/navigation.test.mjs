@@ -400,3 +400,26 @@ test('?view= values land on the readable document and survive navigation', async
     } finally { await close(p); }
   }
 });
+
+test('a direct hash change lands on the alias once, under reduced motion too', async () => {
+  const p = await setupPage(browser, { viewport: desktop, reducedMotion: 'reduce' }, async page => {
+    page.errors = [];
+    page.on('pageerror', e => page.errors.push(e.message));
+    await page.goto(base + '/');
+    await page.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
+  });
+  try {
+    const length = await historyLength(p);
+    await p.evaluate(() => { location.hash = 'workshop'; });
+    await settle(p); await settle(p);
+    // The browser's own entry for the hash change, and none from the page.
+    assert.equal(await historyLength(p), length + 1);
+    assert.equal(await hash(p), '#workshop');
+    assert.ok((await clearOfHeader(p, '#workshop-title')).ok);
+    assert.deepEqual(await currentNav(p), ['#about']);
+    const y = await p.evaluate(() => { document.querySelector('.nav-sections a[href="#contact"]').click(); return scrollY; });
+    assert.equal(await p.evaluate(() => scrollY), y, 'immediate under reduced motion');
+    assert.equal(await focusedId(p), 'contact-title');
+    assert.deepEqual(p.errors, []);
+  } finally { await close(p); }
+});
