@@ -106,7 +106,9 @@ export type FragmentAlias = keyof typeof fragmentAliases;
 /** Resolve a location hash (with or without "#") to its chapter and the id of
  * the element to land on. Empty and "#intro" are the opening. */
 export function resolveFragment(hash: string): { chapter: ChapterId; target: string } | null {
-  const id = decodeURIComponent(hash.replace(/^#/, ""));
+  let id: string;
+  // A malformed escape (#%zz) names no destination; it must not throw.
+  try { id = decodeURIComponent(hash.replace(/^#/, "")); } catch { return null; }
   if (id === "") return { chapter: "intro", target: "intro" };
   if (isChapterId(id)) return { chapter: id, target: id };
   if (Object.hasOwn(fragmentAliases, id)) return { ...fragmentAliases[id as FragmentAlias] };

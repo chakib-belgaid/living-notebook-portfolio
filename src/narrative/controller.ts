@@ -95,6 +95,8 @@ export function createController(root: Document = document): NarrativeController
   let pending: { token: number; land: () => void } | null = null;
   let frame = 0;
   let lastPosition: ReadingPosition = { chapter: "intro", offset: 0 };
+  /** Pending `load` re-anchors, removed when they expire or on destroy. */
+  const loadListeners = new Set<() => void>();
 
   const chapterListeners = new Set<(chapter: ChapterId, previous: ChapterId, cause: ChangeCause) => void>();
   const positionListeners = new Set<(position: ReadingPosition) => void>();
@@ -194,10 +196,18 @@ export function createController(root: Document = document): NarrativeController
       land();
       hold = scrollY;
     };
-    const end = () => { if (pending?.token === mine) pending = null; };
+    const end = () => {
+      if (pending?.token === mine) pending = null;
+      removeEventListener("load", loaded);
+      loadListeners.delete(loaded);
+    };
+    const loaded = () => { again(); requestAnimationFrame(again); };
     requestAnimationFrame(() => { again(); requestAnimationFrame(again); });
     root.fonts?.ready.then(again);
-    if (root.readyState !== "complete") addEventListener("load", () => { again(); requestAnimationFrame(again); }, { once: true });
+    if (root.readyState !== "complete") {
+      addEventListener("load", loaded, { once: true });
+      loadListeners.add(loaded);
+    }
     setTimeout(end, SETTLE_MS);
   }
   const cancel = () => { token++; pending = null; };
@@ -279,7 +289,8 @@ export function createController(root: Document = document): NarrativeController
   addEventListener("resize", resized);
   const observer = typeof ResizeObserver === "function" && main ? new ResizeObserver(() => { measured = false; schedule(); }) : null;
   if (observer && main) observer.observe(main);
-  root.fonts?.addEventListener?.("loadingdone", () => { measured = false; schedule(); });
+  const fontsLoaded = () => { measured = false; schedule(); };
+  root.fonts?.addEventListener?.("loadingdone", fontsLoaded);
   /** A new language reflows every chapter: keep the reader's place. */
   const stopLocale = onLocaleChange(() => {
     const before = lastPosition;
@@ -322,6 +333,9 @@ export function createController(root: Document = document): NarrativeController
       removeEventListener("resize", resized);
       inputEvents.forEach(type => removeEventListener(type, input, { capture: true }));
       observer?.disconnect();
+      root.fonts?.removeEventListener?.("loadingdone", fontsLoaded);
+      loadListeners.forEach(listener => removeEventListener("load", listener));
+      loadListeners.clear();
       stopLocale();
     },
   };

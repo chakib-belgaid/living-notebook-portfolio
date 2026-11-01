@@ -84,7 +84,8 @@ export const sceneCues: Readonly<Record<ChapterId, ScenePoseCue>> = {
   // The workshop as the setting for delivery.
   "mcq-scan": cue("mcq-scan", "build", { progress: 0.84, focus: "workshop", shift: [0.02, -0.06], room: 0.43 }, { shift: [0.02, -0.04], room: 0.46 }),
   // The tower and terraces, framed wider (about has no room: 1.4x focus).
-  about: cue("about", "bloom", { progress: 0.93, focus: "about", shift: [0.08, 0], room: 0.78 }, { shift: [0.06, 0], room: 0.78 }),
+  // Still Build: the final foliage and light (Bloom) are held back for Contact.
+  about: cue("about", "build", { progress: 0.93, focus: "about", shift: [0.08, 0], room: 0.78 }, { shift: [0.06, 0], room: 0.78 }),
   // Final foliage, light and the whole composition.
   contact: cue("contact", "bloom", { progress: 1, focus: null, shift: [-0.02, 0.03], room: 0.92 }, { shift: [-0.02, 0.04], room: 0.9 }),
 };

@@ -72,14 +72,18 @@ export function createNavigation(controller: NarrativeController) {
   // explicit navigation has happened in the meantime (it wins).
   let explicit = 0;
   let queued = false;
+  let arrival = "#intro";
   function arrive() {
+    // The entry being arrived at: the latest one a history event reported
+    // (an explicit pushState in between reports none).
+    arrival = location.hash || "#intro";
     if (queued) return;
     queued = true;
     const at = explicit;
     requestAnimationFrame(() => {
       queued = false;
       if (at !== explicit) return;
-      controller.visit(location.hash || "#intro", { push: false, focus: false, scroll: "if-needed", cause: "history" });
+      controller.visit(arrival, { push: false, focus: false, scroll: "if-needed", cause: "history" });
     });
   }
   const leave = () => record();
