@@ -4,25 +4,17 @@
    guided reading hold is not the visitor's pause. No DOM of its own: the
    garden's container is the only element involved, through the garden. */
 import type { Garden } from "../scene";
+import type { ChapterId, MotionPreference, Phase, SceneSpot } from "./model";
 
-/** The eight chapters of the narrative, in reading order. */
-export const chapterOrder = [
-  "intro",
-  "work",
-  "bplog",
-  "whisperbook",
-  "energy-tools",
-  "mcq-scan",
-  "about",
-  "contact",
-] as const;
-export type ChapterId = (typeof chapterOrder)[number];
-
+/* Vocabulary shared with the narrative model (src/narrative/model.ts):
+   chapter ids, construction phases, named places and the motion preference
+   are the model's; this module adds only the scene's pose for each chapter. */
+export type { ChapterId, MotionPreference } from "./model";
 /** Named points of the model (scene.ts `points`; four also have a `rooms` interior). */
-export type FocusSpot = "whisperbook" | "wattch" | "about" | "contact" | "workshop" | "bplog";
-
-/** The story's four held stages, at progress 0, 0.33, 0.66 and 1. */
-export type Stage = "sketch" | "blueprint" | "build" | "bloom";
+export type FocusSpot = SceneSpot;
+/** The story's four held stages (the model's phases). */
+export type Stage = Phase;
+/** The stages' resting construction progress. */
 export const stageProgress: Readonly<Record<Stage, number>> = {
   sketch: 0,
   blueprint: 0.33,
@@ -45,7 +37,10 @@ export interface ScenePose {
   mark?: FocusSpot | null;
 }
 
-export interface SceneCue extends ScenePose {
+/** A chapter's pose cue. Named apart from the model's `SceneCue` (phase,
+    focus, progress, framing, poster: what the page shows); the progress
+    values of both are the same P1-tuned numbers. */
+export interface ScenePoseCue extends ScenePose {
   chapter: ChapterId;
   /** The stage this cue is read as (for labels; derived from the progress). */
   stage: Stage;
@@ -55,7 +50,7 @@ export interface SceneCue extends ScenePose {
 
 export type HostKind = "wide" | "portrait";
 
-const cue = (chapter: ChapterId, stage: Stage, pose: ScenePose, portrait: Partial<ScenePose> = {}): SceneCue => ({
+const cue = (chapter: ChapterId, stage: Stage, pose: ScenePose, portrait: Partial<ScenePose> = {}): ScenePoseCue => ({
   chapter,
   stage,
   ...pose,
@@ -66,7 +61,7 @@ const cue = (chapter: ChapterId, stage: Stage, pose: ScenePose, portrait: Partia
    Global construction progress carries the drawing-to-volume change; the
    focus carries "which room this chapter is about". Values from the P1 study
    (docs/handoff/sketchbook-to-house/motion-study/P1-MOTION-STUDY.md). */
-export const sceneCues: Readonly<Record<ChapterId, SceneCue>> = {
+export const sceneCues: Readonly<Record<ChapterId, ScenePoseCue>> = {
   // Pencil on paper, faint guides, nothing built yet. The sketch's world is
   // drawn smaller and flatter, so it is lifted to sit in the middle.
   intro: cue("intro", "sketch", { progress: 0, focus: null, shift: [0, 0.07], room: 1.04 }, { shift: [0, 0.1], room: 1.08 }),
@@ -94,10 +89,8 @@ export const sceneCues: Readonly<Record<ChapterId, SceneCue>> = {
   contact: cue("contact", "bloom", { progress: 1, focus: null, shift: [-0.02, 0.03], room: 0.92 }, { shift: [-0.02, 0.04], room: 0.9 }),
 };
 
-export type MotionPreference = "normal" | "user-paused" | "system-reduced";
-
 /** A chapter by id, or a cue (possibly adjusted by the caller). */
-export type CueRef = ChapterId | SceneCue;
+export type CueRef = ChapterId | ScenePoseCue;
 
 export interface SceneAdapterState {
   chapter: ChapterId | null;
@@ -136,7 +129,7 @@ export interface SceneAdapter {
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 /** The cue as a host draws it: the portrait overrides applied in a portrait host. */
-export function poseFor(ref: CueRef, host: HostKind): SceneCue {
+export function poseFor(ref: CueRef, host: HostKind): ScenePoseCue {
   const base = typeof ref === "string" ? sceneCues[ref] : ref;
   return host === "portrait" ? { ...base, ...base.portrait } : base;
 }

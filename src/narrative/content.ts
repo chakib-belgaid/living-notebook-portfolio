@@ -69,7 +69,7 @@ export const chapters: Chapter[] = [
     title: "From an idea to something useful.",
     motivation: ["Three projects, and the decisions that shaped them."],
     actions: [],
-    scene: { phase: "blueprint", focus: null, progress: 0.33, framing: { desktop: "world", portrait: "world" }, poster: "blueprint" },
+    scene: { phase: "blueprint", focus: null, progress: 0.4, framing: { desktop: "world", portrait: "world" }, poster: "blueprint" },
   },
   {
     id: "bplog",
@@ -82,7 +82,7 @@ export const chapters: Chapter[] = [
     evidence: { text: "Public code and evaluation. Evaluated on one monitor; users check and confirm the readings.", kinds: ["public-code", "public-evaluation"] },
     actions: [{ label: "Code & evaluation", type: "source", href: links.bpLogSource }],
     index: { title: "BP Log", summary: "Practical AI · A small system for a specific task." },
-    scene: { phase: "build", focus: "bplog", progress: 0.55, framing: { desktop: "focus", portrait: "focus" }, poster: "build" },
+    scene: { phase: "build", focus: "bplog", progress: 0.52, framing: { desktop: "focus", portrait: "focus" }, poster: "build" },
   },
   {
     id: "whisperbook",
@@ -99,7 +99,7 @@ export const chapters: Chapter[] = [
       { label: "Existing Android case", type: "case", ...cases.whispbook },
     ],
     index: { title: "Whisperbook", summary: "Product ownership · Audiobooks on my own terms." },
-    scene: { phase: "build", focus: "whisperbook", progress: 0.62, framing: { desktop: "focus", portrait: "focus" }, poster: "whisperbook" },
+    scene: { phase: "build", focus: "whisperbook", progress: 0.66, framing: { desktop: "focus", portrait: "focus" }, poster: "whisperbook" },
   },
   {
     id: "energy-tools",
@@ -116,7 +116,7 @@ export const chapters: Chapter[] = [
       { label: "pyJoules source", type: "source", href: links.pyJoules },
     ],
     index: { title: "pyRAPL, pyJoules & Wattch", summary: "Research discipline · Making measurement usable." },
-    scene: { phase: "build", focus: "wattch", progress: 0.66, framing: { desktop: "focus", portrait: "focus" }, poster: "wattch" },
+    scene: { phase: "build", focus: "wattch", progress: 0.76, framing: { desktop: "focus", portrait: "focus" }, poster: "wattch" },
   },
   {
     id: "mcq-scan",
@@ -129,7 +129,7 @@ export const chapters: Chapter[] = [
     evidence: { text: "I coordinate a two-person technical team under the CTO. Company implementation and internal evaluations are not public.", kinds: ["internal-account"] },
     actions: [{ label: "More about my work at MCQ Scan", type: "case", ...cases.mcqScan }],
     index: { title: "At MCQ Scan", summary: "Shipping within business constraints.", professional: true },
-    scene: { phase: "build", focus: "workshop", progress: 0.7, framing: { desktop: "focus", portrait: "focus" }, poster: "build" },
+    scene: { phase: "build", focus: "workshop", progress: 0.84, framing: { desktop: "focus", portrait: "focus" }, poster: "build" },
   },
   {
     id: "about",
@@ -140,7 +140,7 @@ export const chapters: Chapter[] = [
       "Python is my strongest language. My work spans APIs, interfaces, model integration, and deployment. I use AI coding assistants and review and validate their output.",
     ],
     actions: [cvAction("Download CV"), linkedIn],
-    scene: { phase: "build", focus: "about", progress: 0.85, framing: { desktop: "wide", portrait: "wide" }, poster: "build" },
+    scene: { phase: "build", focus: "about", progress: 0.93, framing: { desktop: "wide", portrait: "wide" }, poster: "build" },
   },
   {
     id: "contact",

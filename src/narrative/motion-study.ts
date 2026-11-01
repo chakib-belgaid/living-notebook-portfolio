@@ -4,13 +4,8 @@
    sticky at the top only while a transition runs. Document scrolling and the
    chapter buttons drive the scene adapter. Not part of the production build. */
 import { createGarden } from "../scene";
-import {
-  chapterOrder,
-  createSceneAdapter,
-  type ChapterId,
-  type HostKind,
-  type MotionPreference,
-} from "./scene-adapter";
+import { chapterIds as chapterOrder, type ChapterId, type MotionPreference } from "./model";
+import { createSceneAdapter, type HostKind } from "./scene-adapter";
 
 type LogEntry = {
   t: number;

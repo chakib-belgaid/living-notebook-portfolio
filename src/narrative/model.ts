@@ -34,9 +34,11 @@ export type PosterKey = "sketch" | "blueprint" | "build" | "whisperbook" | "watt
 export const posterSrc = (key: PosterKey) => `/assets/stills/${key}.webp`;
 export const POSTER_SIZE = { width: 780, height: 1688 } as const;
 
-/** What the scene shows while a chapter is read. P4's adapter maps this onto
- * Garden.setProgress / focus / frame. `progress` is a starting value for the
- * global construction progress (0 sketch … 1 bloom), to be tuned. */
+/** What the page shows while a chapter is read: phase label, poster and the
+ * scene's construction progress (0 sketch … 1 bloom). `progress` carries the
+ * values tuned in the P1 motion study; the camera pose for each chapter (shift,
+ * room, mark, portrait overrides) is `ScenePoseCue` in ./scene-adapter.ts,
+ * which P4 drives from the navigation controller. */
 export interface SceneCue {
   phase: Phase;
   focus: SceneSpot | null;
