@@ -27,7 +27,7 @@ for (const [label, viewport] of Object.entries(sizes)) {
   for (const a of anchors) { const i = text.indexOf(a); if (i <= last) inOrder = false; last = i; }
   check(`${label} no-JS: chapter copy visible in order`, inOrder);
   check(`${label} no-JS: one h1`, (await page.locator("h1").count()) === 1);
-  const navLinks = await page.$$eval(".primary-nav a", as => as.map(a => `${a.textContent}:${a.getAttribute("href")}`));
+  const navLinks = await page.$$eval(".nav-sections a", as => as.map(a => `${a.textContent}:${a.getAttribute("href")}`));
   check(`${label} no-JS: nav links`, navLinks.join() === "Work:#work,About:#about,Contact:#contact", navLinks.join());
   const inView = async sel => {
     const box = await page.locator(sel).first().boundingBox();
@@ -138,7 +138,7 @@ for (const [label, viewport] of Object.entries(sizes)) {
     await page.goto(`${BASE}/?lang=${lang}`, { waitUntil: "load" });
     await page.waitForFunction(() => document.documentElement.classList.contains("enhanced"));
     const h1 = await page.locator("h1").innerText();
-    const nav = await page.$$eval(".primary-nav a", as => as.map(a => a.textContent).join("|"));
+    const nav = await page.$$eval(".nav-sections a", as => as.map(a => a.textContent).join("|"));
     const dir = await page.evaluate(() => document.documentElement.dir);
     const cv = await page.locator(".cv-link").evaluate(a => `${a.textContent} ${a.getAttribute("href")} ${a.hreflang}`);
     const title = await page.title();
