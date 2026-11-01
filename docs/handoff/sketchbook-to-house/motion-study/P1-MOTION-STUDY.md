@@ -25,6 +25,7 @@ Chapter buttons are direct jumps (instant document scroll plus `snapTo` of the c
 ## 2. Adapter API (interface for P4)
 
 ```ts
+// A cue (SceneCue) is { chapter, stage, progress, focus, shift, room, mark?, portrait }; mark lights Garden.hover.
 createSceneAdapter(garden: Garden, host?: HostKind /* "wide" */): SceneAdapter
 
 interface SceneAdapter {
@@ -58,7 +59,7 @@ Semantics P4 relies on:
 | --- | --- |
 | `setAmbient(on)` | A guided hold separate from `setMotion`. Off: the life clock, animals, gardener, visitor, drum, pen, needle and sound rings stop where they are, and a settled garden sleeps at any progress (previously only `paused || progress < 0.5` slept). Foliage sway freezes in place (the life uniform is kept, unlike pause, so nothing pops). Draw-in and transitions still run. |
 | `snap()` | Jumps progress, rotation, focus amount/zoom/point, shift, room, frame band, user zoom and pan to their goals; the next frame draws them. Sets no `reduced`. |
-| `isSettled()`, `onSettled(cb)` | Settle detection from the render loop: the `changed` expression is now the `moving()` function; a `settling` flag is raised by `setProgress`, `focus`, `frame`, `snap` and any moving frame, and cleared (listeners run as microtasks) by the first frame with nothing left to move. |
+| `isSettled()`, `onSettled(cb)` | Settle detection from the render loop: the `changed` expression is now the `moving()` function, which also checks the camera's aim point (`focusPoint` against `focusTarget`, fix round 1; before that, a held garden could sleep a few pixels short); a `settling` flag is raised by `setProgress`, `focus`, `frame`, `snap` and any moving frame, and cleared (listeners run as microtasks) by the first frame with nothing left to move. |
 | Focus aims at the target scale | `focus()` multiplied the spot by the *current* world scale; the sketch world is drawn at 0.77 (and 0.55 tall), so a focus set together with a new progress landed short of the room. It now uses the scale at `targetProgress` (`worldScaleAt`, shared with the render). The live page focuses after the build has grown, so its poses are unchanged in practice (smoke check: `/#whisperbook` at 1440 and 390 opens with no page errors). |
 | Warm-paper ink (light set only) | Pencil `0x85898b` → graphite `0x605f59`; line opacity on the sketch 0.21 → 0.44, at blueprint 0.60 → 0.66. At 0.21 the opening sketch was too faint to read in a 380 px slot (stills `.qa/p1/stills-v0/`). The dark (blueprint-paper) set used by the live page is unchanged. |
 
@@ -72,35 +73,37 @@ Not changed: lighting, exposure, contact/bloom reveal curves and framing math (`
 | --- | --- | ---: | --- | --- | --- |
 | intro | sketch | 0 | whole world | [0, 0.07] / 1.04 | [0, 0.10] / 1.08 |
 | work | blueprint | 0.40 | whole world | [0, 0.04] / 0.96 | [0, 0.06] / 1.02 |
-| bplog | build | 0.52 | `bplog` room (6.75, 0.65, 3.0) | [0.04, −0.07] / 0.44 | [0.03, −0.32] / 0.46 |
+| bplog | build | 0.52 | `bplog` room (6.75, 0.65, 3.0), `mark: "bplog"` | [−0.02, −0.16] / 0.70 | [0, −0.22] / 0.70 |
 | whisperbook | build | 0.66 | `whisperbook` room (3.4, 1.7, −0.55) | [0, −0.06] / 0.50 | [0, −0.04] / 0.56 |
 | energy-tools | build | 0.76 | `wattch` room (−3.4, 1.45, 0.45) | [0.02, −0.06] / 0.46 | [0.02, −0.04] / 0.50 |
 | mcq-scan | build | 0.84 | `workshop` room (6.65, 0.75, −0.2) | [0.02, −0.06] / 0.43 | [0.02, −0.04] / 0.46 |
 | about | bloom | 0.93 | `about` point (Mansourah tower) | [0.08, 0] / 0.78 | [0.06, 0] / 0.78 |
 | contact | bloom | 1 | whole world | [−0.02, 0.03] / 0.92 | [−0.02, 0.04] / 0.90 |
 
+BP Log (fix round 1): the first framing (about 1.3×, wide [0.04, −0.07] / 0.44) let the much larger pavilion read as the subject, because the heart garden sits on the model's front corner directly below it. The cue now draws closer (about 2×), puts the heart centre-low, and sets `mark: "bplog"`, which lights the existing hover ring (`Garden.hover`) around the heart garden. The adapter clears the mark on every other cue. Framing alone (six variants in `.qa/p1/bplog-fix/sheet1.png` to `sheet3.png`) could centre the heart but not make it the subject, since the pavilion's terracotta roof stays above it in any frame that also shows the house.
+
 Work sits at 0.40 rather than the 0.33 hold so the first foundation planes are just visible (solid ≈ 0.10). BP Log at 0.52 shows translucent planes with the heart as the first opaque object; Whisperbook at 0.66 is the Build hold, fully dimensional; life (foliage) begins at 0.69, so energy-tools and mcq-scan show it arriving and about/contact show Bloom.
 
 ## 5. Measurements
 
-Raw data: `.qa/p1/measurements.json` (with progress samples, logs and the sticky trace), `.qa/p1/recordings.json`. Wide is 1440×900 DPR 1 full detail; portrait is 390×844 DPR 3, `isMobile`, touch, light detail.
+Numbers below are from the fix-round-1 run (after the aim-point check was added); the first run is kept as `.qa/p1/measurements-round0.json` and differed only within run-to-run noise, apart from the sticky interval. Raw data: `.qa/p1/measurements.json` (with progress samples, logs and the sticky trace), `.qa/p1/recordings.json`. Wide is 1440×900 DPR 1 full detail; portrait is 390×844 DPR 3, `isMobile`, touch, light detail.
 
 | Check | Wide | Portrait |
 | --- | --- | --- |
-| Guided hold at Whisperbook (0.66), frames before → after 10 s settled | 167 → 167 (0) | 97 → 97 (0) |
-| Guided hold at Contact (1.0), 10 s | 168 → 168 (0) | 98 → 98 (0) |
-| Control: same Contact with `release()`, 10 s | +130 (13/s, SwiftShader) | +298 (30/s, Light cap) |
+| Guided hold at Whisperbook (0.66), frames before → after 10 s settled | 166 → 166 (0) | 97 → 97 (0) |
+| Guided hold at Contact (1.0), 10 s | 167 → 167 (0) | 98 → 98 (0) |
+| Control: same Contact with `release()`, 10 s | +131 (13/s, SwiftShader) | +300 (30/s, Light cap) |
 | Direct jump after a hold (`jump("work")`) | 1 frame, progress 0.400 | 1 frame, progress 0.400 |
-| Direct jumps, time to drawn destination (5 jumps) | 3 to 6 ms, 1 frame each | 2 to 3 ms, 1 frame each |
-| Eased intro → whisperbook | 2.90 s, 47 frames | 2.27 s, 68 frames |
-| Eased reverse whisperbook → work | 2.55 s, 45 frames | 2.31 s, 69 frames |
-| Eased work → contact | 2.50 s, 27 frames | 2.01 s, 48 frames |
-| Eased reverse contact → intro | 1.71 s, 73 frames | 1.81 s, 54 frames |
-| `snapTo` then eased `go` (no reduced flag) | 0.33 → 0.508 at 168 ms | 0.33 → 0.511 at 122 ms |
+| Direct jumps, time to drawn destination (5 jumps) | 2 to 5 ms, 1 frame each | 1 to 3 ms, 1 frame each |
+| Eased intro → whisperbook | 2.89 s, 47 frames | 2.27 s, 67 frames |
+| Eased reverse whisperbook → work | 2.58 s, 45 frames | 2.31 s, 69 frames |
+| Eased work → contact | 2.46 s, 27 frames | 2.00 s, 48 frames |
+| Eased reverse contact → intro | 1.72 s, 75 frames | 1.81 s, 54 frames |
+| `snapTo` then eased `go` (no reduced flag) | 0.33 → 0.496 at 170 ms | 0.33 → 0.511 at 123 ms |
 | Legacy `setProgress(p, true)` then `focus` | 1 frame (reduced persisted) | 1 frame |
-| Rapid scroll intro → about (350 ms) | 6 chapters passed, 1 settle (about, 3.5 s), progress 0.93 | same, 1 settle (2.4 s) |
+| Rapid scroll intro → about (350 ms) | 6 chapters passed, 1 settle (about, 4.3 s), progress 0.93 | same, 1 settle (2.9 s) |
 | `system-reduced`: `go("contact")` | 1 frame; 0 frames in the next 3 s | same |
-| Portrait sticky slot (reader keeps scrolling during the transition) | n/a | stuck at top 0 from 0.91 s to 2.45 s, released at settle and slid to its flow position (−106 px) |
+| Portrait sticky slot (reader keeps scrolling during the transition) | n/a | stuck at top 0 from 0.91 s to 3.16 s (2.45 s in the first run, before the aim point counted toward settling), released at settle and slid to its flow position |
 
 Reverse motion resolves directly: whisperbook → work progress samples 0.553, 0.469, 0.431 ... 0.400, monotonic, no overshoot, nothing replayed for the chapters in between. Settle time is dominated by the camera (exponential ease at 3.2/s) while construction progress eases at 7/s and is 95 percent there in about 0.45 s, so the build is the first visible change and the camera follows: the plan's "one dominant property first". Eased settles of 1.7 to 2.9 s are long for scroll; P4 may shorten the camera ease for the guided page. Explicit navigation already meets the "immediate jump" default.
 
@@ -110,7 +113,7 @@ Stills opened and judged with the Read tool: `.qa/p1/stills/sheet-wide.png`, `.q
 
 - **Sketch, portrait 390 px:** a recognizable graphite drawing of the house (observatory ring, pergola terrace, pavilion, tower, channel) sharing the first screen with the role line, the promise and the CV link. After tuning it reads; before tuning (0.21 grey) it was too faint.
 - **Blueprint:** blue construction lines with dashed guides; the strongest of the four stages in both hosts.
-- **Build (BP Log, Whisperbook):** volumes arrive over the lines. BP Log reads as "under construction" (translucent planes, heart opaque). Whisperbook reads as a dimensional reading pavilion with the open-book roof and shelves; tower, channel and observatory remain in frame, so the room is recognizable as part of the house.
+- **Build (BP Log, Whisperbook):** volumes arrive over the lines. BP Log reads as "under construction" (translucent planes, heart opaque); after fix round 1 the heart garden sits centre-low inside its lantern ring (`.qa/p1/stills/wide-bplog.png`, `portrait-bplog.png`), the evident subject, with the pavilion, greenhouse, workshop and tower edge around it. The pavilion still fills the upper half and shares the heart's terracotta, so the heart wins by position and the ring rather than by colour. Whisperbook reads as a dimensional reading pavilion with the open-book roof and shelves; tower, channel and observatory remain in frame, so the room is recognizable as part of the house.
 - **Bloom (about, contact):** foliage, water and the full composition; the house is the same model throughout.
 - **Mid-transition frames:** pencil to blue, and blue lines with planes fading in, read as one drawing becoming volume; there is no cut.
 
@@ -135,6 +138,9 @@ The sticky-during-transition portrait slot (the (c) escape) is also implemented 
 - **Eased settles of 1.7 to 2.9 s** under software GL; measure again on accelerated hardware (P7).
 - The study does not draw the sky (`src/sky.ts`); hidden-tab behaviour is the scene's existing IntersectionObserver and `document.hidden` handling, unchanged.
 
+- **BP Log subject competes with the pavilion by colour.** Retuned in fix round 1 (closer, centre-low, ring). If P4 wants the heart garden to dominate more, the options are a lighter pavilion roof at partial build, or a one-region reveal for this chapter only (a narrow form of outcome b).
+- **Cue marks share `Garden.hover`.** The adapter sets or clears the hover ring on every cue. If P4 also uses `hover` for label pointing, it must restore the cue's mark when the pointer leaves.
+
 ## 9. Captures (git-ignored, local)
 
 | What | Path |
@@ -143,7 +149,7 @@ The sticky-during-transition portrait slot (the (c) escape) is also implemented 
 | Step timestamps for the recordings | `.qa/p1/recordings.json` |
 | Stills, every cue, both hosts | `.qa/p1/stills/{wide,portrait}-<chapter>.png`, sheets `sheet-wide.png`, `sheet-portrait.png` |
 | Sticky slot during and after a transition | `.qa/p1/stills/portrait-sticky-transit.png`, `portrait-sticky-released.png` |
-| Tuning iterations | `.qa/p1/stills-v0/` (before ink and framing), `stills-v1/`, `stills-v2/`, `stills-v3/` |
+| Tuning iterations | `.qa/p1/stills-v0/` (before ink and framing), `stills-v1/`, `stills-v2/`, `stills-v3/`; fix round 1 BP Log variants `.qa/p1/bplog-fix/` and stills `.qa/p1/stills-fix1/` |
 | Frames from the recordings | `.qa/p1/frames/` |
 | Measurements | `.qa/p1/measurements.json` |
 

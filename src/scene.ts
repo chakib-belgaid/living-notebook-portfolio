@@ -3880,6 +3880,9 @@ async function buildGarden(
       Math.abs(rotationTarget - rotation) > 0.0001 ||
       Math.abs(focusGoal - focusAmount) > 0.0005 ||
       Math.abs(focusZoomGoal - focusZoom) > 0.0005 ||
+      // The camera's aim point eases with shift and room; without it a held
+      // garden could sleep (and report settled) a few pixels short.
+      focusPoint.distanceTo(focusTarget) > 0.0005 ||
       Math.abs(fogTarget - fogAmount) > 0.002 ||
       shift.distanceTo(shiftGoal) > 0.0005 ||
       Math.abs(roomGoal - room) > 0.0005 ||

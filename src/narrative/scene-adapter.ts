@@ -40,6 +40,9 @@ export interface ScenePose {
   shift: readonly [number, number];
   /** Below 1 draws the garden smaller (Garden.focus room). */
   room: number;
+  /** A ring of lantern light on the ground around a named point
+      (Garden.hover), for a subject that framing alone cannot make evident. */
+  mark?: FocusSpot | null;
 }
 
 export interface SceneCue extends ScenePose {
@@ -74,8 +77,11 @@ export const sceneCues: Readonly<Record<ChapterId, SceneCue>> = {
      takes most of that back so the whole house stays recognizable around
      the room (about 1.3x overall), and a small downward shift keeps the
      taller building behind each room inside the frame. */
-  // The heart garden: the first useful built area, restrained.
-  bplog: cue("bplog", "build", { progress: 0.52, focus: "bplog", shift: [0.04, -0.07], room: 0.44 }, { shift: [0.03, -0.32], room: 0.46 }),
+  /* The heart garden: the first useful built area, restrained. It sits on
+     the model's front corner under the much larger pavilion, so it is drawn
+     closer (about 2x) and centre-low, and marked with the hover ring; framing
+     alone left the pavilion reading as the subject (P1 review, fix round 1). */
+  bplog: cue("bplog", "build", { progress: 0.52, focus: "bplog", shift: [-0.02, -0.16], room: 0.7, mark: "bplog" }, { shift: [0, -0.22], room: 0.7 }),
   // The reading pavilion becomes dimensional; the camera approaches it.
   whisperbook: cue("whisperbook", "build", { progress: 0.66, focus: "whisperbook", shift: [0, -0.06], room: 0.5 }, { shift: [0, -0.04], room: 0.56 }),
   // The observatory ring gains presence.
@@ -154,11 +160,14 @@ export function createSceneAdapter(garden: Garden, host: HostKind = "wide"): Sce
     // No cue: the whole world, centred, at its usual size.
     if (!ref) {
       garden.focus(null, 0, 0, 1);
+      garden.hover(null);
       return;
     }
     // A cue without a spot still carries its shift and room (whole-world views).
     const pose = poseFor(ref, host);
     garden.focus(pose.focus, pose.shift[0], pose.shift[1], pose.room);
+    // Each cue sets its mark, or clears the previous one.
+    garden.hover(pose.mark ?? null);
   };
   const applyProgress = (p: number) => {
     progress = clamp01(p);
