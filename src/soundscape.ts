@@ -1,4 +1,4 @@
-import type { Spot } from "./content";
+import type { SceneSpot as Spot } from "./narrative/model";
 import type { Season } from "./scene";
 import type { Weather } from "./weather";
 

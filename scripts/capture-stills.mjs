@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { stops, stageProgress } from '../src/content.ts';
+import { stops, stageProgress } from '../src/legacy/content.ts';
 
 const base = process.env.DEV_URL || 'http://127.0.0.1:5198';
 const out = new URL('../public/assets/stills/', import.meta.url).pathname;

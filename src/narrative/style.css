@@ -1,0 +1,177 @@
+/* The narrative document: one sticky header, eight chapters in ordinary
+   flow, and a dimensioned scene host per chapter. Every host reserves its
+   size here, before any script, font, poster or canvas arrives.
+   Portrait (< 900px): the host sits inline between motivation and decision.
+   Wide (>= 900px): text column beside a sticky visual rail. */
+:root {
+  --header-clearance: 6rem;
+  --gutter: 1.25rem;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  scroll-padding-top: var(--header-clearance);
+}
+@media (min-width: 700px) {
+  :root { --header-clearance: 4.5rem; --gutter: 2rem; }
+}
+
+/* Header: name, Work · About · Contact, CV, language. Its height is fixed so
+   fragment and focus offsets can rely on --header-clearance. */
+.masthead {
+  position: sticky; top: 0; z-index: 10;
+  height: var(--header-clearance);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-rows: 3.25rem 2.75rem;
+  grid-template-areas: "owner lang cv" "nav nav nav";
+  align-items: center; column-gap: 0.6rem;
+  padding-inline: max(var(--gutter), calc((100% - 82rem) / 2));
+  background: var(--paper);
+  border-bottom: 1px solid var(--hairline);
+}
+.owner { grid-area: owner; justify-self: start; font-size: 1.125rem; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; min-height: 2.75rem; }
+.primary-nav { grid-area: nav; display: flex; justify-content: space-around; align-self: stretch; }
+.primary-nav a {
+  display: inline-flex; align-items: center; min-height: 2.75rem; padding-inline: 0.75rem;
+  font-family: var(--sans); font-size: 0.9375rem; text-decoration: none;
+}
+.primary-nav a:hover, .primary-nav a[aria-current] { text-decoration: underline; text-underline-offset: 0.45em; }
+.cv-link {
+  grid-area: cv; display: inline-flex; align-items: center; justify-content: center;
+  min-height: 2.5rem; min-width: 2.75rem; padding-inline: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--ink) 45%, transparent); border-radius: 2px;
+  font-family: var(--sans); font-size: 0.875rem; text-decoration: none; white-space: nowrap;
+}
+.cv-link:hover { border-color: var(--ink); }
+.masthead .language-picker { grid-area: lang; }
+.masthead .language-picker select { font-family: var(--sans); font-size: 0.8125rem; }
+@media (min-width: 700px) {
+  .masthead {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: 1fr;
+    grid-template-areas: "owner nav cv lang";
+    column-gap: 1.25rem;
+  }
+  .primary-nav { justify-self: end; justify-content: flex-end; gap: 0.25rem; align-self: center; }
+}
+
+/* Chapters. */
+.narrative { max-width: 82rem; margin-inline: auto; padding-inline: var(--gutter); }
+.chapter { position: relative; display: flex; flex-direction: column; padding-block: 2.25rem 1.5rem; border-bottom: 1px solid var(--hairline); }
+.chapter:last-child { border-bottom: 0; }
+.chapter-lead, .chapter-body { min-width: 0; overflow-wrap: break-word; }
+/* Alias targets (#wattch) sit at the chapter top, outside the grid flow. */
+.fragment-alias { position: absolute; top: 0; inset-inline-start: 0; width: 1px; height: 1px; }
+
+.chapter-label {
+  margin-bottom: 0.9rem;
+  font-family: var(--sans); font-size: 0.75rem; line-height: 1.5; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted);
+}
+.chapter h1, .chapter h2 { letter-spacing: -0.01em; text-wrap: balance; }
+.chapter h1 { font-size: clamp(2.375rem, 1.6rem + 3vw, 4.25rem); line-height: 1.04; font-weight: 450; margin-bottom: 1.1rem; }
+.chapter h2 { font-size: clamp(2.125rem, 1.5rem + 2.2vw, 3.25rem); line-height: 1.08; font-weight: 450; margin-bottom: 0.75rem; }
+.chapter-subtitle { font-size: clamp(1.3rem, 1.1rem + 0.6vw, 1.6rem); line-height: 1.25; margin-bottom: 1.1rem; text-wrap: balance; }
+.chapter-motivation, .chapter-decision p, .timeline p { font-size: 1.0625rem; line-height: 1.6; }
+.chapter-intro .chapter-motivation { font-size: 1.125rem; max-width: 34rem; }
+
+.chapter-decision { margin-block: 0.25rem 1.25rem; padding-inline-start: 1rem; border-inline-start: 2px solid var(--accent); }
+.chapter-decision h3, .notebook h3 {
+  margin-bottom: 0.4rem;
+  font-family: var(--sans); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.chapter-decision h3 { color: var(--accent); }
+
+.chapter-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.25rem; margin-block: 0.5rem 1rem; }
+.action { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.75rem; font-family: var(--sans); font-size: 0.9375rem; }
+.action-icon { font-size: 0.9em; }
+.action-primary {
+  padding-inline: 1.1rem; background: var(--action); color: var(--action-ink);
+  border-radius: 2px; text-decoration: none;
+}
+.action-primary:hover { background: color-mix(in srgb, var(--action) 85%, black); }
+.evidence-note, .contact-email { font-family: var(--sans); font-size: 0.875rem; line-height: 1.55; color: var(--muted); }
+.evidence-note { padding-top: 0.75rem; border-top: 1px solid var(--hairline); }
+
+/* The Work index: three projects, then the professional entry apart. */
+.work-index ul { list-style: none; margin: 1rem 0 1.5rem; padding: 0; }
+.work-index li { border-top: 1px solid var(--hairline); }
+.work-index li:last-child { border-bottom: 1px solid var(--hairline); }
+.work-index li.index-professional { margin-top: 1.5rem; }
+.work-index a { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.1rem 1rem; padding-block: 0.8rem; text-decoration: none; }
+.work-index a::after { content: "↓"; content: "↓" / ""; grid-column: 2; grid-row: 1 / span 2; align-self: center; font-family: var(--sans); color: var(--muted); }
+.index-title { font-size: 1.375rem; line-height: 1.25; }
+.index-summary { font-family: var(--sans); font-size: 0.8125rem; color: var(--muted); }
+.work-index a:hover .index-title { text-decoration: underline; text-underline-offset: 0.2em; }
+
+/* About: the career timeline, then the secondary notebook. */
+.timeline { list-style: none; margin: 1.5rem 0; padding: 0; padding-inline-start: 1rem; border-inline-start: 1px solid var(--hairline); }
+.timeline li + li { margin-top: 1rem; }
+.timeline-years { margin-bottom: 0.1rem; font-family: var(--sans); font-size: 0.8125rem; color: var(--muted); }
+.timeline h3 { font-size: 1.125rem; line-height: 1.3; margin-bottom: 0.2rem; }
+.timeline p:last-child { margin-bottom: 0; font-size: 0.9375rem; }
+.notebook { margin-block: 1.5rem 0.5rem; padding-top: 1rem; border-top: 1px solid var(--hairline); color: var(--muted); }
+.notebook ul { list-style: none; margin: 0; padding: 0; }
+.notebook li + li { margin-top: 0.6rem; }
+.notebook h4 { font-size: 1rem; color: var(--ink); }
+.notebook p { margin-bottom: 0; font-size: 0.9375rem; line-height: 1.5; }
+.notebook a { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2.25rem; font-family: var(--sans); font-size: 0.8125rem; }
+
+/* Footer: the static phase indicator and the next chapter. */
+.chapter-foot {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.25rem 1rem;
+  margin-top: 1.75rem; padding-top: 0.6rem; border-top: 1px solid var(--hairline);
+  font-family: var(--sans); font-size: 0.8125rem;
+}
+.phase-indicator { display: flex; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; color: var(--muted); }
+.phase-indicator li + li::before { content: "·"; content: "·" / ""; margin-inline: 0.45rem; }
+.phase-indicator [aria-current] { color: var(--ink); font-weight: 700; }
+.next-link { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2.75rem; }
+
+/* Scene hosts. The poster is the no-JS and failure content; P4 mounts the
+   single decorative canvas into the active host. */
+.scene-host {
+  position: relative; overflow: hidden; contain: layout paint;
+  height: clamp(220px, 45vh, 400px);
+  height: clamp(220px, 45svh, 400px);
+  margin-block: 0.5rem 1.5rem;
+  background: var(--scene-bg);
+  border-radius: 3px;
+}
+.scene-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 36%; }
+.chapter-whisperbook .scene-poster, .chapter-energy-tools .scene-poster { object-position: 50% 30%; }
+
+/* Wide: a text column (420–520px at >= 1100px) beside a sticky visual rail
+   of roughly 50–60% of the width. */
+@media (min-width: 900px) and (min-height: 500px) {
+  .chapter {
+    display: grid;
+    grid-template-columns: minmax(0, clamp(22rem, 36vw, 32.5rem)) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "lead scene" "body scene";
+    column-gap: clamp(2rem, 5vw, 5rem);
+    min-height: calc(100vh - var(--header-clearance));
+    min-height: calc(100svh - var(--header-clearance));
+    padding-block: 2.5rem;
+  }
+  .chapter-lead { grid-area: lead; }
+  .chapter-body { grid-area: body; }
+  .chapter-intro { grid-template-rows: auto auto; align-content: center; }
+  .scene-host {
+    grid-area: scene; align-self: start;
+    position: sticky; top: calc(var(--header-clearance) + 1.25rem);
+    height: calc(100vh - var(--header-clearance) - 5rem);
+    height: calc(100svh - var(--header-clearance) - 5rem);
+    min-height: 20rem; margin: 0;
+  }
+  .chapter-motivation, .chapter-decision p { font-size: 1.125rem; }
+}
+
+:root[lang="ar"] :is(.chapter-label, .chapter-decision h3, .notebook h3) { letter-spacing: normal; text-transform: none; font-size: 0.875rem; }
+:root[lang="ar"] .chapter h1, :root[lang="ar"] .chapter h2 { letter-spacing: normal; line-height: 1.35; }
+:root[dir="rtl"] .action-icon { transform: scaleX(-1); }
+
+@media print {
+  .masthead { position: static; height: auto; }
+  .scene-host, .chapter-foot { display: none; }
+  .chapter { display: block; min-height: 0; padding-block: 1rem; break-inside: avoid-page; }
+  .action-primary { background: none; color: inherit; padding: 0; text-decoration: underline; }
+}
