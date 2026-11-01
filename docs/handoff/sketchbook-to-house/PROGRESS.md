@@ -2,13 +2,13 @@
 
 Shared state between implementation sessions. Each session reads this first and updates it last. One section per phase; P2–P4 record slice and breadth separately. Record release, session/date, files touched, checks and capture paths when updating a phase. Status words: `not started`, `in progress`, `blocked`, `reviewed`, `done`. Never write `done` for code that has not been visually exercised. Handoff corrections below are findings and planned work, not completed application changes.
 
-Release 1 cap: twenty working days from the first implementation session. Days used so far: 1.
+Release 1 cap: twenty working days from the first implementation session. Days used so far: 2.
 
 ## Decision gates
 
 | Gate | When | Reviewer | Status | Entry |
 | --- | --- | --- | --- | --- |
-| G1 Motion study | End of P1 | User | not started | — |
+| G1 Motion study | End of P1 | User | not started | [motion-study/P1-MOTION-STUDY.md](motion-study/P1-MOTION-STUDY.md) (outcome a; recordings `.qa/p1/video/`) |
 | G2 Release-1 slice review | After P2–P4 for intro → work → Whisperbook → existing Android `/work/whispbook/` → back → contact, with CV placement and repaired case assets | User | not started | — |
 
 P5/new case routes and P6/exploration are not G2 prerequisites. Complete the release-1 candidate before starting them. An unresolved CV fact is a P2 publication blocker, not a blocker for independent layout work or G2's visual review; close CV verification before the release-1 candidate passes P7/P8. Translation review is asynchronous and bundled below; it does not add a design gate. Publication follows the authorization in the implementation chat.
@@ -85,11 +85,15 @@ Use the [release applicability table](ACCEPTANCE.md#release-applicability). Link
 
 ### P1 — Actual-house motion study
 
-- Status: not started
-- Outcome (a / b / c): —
-- Portrait slot approach tried (45 percent, sticky during transition): —
-- Recordings: —
-- Open issues: —
+- Status: in progress (implemented and visually exercised; awaiting controller review and the user's G1 review)
+- Session: 1 November 2026 (day 2). Study document: [motion-study/P1-MOTION-STUDY.md](motion-study/P1-MOTION-STUDY.md)
+- Files touched: `src/scene.ts` (new `setAmbient`, `snap`, `isSettled`, `onSettled`; focus aims at the target build scale; warm-paper light ink), new `src/narrative/scene-adapter.ts`, new dev-only `dev/motion-study.html` + `src/narrative/motion-study.ts`, `dev/vite.study.config.ts`, `dev/motion-study-stills.mjs`, `dev/motion-study-run.mjs`, this file and the study document. Not touched: `main.ts`, `render.ts`, `content.ts`, `index.html`, `style.css`, `vite.config.ts`, `public/`.
+- Outcome (a / b / c): **(a)** global construction progress plus named focus is legible at 1440×900 and at 390×844 in a 45vh slot. No reveal manifest; estimate if wanted later: 1.5 to 2 days (per-region × per-colour batching raises draw calls).
+- Portrait slot approach tried (45 percent, sticky during transition): one 45vh slot per chapter between motivation and decision; the scene moves into the active slot; the slot is sticky at top 0 only while a scroll-driven transition runs, then releases into flow with a 260 ms slide. Measured stuck 0.91 s → 2.45 s, released at settle. Direct jumps never stick.
+- Measurements (SwiftShader): guided hold draws 0 frames over 10 s at Build and at Bloom in both hosts (released control: 13/s wide, 30/s phone); a navigation after a hold draws its destination in 1 frame; direct jumps 1 frame (2 to 6 ms); eased transitions settle in 1.7 to 2.9 s; `snapTo` leaves later changes eased; rapid scroll across six chapters gives one settle at the destination.
+- Recordings: `.qa/p1/video/wide.webm`, `.qa/p1/video/portrait.webm` (git-ignored); stills `.qa/p1/stills/`; data `.qa/p1/measurements.json`, `.qa/p1/recordings.json`.
+- Checks: `npx tsc --noEmit` and `npm run build` green; `dist/` contains no study page; legacy `/#whisperbook` smoke check at 1440 and 390 with no page errors. Full browser suite not run (owned by P7).
+- Open issues: the stuck portrait slot covers the first lines of the decision until settle; vacated slots show blank paper; activation thresholds are tuned for placeholder copy; eased settles are long for scroll (camera ease); the built house reads bright on ivory (exposure); re-measure on accelerated hardware in P7.
 
 ### P2 — Content model, static semantic shell and verified CVs (release 1)
 

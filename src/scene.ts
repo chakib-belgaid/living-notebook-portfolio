@@ -18,6 +18,26 @@ export interface Garden {
   setPostbox: (state: "idle" | "writing" | "sent") => void;
   setProgress: (p: number, immediate?: boolean) => void;
   setMotion: (paused: boolean) => void;
+  /** Ambient life: water, sway, animals, drones, the drum and the needle.
+      Off is a guided reading hold: what moves on its own stops where it is,
+      and once the build and the camera have reached their goals the loop
+      sleeps and draws nothing until something changes. Moves toward new goals
+      and the pencil draw-in still draw. Independent of setMotion (the
+      visitor's pause) and of setProgress's `immediate`. On by default. */
+  setAmbient: (on: boolean) => void;
+  /** Jumps the build and the camera pose (progress, rotation, focus, shift,
+      room, frame, zoom, pan) to their current goals; the next frame draws the
+      destination once. Unlike setProgress(p, true) it sets no reduced-motion
+      state: later changes ease as before. Call it after setting the goals. */
+  snap: () => void;
+  /** True once the build, the camera pose and the rooms' own fades have
+      reached their goals, the draw-in is complete and that state has been
+      drawn. Ambient life does not count: a Bloom garden with ambient on is
+      settled while it sways. */
+  isSettled: () => boolean;
+  /** `callback` runs each time the garden comes to rest after its goals
+      changed or it was snapped (see isSettled). Returns an unsubscribe. */
+  onSettled: (callback: () => void) => () => void;
   setTheme: (dark: boolean) => void;
   rotate: () => void;
   rotateBy: (radians: number) => void;
@@ -2319,7 +2339,8 @@ async function buildGarden(
   const lampOn = () => voiced() || explaining !== null;
   function updateRooms(dt: number, solid: number, drawn: number, blue: number) {
     built = solid;
-    const still = paused || reduced;
+    // Held (ambient off) stops the drum, pen, needle and rings like a pause.
+    const still = paused || reduced || !ambient;
     narration = approach(narration, voiced() ? 1 : 0, reduced ? 1 : dt / 0.3);
     lamp = approach(lamp, lampOn() ? 1 : 0, reduced ? 1 : dt / 0.3);
     if (!still) ringTime += dt;
@@ -3552,6 +3573,10 @@ async function buildGarden(
     progress = 0,
     paused = false,
     reduced = false,
+    // Ambient life (see setAmbient); off during a guided reading hold.
+    ambient = true,
+    // True from a change of goals or a snap until the garden has settled.
+    settling = false,
     visible = true,
     rotation = 0,
     rotationTarget = 0,
@@ -3575,6 +3600,12 @@ async function buildGarden(
   function invalidate() {
     dirty = true;
     wake();
+  }
+  const settleListeners = new Set<() => void>();
+  // The world is drawn smaller and flatter on the sketch; it reaches full size by Build.
+  function worldScaleAt(p: number, out: T.Vector3) {
+    const s = lerp(0.77, 1, smooth(0, 0.62, p));
+    return out.set(s, s * lerp(0.72, 1, smooth(0.1, 0.55, p)), s);
   }
   const onVisibility = () => {
     if (!document.hidden) wake();
@@ -3695,7 +3726,9 @@ async function buildGarden(
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(container);
   resize();
-  const pencilColor = new T.Color(0x85898b),
+  // The light set is the warm-paper sketchbook (P1): graphite rather than a
+  // cool grey, so the opening drawing holds on ivory #f5f0e5 at phone size.
+  const pencilColor = new T.Color(0x605f59),
     blueColor = new T.Color(0x447cba),
     finalColor = new T.Color(0x7b8277);
   const projected = new T.Vector3();
@@ -3840,6 +3873,24 @@ async function buildGarden(
     container.dataset[key] = value;
   }
   let shadowFrame = 0;
+  // Whether anything is still on its way to a goal (ambient life aside).
+  function moving() {
+    return (
+      Math.abs(targetProgress - progress) > 0.0001 ||
+      Math.abs(rotationTarget - rotation) > 0.0001 ||
+      Math.abs(focusGoal - focusAmount) > 0.0005 ||
+      Math.abs(focusZoomGoal - focusZoom) > 0.0005 ||
+      Math.abs(fogTarget - fogAmount) > 0.002 ||
+      shift.distanceTo(shiftGoal) > 0.0005 ||
+      Math.abs(roomGoal - room) > 0.0005 ||
+      view.distanceTo(viewGoal) > 0.0005 ||
+      Math.abs(userZoomGoal - userZoom) > 0.0005 ||
+      pan.distanceTo(panGoal) > 0.0005 ||
+      Math.abs(snowGoal - snowCover) > 0.001 ||
+      roomsSettling() ||
+      planted.some((p) => p.age < 1)
+    );
+  }
   function render(now: number) {
     frame = 0;
     if (disposed) return;
@@ -3859,23 +3910,15 @@ async function buildGarden(
       drawIn = reduced || paused ? 1 : Math.min(1, drawIn + dt / 3.2);
       dirty = true;
     }
-    const growing = planted.some((p) => p.age < 1);
-    const changed =
-      Math.abs(targetProgress - progress) > 0.0001 ||
-      Math.abs(rotationTarget - rotation) > 0.0001 ||
-      Math.abs(focusGoal - focusAmount) > 0.0005 ||
-      Math.abs(focusZoomGoal - focusZoom) > 0.0005 ||
-      Math.abs(fogTarget - fogAmount) > 0.002 ||
-      shift.distanceTo(shiftGoal) > 0.0005 ||
-      Math.abs(roomGoal - room) > 0.0005 ||
-      view.distanceTo(viewGoal) > 0.0005 ||
-      Math.abs(userZoomGoal - userZoom) > 0.0005 ||
-      pan.distanceTo(panGoal) > 0.0005 ||
-      Math.abs(snowGoal - snowCover) > 0.001 ||
-      roomsSettling() ||
-      growing;
-    // Paused, or before the garden is built, a settled garden sleeps.
-    if ((paused || progress < 0.5) && !changed && !dirty) {
+    const changed = moving();
+    // Settling is reported once, from the first frame with nothing left to move.
+    if (changed || drawIn < 1) settling = true;
+    else if (settling) {
+      settling = false;
+      settleListeners.forEach((f) => queueMicrotask(f));
+    }
+    // Paused, held, or before the garden is built, a settled garden sleeps.
+    if ((paused || !ambient || progress < 0.5) && !changed && !dirty) {
       last = -1;
       return;
     }
@@ -3905,7 +3948,9 @@ async function buildGarden(
       rotationTarget,
       reduced ? 1 : Math.min(dt * 4, 1),
     );
-    if (!paused) elapsed += dt;
+    // Ambient life keeps its own clock; it stops while paused or held.
+    const resting = paused || !ambient;
+    if (!resting) elapsed += dt;
     const ease = reduced ? 1 : Math.min(dt * 3.2, 1);
     // The drawing starts in its frame, where the loading still was, rather
     // than sliding over from the centre.
@@ -3936,8 +3981,7 @@ async function buildGarden(
     lifeUniform.value = paused ? 0 : life;
     const blueprint = smooth(0.07, 0.3, progress),
       solid = smooth(0.35, 0.6, progress);
-    world.scale.setScalar(lerp(0.77, 1, smooth(0, 0.62, progress)));
-    world.scale.y *= lerp(0.72, 1, smooth(0.1, 0.55, progress));
+    worldScaleAt(progress, world.scale);
     world.rotation.y = rotation;
     if (snowCover !== snowGoal) {
       const step = snowGoal - snowCover;
@@ -3971,8 +4015,10 @@ async function buildGarden(
         .copy(pencilColor)
         .lerp(blueColor, blueprint)
         .lerp(finalColor, solid);
+      // On warm paper the pencil needs more weight than the old 0.21 to read
+      // in a 45vh phone slot (P1 stills); the night set is unchanged.
       lineMaterial.opacity =
-        lerp(darkTheme ? 0.38 : 0.21, darkTheme ? 0.85 : 0.6, blueprint) *
+        lerp(darkTheme ? 0.38 : 0.44, darkTheme ? 0.85 : 0.66, blueprint) *
         (1 - solid * 0.92);
       stickMaterial.color.copy(lineMaterial.color);
       stickMaterial.opacity = lineMaterial.opacity * (1 - solid);
@@ -4023,9 +4069,9 @@ async function buildGarden(
       );
     });
     updateRooms(dt, solid, drawn, blueprint);
-    updateLife(paused || reduced ? 0 : dt, life);
+    updateLife(resting || reduced ? 0 : dt, life);
     // The gardener is only drawn with the life of the garden.
-    if (!lite && life > 0.01) updateGardener(paused || reduced ? 0 : dt, paused || reduced);
+    if (!lite && life > 0.01) updateGardener(resting || reduced ? 0 : dt, resting || reduced);
     if (butterflyMaterial.visible)
       butterflies.forEach((b, i) => {
         b.position.set(
@@ -4050,7 +4096,7 @@ async function buildGarden(
       p.group.scale.setScalar(Math.max(0.001, back * p.group.userData.size));
       p.grown = p.age >= 1;
     }
-    updateVisitor(paused || reduced ? 0 : dt);
+    updateVisitor(resting || reduced ? 0 : dt);
     // The garden is fitted to its frame, as if the frame were the whole
     // view; the rest of the view shows more of the same scene around it.
     // The camera and the labels move only when what frames them changes.
@@ -4241,12 +4287,13 @@ async function buildGarden(
     setProgress(p, immediate = false) {
       targetProgress = p;
       reduced = immediate;
+      settling = true;
       invalidate();
       if (immediate) progress = p;
     },
     setTheme(dark) {
       darkTheme = dark;
-      pencilColor.setHex(dark ? 0x8fbcda : 0x85898b);
+      pencilColor.setHex(dark ? 0x8fbcda : 0x605f59);
       blueColor.setHex(dark ? 0xc0eaff : 0x447cba);
       guideMaterial.color.setHex(dark ? 0x71b3e4 : 0x698bb5);
       ghostMaterial.color.setHex(dark ? 0x94c8e9 : 0x777b7d);
@@ -4258,6 +4305,33 @@ async function buildGarden(
     setMotion(value) {
       paused = value;
       invalidate();
+    },
+    setAmbient(on) {
+      ambient = on;
+      invalidate();
+    },
+    snap() {
+      progress = targetProgress;
+      rotation = rotationTarget;
+      focusAmount = focusGoal;
+      focusZoom = focusZoomGoal;
+      focusPoint.copy(focusTarget);
+      shift.copy(shiftGoal);
+      room = roomGoal;
+      view.copy(viewGoal);
+      userZoom = userZoomGoal;
+      pan.copy(panGoal);
+      settling = true;
+      invalidate();
+    },
+    isSettled() {
+      // `settling` is cleared by the frame that draws the destination, so a
+      // snap is not settled until that frame (an offscreen garden waits).
+      return !settling && !moving() && drawIn >= 1;
+    },
+    onSettled(callback) {
+      settleListeners.add(callback);
+      return () => settleListeners.delete(callback);
     },
     rotate() {
       rotationTarget += Math.PI / 6;
@@ -4308,6 +4382,7 @@ async function buildGarden(
     },
     frame(top, bottom) {
       viewGoal.set(top, bottom);
+      settling = true;
       invalidate();
     },
     zoomBy(factor, x, y) {
@@ -4338,15 +4413,19 @@ async function buildGarden(
     focus(spot, shiftX = 0, shiftY = 0, roomX = 1) {
       if (spot && points[spot]) {
         const room = rooms[spot];
+        // Aimed where the spot will stand once the build reaches its goal,
+        // not where the still-growing world has it now (P1: a focus set with
+        // a new progress otherwise lands short on the sketch's smaller world).
         focusTarget
           .copy(room?.at ?? points[spot])
-          .multiply(world.scale)
+          .multiply(worldScaleAt(targetProgress, new T.Vector3()))
           .applyAxisAngle(new T.Vector3(0, 1, 0), rotation);
         focusGoal = 1;
         focusZoomGoal = room?.zoom ?? 0.4;
       } else focusGoal = 0;
       shiftGoal.set(shiftX, shiftY);
       roomGoal = roomX;
+      settling = true;
       invalidate();
     },
     stats() {
@@ -4402,6 +4481,7 @@ async function buildGarden(
     },
     dispose() {
       disposed = true;
+      settleListeners.clear();
       cancelAnimationFrame(frame);
       frame = 0;
       document.removeEventListener("visibilitychange", onVisibility);
