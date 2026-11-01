@@ -1,89 +1,121 @@
-import { recentWorkMarkup, practiceMarkup } from "./recent.ts";
-import { beats, projects, research, contactMarkup, scrollCue, insideMarkup } from "./content";
+import { chapters, chapter, cv, email, identity, notebook, posterAlt, timeline } from "./narrative/content.ts";
+import { nextChapterId, phaseLabels, phases, posterSrc, POSTER_SIZE, primaryNav, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+const e = escapeHtml;
+
+const external = (href: string) => /^https?:/.test(href);
+const icon = (glyph: string) => `<span class="action-icon" aria-hidden="true">${glyph}</span>`;
+/** Locale-dependent destinations keep the English href for no-JS and
+ * Arabic; src/narrative/localized-links.ts swaps in data-href-fr for French. */
+const localized = (a: { href: string; hrefFr?: string }) =>
+  a.hrefFr ? ` hreflang="en" data-href-en="${e(a.href)}" data-href-fr="${e(a.hrefFr)}"` : "";
+
+export function renderAction(a: Action, className = "action") {
+  const classes = `${className} action-${a.type}${a.primary ? " action-primary" : ""}`;
+  if (external(a.href)) {
+    return `<a class="${classes}" href="${e(a.href)}" target="_blank" rel="noopener">${e(a.label)}${icon("↗")}<span class="sr-only"> (opens in a new tab)</span></a>`;
+  }
+  const glyph = a.type === "section" ? "↓" : a.type === "download" ? "↓" : a.type === "case" ? "→" : "";
+  const pdf = a.type === "download" ? ` type="application/pdf"` : "";
+  return `<a class="${classes}" href="${e(a.href)}"${localized(a)}${pdf}>${e(a.label)}${glyph ? icon(glyph) : ""}</a>`;
+}
+const actions = (list: Action[]) => list.length ? `<div class="chapter-actions">${list.map(a => renderAction(a)).join("")}</div>` : "";
+
+function sceneHost(c: Chapter) {
+  const { poster } = c.scene;
+  const lazy = c.id === "intro" ? "" : ` loading="lazy"`;
+  return `<div class="scene-host" data-scene-host="${c.id}" data-phase="${c.scene.phase}" data-poster="${poster}">
+        <img class="scene-poster" src="${posterSrc(poster)}" width="${POSTER_SIZE.width}" height="${POSTER_SIZE.height}" alt="${e(posterAlt[poster])}"${lazy} decoding="async" />
+      </div>`;
+}
+
+/** Wide layouts (WIDE_LAYOUT_QUERY): one sticky rail beside the whole run of
+ * chapters, the single mount point for the live scene. Decorative: the
+ * chapter text is the content, and each chapter's own host (hidden on wide
+ * layouts) carries the described poster. Without JS it shows the opening
+ * sketch; P4 switches its poster and pose by chapter. */
+function sceneRail() {
+  const poster = chapter("intro").scene.poster;
+  return `<aside class="scene-rail" data-scene-host="rail" data-phase="${chapter("intro").scene.phase}" data-poster="${poster}" aria-hidden="true">
+        <img class="scene-poster" src="${posterSrc(poster)}" width="${POSTER_SIZE.width}" height="${POSTER_SIZE.height}" alt="" decoding="async" />
+      </aside>`;
+}
+
+function chapterFoot(c: Chapter) {
+  const next = nextChapterId(c.id);
+  const link = next
+    ? `<a class="next-link" href="#${next}">${e(chapter(next).short)}<span class="action-icon" aria-hidden="true">↓</span></a>`
+    : `<a class="next-link" href="#intro">Back to the top<span class="action-icon" aria-hidden="true">↑</span></a>`;
+  const steps = phases.map(p => `<li${p === c.scene.phase ? ` aria-current="step"` : ""}>${phaseLabels[p]}</li>`).join("");
+  return `<footer class="chapter-foot"><ol class="phase-indicator" aria-label="Construction phase">${steps}</ol>${link}</footer>`;
+}
+
+function workIndex() {
+  const entries = chapters.filter(c => c.index);
+  const item = (c: Chapter) => `<li${c.index!.professional ? ` class="index-professional"` : ""}><a href="#${c.id}"><span class="index-title">${e(c.index!.title)}</span><span class="index-summary">${e(c.index!.summary)}</span></a></li>`;
+  return `<nav class="work-index" aria-label="Selected work"><ul>${entries.map(item).join("")}</ul></nav>`;
+}
+
+function aboutExtras() {
+  const years = timeline.map(t => `<li><p class="timeline-years">${e(t.years)}</p><h3>${e(t.place)}</h3><p>${e(t.text)}</p></li>`).join("");
+  const notes = notebook.entries.map(n => `<li><h4>${e(n.title)}</h4><p>${e(n.text)}</p><a href="${e(n.href)}" target="_blank" rel="noopener">${e(n.label)}${icon("↗")}<span class="sr-only"> (opens in a new tab)</span></a></li>`).join("");
+  return {
+    timeline: `<ol class="timeline" aria-label="Career">${years}</ol>`,
+    notebook: `<aside class="notebook" id="workshop" aria-labelledby="workshop-title"><h3 id="workshop-title">${e(notebook.heading)}</h3><ul>${notes}</ul></aside>`,
+  };
+}
+
+/** Which motivation paragraphs precede the scene slot on narrow screens. */
+const leadParagraphs: Partial<Record<ChapterId, number>> = { work: 0, about: 1 };
+
+function renderChapter(c: Chapter) {
+  const heading = c.id === "intro"
+    ? `<h1 id="intro-title" tabindex="-1">${e(c.title)}</h1>`
+    : `<h2 id="${c.id}-title" tabindex="-1">${e(c.title)}</h2>`;
+  const paragraphs = c.motivation ?? [];
+  const split = leadParagraphs[c.id] ?? paragraphs.length;
+  const para = (text: string) => `<p class="chapter-motivation">${e(text)}</p>`;
+  const lead = [
+    c.label ? `<p class="chapter-label">${e(c.label)}</p>` : "",
+    heading,
+    c.subtitle ? `<p class="chapter-subtitle">${e(c.subtitle)}</p>` : "",
+    ...paragraphs.slice(0, split).map(para),
+    c.id === "intro" ? actions(c.actions) : "",
+  ].join("");
+  let body = paragraphs.slice(split).map(para).join("");
+  if (c.decision) body += `<div class="chapter-decision"><h3>${e(c.decision.heading)}</h3><p>${e(c.decision.text)}</p></div>`;
+  if (c.id === "work") body += workIndex();
+  if (c.id === "about") {
+    const extras = aboutExtras();
+    body += extras.timeline + actions(c.actions) + extras.notebook;
+  } else if (c.id !== "intro") {
+    body += actions(c.actions);
+  }
+  if (c.evidence) body += `<p class="evidence-note" data-evidence-kind="${c.evidence.kinds.join(" ")}">${e(c.evidence.text)}</p>`;
+  if (c.id === "contact") body += `<p class="contact-email" data-no-translate>${e(email)}</p>`;
+  // The #wattch alias lands on this chapter without JavaScript.
+  const alias = c.id === "energy-tools" ? `<span class="fragment-alias" id="wattch"></span>` : "";
+  return `
+    <section id="${c.id}" class="chapter chapter-${c.id}" data-chapter="${c.id}" data-phase="${c.scene.phase}" aria-labelledby="${c.id}-title">${alias}
+      <div class="chapter-lead">${lead}</div>
+      ${sceneHost(c)}
+      <div class="chapter-body">${body}${chapterFoot(c)}</div>
+    </section>`;
+}
 
 /** Used by Vite's HTML hook in development and production, without a browser. */
 export function renderPortfolio() {
-  const e = escapeHtml;
-  const career = beats.filter(b => b.stage === 1 && b.path !== undefined).reverse();
-  // "Role, Organisation": the organisation reads as a second, quieter line.
-  const role = (title: string) => {
-    const [name, org] = title.split(/, (.+)/);
-    return org ? `${e(name)}<span class="career-comma">, </span><span class="career-org">${e(org)}</span>` : e(title);
-  };
-  const workCopy = beats.find(b => b.stage === 2 && !b.spot)!.copy;
+  const nav = primaryNav.map(item => `<a href="${item.href}">${e(item.label)}</a>`).join("");
   return `
     <a class="skip-link" href="#intro">Skip to portfolio</a>
     <header class="masthead">
-      <a class="owner" href="#intro">Chakib Belgaid</a>
-      <nav aria-label="Sections"><a href="#work">Work</a><a href="#about">About</a><a href="#contact">Contact</a></nav>
-      <a class="view-switch script-only" href="?view=garden" data-view="garden">Explore garden</a>
-      <label class="language-picker script-only"><span class="sr-only">Language</span><select data-language aria-label="Language"><option value="en" lang="en" data-no-translate>EN</option><option value="fr" lang="fr" data-no-translate>FR</option><option value="ar" lang="ar" data-no-translate>العربية</option></select></label>
-      <div class="read-ruler script-only" aria-hidden="true"><span class="read-fill"></span>${["intro", "work", "about", "contact"].map(id => `<i data-at="${id}"></i>`).join("")}</div>
+      <a class="owner" href="#intro">${e(identity.name)}</a>
+      <nav class="primary-nav" aria-label="Sections">${nav}</nav>
+      <a class="cv-link" href="${cv.en}" type="application/pdf" hreflang="en" data-href-en="${cv.en}" data-href-fr="${cv.fr}">CV</a>
+      <label class="language-picker"><span class="sr-only">Language</span><select data-language aria-label="Language"><option value="en" lang="en" data-no-translate>EN</option><option value="fr" lang="fr" data-no-translate>FR</option><option value="ar" lang="ar" data-no-translate>AR</option></select></label>
     </header>
-    <main id="portfolio" class="portfolio">
-      <section id="intro" class="reading-intro" data-stop="sketch" aria-labelledby="intro-title">
-        <div class="intro-copy stop-card"><p class="eyebrow">A living notebook</p>
-          <h1 id="intro-title" tabindex="-1">Chakib Belgaid</h1>
-          <p class="reading-lede">${e(beats[0].copy)}</p>
-          <p class="stop-line">Product engineer, Ph.D. AI products, developer tools, and how we measure the energy software uses.</p>
-          <div class="entry-actions"><a class="primary-action" href="#work">Selected work</a><a class="script-only journey-hidden" href="?view=garden" data-view="garden">Explore the garden</a><a class="script-only journey-only" href="?view=read" data-view="read" title="Read the portfolio without 3D or garden audio. Recommended for low-end computers.">Low-end mode</a></div>
-          <p class="journey-only journey-hint scroll-cue">${scrollCue}<span>Scroll to explore the garden and projects.</span></p>
-          <p class="project-shortcuts"><a href="#whisperbook">Whisperbook</a> · <a href="#wattch">Wattch Core</a></p>
-        </div>
-        <div class="garden-preview" id="garden-preview">
-          <div class="preview-frame" id="preview-frame"><img class="static-garden" src="/assets/garden-preview.webp" width="1440" height="900" alt="The notebook garden in autumn, with a reading pavilion, energy observatory, atelier, and greenhouse." loading="lazy" fetchpriority="low" /></div>
-          <p class="preview-caption">An idea, drawn and brought to life.</p>
-          <div id="preview-tools"></div>
-        </div>
-      </section>
-      <section id="work" class="reading-section" aria-labelledby="work-title">
-        <div class="work-opener" data-stop="build">
-          <div class="stop-card"><p class="eyebrow">Selected work</p><h2 id="work-title" tabindex="-1">The boundaries matter</h2>
-            <p class="work-copy">${e(workCopy)}</p>
-            <p class="stop-line">${e(workCopy.split(". ").slice(0, 2).join(". "))}.</p>
-          </div>
-          <nav class="project-shortcuts project-index" aria-label="Selected projects">${Object.entries(projects).map(([id, p], i) => `<a href="#${id}"><span class="index-number">0${i + 1}</span><span class="index-title">${e(p.title)}</span><span class="index-field">${e(p.summary)}</span><span class="index-status">${e(p.availability)}</span></a>`).join("")}</nav>
-          <div class="stop-detail" data-detail="recent">${recentWorkMarkup(true)}</div>
-          <aside class="research-highlights journey-hidden" aria-labelledby="research-title">
-            <h3 id="research-title">Open-source research</h3>
-            <p>My energy-measurement work also lives in the PowerAPI organization. These links lead to the canonical repositories.</p>
-            <ul>${research.map(p => `<li><a href="${p.url}" target="_blank" rel="noopener noreferrer">${e(p.title)} ↗</a><span>${e(p.summary)}</span><small>${e(p.status)}</small></li>`).join("")}</ul>
-          </aside>
-        </div>
-        ${Object.entries(projects).map(([id, p]) => `
-          <article class="reading-project" id="${id}" data-stop="${id}" aria-labelledby="${id}-title">
-            <div class="project-copy">
-              <div class="stop-card"><p class="eyebrow">${e(p.field)}</p><h3 id="${id}-title" tabindex="-1">${e(p.title)}</h3>
-                <p class="reading-lede">${e(p.summary)}</p><p class="project-availability">${e(p.availability)}</p></div>
-              <div class="stop-detail" data-detail="${id}"><p>${e(p.intro)}</p>
-                <h4>Project status</h4><p>${e(p.status)}</p>
-                <div class="project-access">${p.access.map(a => `<a href="${a.url}" target="_blank" rel="noopener noreferrer">${e(a.label)}</a>`).join("")}</div>
-                <p class="release-note">${e(p.releaseNote)}</p>
-                <h4>Outcome</h4><p>${e(p.outcome)}</p><h4>Performance evidence</h4><p>${e(p.performance)}</p><h4>Scope and limits</h4><p>${e(p.limits)}</p>
-                <h4>What I built</h4><p>${e(p.built)}</p>${id === "whisperbook" ? insideMarkup("page", "h4", false) : ""}<h4>The decision that shaped it</h4><p>${e(p.decision)}</p>
-                <p class="project-tech">${e(p.tech.join(" · "))}</p><a class="source-link" href="${p.url}" target="_blank" rel="noopener noreferrer">Read ${e(p.title)} on GitHub ↗</a>
-                <details class="reading-illustration script-only" data-illustration="${id}"><summary>${id === "whisperbook" ? "Hear a passage in your browser" : "Measure what drawing this page costs"}</summary><p>${e(id === "whisperbook" ? "Hear an excerpt in your browser’s local voice. Whisperbook uses its own on-device narration on Android." : "Watch what drawing this page costs your device: CPU and GPU time, and the estimated carbon of that work. Enable the garden preview to measure it.")}</p><div data-reading-widget="${id}"></div></details>
-              </div>
-            </div>
-            <figure class="reading-proof proof-${id}" data-detail="${id}"><a href="${p.image}" data-evidence="${id}" aria-label="View full screenshot of ${e(p.title)}"><img src="${p.image}" width="${p.size[0]}" height="${p.size[1]}" alt="${e(p.alt)}" loading="lazy" decoding="async" /></a>
-              <figcaption>${e(p.caption)} <a href="${p.image}" data-evidence="${id}">View full screenshot</a></figcaption>
-            </figure>
-          </article>`).join("")}
-      </section>
-      <section class="reading-section" id="about" data-stop="blueprint" aria-labelledby="about-title">
-        <div class="stop-card"><p class="eyebrow">Current work and background</p><h2 id="about-title" tabindex="-1">${e(beats[1].title)}</h2></div>
-        <div class="stop-detail" data-detail="about"><p>${e(beats[1].copy)}</p>
-          ${practiceMarkup()}
-          <ol class="career-list">${career.map(b => `<li><p class="eyebrow">${e(b.label!)}</p><h3>${role(b.title)}</h3><p>${e(b.copy)}</p></li>`).join("")}</ol>
-        </div>
-      </section>
-      <section class="reading-section reading-contact" id="contact" data-stop="bloom" aria-labelledby="contact-title">
-        <div class="stop-card"><p class="eyebrow">Write to me</p><h2 id="contact-title" tabindex="-1">I’d like to hear what you’re building.</h2>
-          ${contactMarkup}
-        </div>
-        <p class="sign-off"><a href="#intro">Back to the top ↑</a></p>
-      </section>
+    <main id="portfolio" class="narrative">${chapters.map(renderChapter).join("")}
+      ${sceneRail()}
     </main>`;
 }

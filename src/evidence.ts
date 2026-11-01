@@ -1,4 +1,4 @@
-import { projects } from "./content";
+import { evidenceImages as projects } from "./narrative/content";
 export function initEvidence() {
   const dialog = document.createElement("dialog");
   dialog.className = "evidence-dialog";

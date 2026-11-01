@@ -1,6 +1,6 @@
 import "./phone.css";
 import { stageProgress, stops, type Stop, type StopName } from "./content";
-import { lettered } from "./lettered";
+import { lettered } from "../lettered";
 import { createSheet } from "./sheet";
 
 /* The garden journey on phones (docs/superpowers/specs/2026-10-02-phone-journey-design.md).
