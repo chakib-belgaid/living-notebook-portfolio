@@ -241,16 +241,16 @@ For each production visual, record: file path, project, source/build SHA or rele
 
 ### Retained-case assets missing from this checkout
 
-Confirmed absent locally on 1 November 2026 at the inspected SHA. These are references in existing public HTML, not a live-site availability or provenance audit. Each English case and its French copy require the same files. The two root-level assets above are different files and must not be silently substituted as equivalent evidence.
+Confirmed absent locally on 1 November 2026 at the inspected SHA. These are references in existing public HTML, not a live-site availability or provenance audit. Each English case and its French copy require the same files. Two of them are byte-identical to the root-level assets above (`now-playing.webp` = `public/assets/whisperbook.webp`, `energy-tests.png` = `public/assets/wattch.png`; P0 `baseline/BASELINE.md` §7.1, correcting an earlier "different files" line). Identical bytes do not establish provenance: the root assets must not be substituted as evidence for these cases.
 
 | Expected repository path | Referencing case routes | Current status |
 | --- | --- | --- |
-| `public/assets/projects/whisperbook/now-playing.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; recovery/provenance pending |
-| `public/assets/projects/whisperbook/read-along.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; recovery/provenance pending |
-| `public/assets/projects/whisperbook/voice-cast.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; recovery/provenance pending |
-| `public/assets/projects/whisperbook/library.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; recovery/provenance pending |
-| `public/assets/projects/wattch/deterministic-trace.png` | `/work/wattch/`, `/fr/work/wattch/` | Missing; recovery/provenance pending |
-| `public/assets/projects/wattch/energy-tests.png` | `/work/wattch/`, `/fr/work/wattch/` | Missing; recovery/provenance pending |
+| `public/assets/projects/whisperbook/now-playing.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
+| `public/assets/projects/whisperbook/read-along.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
+| `public/assets/projects/whisperbook/voice-cast.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
+| `public/assets/projects/whisperbook/library.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
+| `public/assets/projects/wattch/deterministic-trace.png` | `/work/wattch/`, `/fr/work/wattch/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
+| `public/assets/projects/wattch/energy-tests.png` | `/work/wattch/`, `/fr/work/wattch/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
 
 Release-1 resolution protocol (P0 inventory, P3 repair, P7/P8 verification):
 
