@@ -15,7 +15,7 @@ import {
 } from "../weather";
 
 import { beats, stages, stageStart, stageProgress, spotOrder, spotNames, spotBeat, projects, email, scrollCue, inside, type Spot, type WidgetSpot, type Stop } from "./content";
-import { createNavigation, type SectionId } from "../navigation";
+import { createNavigation, type SectionId } from "./navigation";
 import { widgetLifecycle } from "../widgets";
 import { createTransferEstimate, formatGrams } from "../transfer";
 import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY, estimateCompute, type ComputeWork } from "../compute";
