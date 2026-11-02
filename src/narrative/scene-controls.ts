@@ -31,7 +31,10 @@ export function createSceneControls(onToggle: (name: ControlName) => void, root:
   if (!wrapper) return null;
   const toggle = wrapper.querySelector<HTMLButtonElement>(".scene-toggle")!;
   const panel = wrapper.querySelector<HTMLElement>(".scene-panel")!;
+  // The live region sits outside the panel, so it is announced while the
+  // panel is closed; the panel shows a copy that is hidden from assistive tech.
   const status = wrapper.querySelector<HTMLElement>("[data-scene-status]")!;
+  const shown = wrapper.querySelector<HTMLElement>("[data-scene-status-shown]");
   const buttons = Object.fromEntries(
     [...wrapper.querySelectorAll<HTMLButtonElement>("[data-scene-control]")].map(b => [b.dataset.sceneControl, b]),
   ) as Record<ControlName, HTMLButtonElement>;
@@ -77,7 +80,10 @@ export function createSceneControls(onToggle: (name: ControlName) => void, root:
       buttons.sound.hidden = !view.soundSupported;
       // Compared with the English source: the page's localization rewrites
       // the rendered text in place.
-      if (shownStatus !== view.status) status.textContent = shownStatus = view.status;
+      if (shownStatus !== view.status) {
+        status.textContent = shownStatus = view.status;
+        if (shown) shown.textContent = view.status;
+      }
     },
     destroy() {
       toggle.removeEventListener("click", onToggleClick);

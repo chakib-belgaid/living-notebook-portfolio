@@ -63,7 +63,10 @@ function railPosterScript() {
 /** The motion, stills and sound controls (src/narrative/scene-controls.ts).
  * Enhancement only: hidden until the scene mount shows them. One disclosure
  * in the header, so it is available through the whole guided reading without
- * covering text, and nothing focusable sits inside the decorative rail. */
+ * covering text, and nothing focusable sits inside the decorative rail.
+ * The status is announced from a visually hidden live region outside the
+ * panel, so a renderer failure is heard while the panel is closed (A10); the
+ * panel shows the same text to sighted visitors, hidden from assistive tech. */
 function sceneControls() {
   const sliders = `<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false"><path d="M3 6h9M15 6h2M3 14h3M9 14h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><circle cx="13.5" cy="6" r="1.9" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="7.5" cy="14" r="1.9" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>`;
   const toggle = (name: string, label: string) => `<button type="button" class="scene-option" data-scene-control="${name}" aria-pressed="false"><span class="scene-option-mark" aria-hidden="true"></span>${e(label)}</button>`;
@@ -71,8 +74,9 @@ function sceneControls() {
         <button type="button" class="scene-toggle" aria-expanded="false" aria-controls="scene-panel" aria-label="Motion and sound" title="Motion and sound">${sliders}</button>
         <div class="scene-panel" id="scene-panel" role="group" aria-label="Motion and sound" hidden>
           ${toggle("pause", "Pause motion")}${toggle("stills", "Still images")}${toggle("sound", "Sound")}
-          <p class="scene-status" data-scene-status aria-live="polite"></p>
+          <p class="scene-status" data-scene-status-shown aria-hidden="true"></p>
         </div>
+        <p class="sr-only" data-scene-status role="status" aria-live="polite"></p>
       </div>`;
 }
 
