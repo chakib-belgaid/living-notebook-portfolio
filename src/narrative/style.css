@@ -77,7 +77,9 @@
     display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; align-items: center;
   }
   .nav-sections { grid-row: 2; grid-column: 1 / -1; align-self: stretch; display: flex; justify-content: space-around; }
-  .cv-link { grid-area: 1 / 2; }
+  /* The CV label wraps before it squeezes the name's column: the Arabic
+     label is three words, and Linux fonts set it wider than macOS ones. */
+  .cv-link { grid-area: 1 / 2; max-width: min(11rem, 38vw); }
   /* With the scene control shown (enhanced only), the sections share row 2
      with it, under the language picker; tighter link padding keeps the
      French labels clear of it at 320px. */
