@@ -3,7 +3,7 @@
 /* Shared base: colour tokens, typography, links, focus, utilities, the
    language control, the evidence dialog and print. Page layout lives in
    src/narrative/style.css. The retired journey, ruler, dock, hotspot and
-   note rules were removed (kept for reference in src/legacy/style.css). */
+   note rules were removed with the retired page (P4 deleted src/legacy/). */
 :root {
   /* Warm sketchbook paper and graphite ink. sky.ts reads --paper,
      --graphite and --blueprint. */
