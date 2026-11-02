@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { setupPage } from './browser-fixture.mjs';
+import { setupPage } from '../browser-fixture.mjs';
 
 /* Feedback for the visitor's actions (OPTIMIZATION-PLAN.md, items 7 and 8). */
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';

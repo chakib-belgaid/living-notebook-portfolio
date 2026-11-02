@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { setupPage } from './browser-fixture.mjs';
+import { setupPage } from '../browser-fixture.mjs';
 
 /* The garden and sky loops run only while there is something to draw
    (OPTIMIZATION-PLAN.md, item 2). Callbacks are counted from the page's own

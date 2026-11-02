@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
-import { stops, stageProgress } from '../src/content.ts';
+import { stops, stageProgress } from '../../src/content.ts';
 
 test('the phone journey visits Sketch, Blueprint, Build and Bloom in order', () => {
   assert.deepEqual(stops.map(s => s.name), ['sketch', 'blueprint', 'build', 'whisperbook', 'wattch', 'bloom']);
@@ -12,7 +12,7 @@ test('the phone journey visits Sketch, Blueprint, Build and Bloom in order', () 
 });
 
 test('day and night phone stills exist as WebP within the data budget', async () => {
-  const dir = new URL('../public/assets/stills/', import.meta.url);
+  const dir = new URL('../../public/assets/stills/', import.meta.url);
   const names = (await readdir(dir)).filter(n => n.endsWith('.webp')).sort();
   const day = stops.map(s => `${s.name}.webp`), night = stops.map(s => `${s.name}-night.webp`);
   assert.deepEqual(names, [...day, ...night].sort());

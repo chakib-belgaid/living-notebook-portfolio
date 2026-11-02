@@ -1,9 +1,9 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { resolveLocale, translate } from '../src/i18n.ts';
-import { translations } from '../src/translations.ts';
-import { projects, beats } from '../src/content.ts';
+import { resolveLocale, translate } from '../../src/i18n.ts';
+import { translations } from '../../src/translations.ts';
+import { projects, beats } from '../../src/content.ts';
 
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
 let browser;
