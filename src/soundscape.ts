@@ -155,21 +155,27 @@ export type Soundscape = {
 
 export const soundSupported = () => typeof AudioContext !== "undefined";
 
-/** `onHeard` is called once, when the browser first lets the garden play. */
-export function createSoundscape(read: () => SoundState, onHeard?: () => void): Soundscape {
+/** `context` is created and resumed by the caller inside the visitor's own
+    click on the sound control: WebKit keeps a context created later, after
+    this module has loaded, suspended. The soundscape never creates one.
+    `onHeard` is called once, when the browser first lets the garden play. */
+export function createSoundscape(context: AudioContext, read: () => SoundState, onHeard?: () => void): Soundscape {
   let engine: ReturnType<typeof build> | undefined;
   let timer = 0;
   let sleep = 0;
   let audible = false;
+  let disposed = false;
 
   function build() {
-    const ctx = new AudioContext();
+    const ctx = context;
     const heard = () => {
       if (ctx.state !== "running") return;
       ctx.removeEventListener("statechange", heard);
       onHeard?.();
     };
     ctx.addEventListener("statechange", heard);
+    // The caller's context may already be running.
+    heard();
     const rate = ctx.sampleRate;
     /* A loop of noise. The tail crossfades into the head, so the loop has no
        seam to click on. Brown noise is white noise, gently integrated. */
@@ -495,10 +501,8 @@ export function createSoundscape(read: () => SoundState, onHeard?: () => void): 
       if (on && engine?.ctx.state === "suspended") void engine.ctx.resume();
       return;
     }
-    if (on && !engine) {
-      if (!soundSupported()) return;
-      engine = build();
-    }
+    if (disposed) return;
+    if (on && !engine) engine = build();
     if (!engine) return;
     audible = on;
     const { ctx, master, tick } = engine;
@@ -521,9 +525,10 @@ export function createSoundscape(read: () => SoundState, onHeard?: () => void): 
     dispose() {
       clearTimeout(sleep);
       clearInterval(timer);
-      void engine?.ctx.close();
+      void context.close().catch(() => {});
       engine = undefined;
       audible = false;
+      disposed = true;
     },
   };
 }

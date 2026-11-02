@@ -84,6 +84,7 @@ const statusText = {
   saveData: "Data saver is on, so still images are shown.",
   failed: "The live drawing can’t be shown here. Still images are shown instead.",
   lost: "The live drawing stopped. A still image is shown instead.",
+  soundFailed: "Sound couldn’t start here. Press Sound to try again.",
 } as const;
 
 export function createSceneMount(controller: NarrativeController) {
@@ -214,9 +215,12 @@ export function createSceneMount(controller: NarrativeController) {
 
   /* ---------- Publishing state ---------- */
   const controls = createSceneControls(toggle);
+  /** The sound control was pressed and sound could not start. */
+  let soundFailed = false;
   function status(): string {
     if (state.renderer === "failed") return statusText.failed;
     if (state.renderer === "context-lost") return statusText.lost;
+    if (soundFailed) return statusText.soundFailed;
     if (state.motion === "system-reduced") return statusText.reduced;
     if (saveData && state.mode === "guided" && !stage && !asked) return statusText.saveData;
     return "";
@@ -614,6 +618,20 @@ export function createSceneMount(controller: NarrativeController) {
       }
     } else if (name === "sound") {
       state.sound = !state.sound;
+      soundFailed = false;
+      // WebKit lets a context play only if it is created, or resumed, inside
+      // the click itself: once the soundscape module has loaded, the gesture
+      // is over. So the context is made here, synchronously, and nowhere else.
+      // Resuming here too lets a later, gesture-free resume (after a pause or
+      // a hidden tab) succeed.
+      if (state.sound && typeof AudioContext !== "undefined") {
+        try {
+          soundContext ??= new AudioContext();
+          soundContext.resume().catch(() => {});
+        } catch (error) {
+          console.warn("Sound could not start.", error);
+        }
+      } else if (!soundscape) soundContext?.suspend().catch(() => {});
       void syncSound();
       publish();
     }
@@ -622,14 +640,16 @@ export function createSceneMount(controller: NarrativeController) {
   /* ---------- Sound: only its own control starts it ---------- */
   let soundscape: Soundscape | null = null;
   let soundLoading: Promise<void> | null = null;
+  /** Made only by the sound control's own click (see toggle). */
+  let soundContext: AudioContext | null = null;
   async function syncSound() {
     // Paused by the visitor or hidden: silent, consent kept. Reduced motion
     // does not silence (it is not a wish for silence).
     const audible = state.sound && !document.hidden && state.motion !== "user-paused";
     if (!soundscape && audible) {
-      soundLoading ??= import("../soundscape").then(({ createSoundscape, soundSupported }) => {
-        if (!soundSupported()) return;
-        soundscape = createSoundscape(() => {
+      const pending = soundLoading ??= import("../soundscape").then(({ createSoundscape }) => {
+        if (!soundContext) throw new Error("No audio context was created by the sound control.");
+        soundscape = createSoundscape(soundContext, () => {
           const scene = chapterContent(state.chapter).scene;
           return {
             growth: adapter?.state().progress ?? scene.progress,
@@ -642,7 +662,23 @@ export function createSceneMount(controller: NarrativeController) {
           };
         });
       });
-      await soundLoading;
+      try {
+        await pending;
+      } catch (error) {
+        // The module did not load (offline, blocked) or no context could be
+        // made: sound is off again, the button unpressed, and the status says
+        // so. A later click on the control tries again from the start.
+        if (soundLoading === pending) soundLoading = null;
+        if (!soundscape) {
+          console.warn("Sound could not start.", error);
+          void soundContext?.close().catch(() => {});
+          soundContext = null;
+          state.sound = false;
+          soundFailed = true;
+          publish();
+        }
+        return;
+      }
     }
     soundscape?.setAudible(state.sound && !document.hidden && state.motion !== "user-paused");
   }

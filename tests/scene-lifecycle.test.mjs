@@ -445,6 +445,37 @@ test('sound starts only from its own control (F21)', async () => {
   } finally { await close(p); }
 });
 
+test('sound: the click itself makes the audio context; a failed sound module unpresses Sound and says so', async () => {
+  // WebKit plays only a context made (or resumed) inside the gesture, so it
+  // must exist while the soundscape module is still on its way. The module
+  // then fails to load: no unhandled rejection, Sound unpressed, a status.
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const p = await open('/', { before: page => page.route(/\/assets\/soundscape-[\w-]+\.js$/, async route => { await gate; await route.abort(); }) });
+  try {
+    await openControls(p);
+    await control(p, 'sound').click();
+    const pr = await probe(p);
+    assert.equal(pr.audio, 1, 'the context was made in the click, before the module arrived');
+    assert.ok(pr.audioResumes >= 1, 'and resumed in the click');
+    assert.equal(await control(p, 'sound').getAttribute('aria-pressed'), 'true');
+    release();
+    await p.waitForFunction(() => document.querySelector('[data-scene-control="sound"]').getAttribute('aria-pressed') === 'false');
+    assert.equal((await scene(p)).sound, false);
+    assert.match(await p.locator('[data-scene-status]').textContent(), /Sound couldn’t start/);
+    // The live region is outside the panel: it is still there when the panel closes (A10).
+    await p.keyboard.press('Escape');
+    assert.equal(await p.locator('#scene-panel').isHidden(), true);
+    const region = await p.evaluate(() => {
+      const el = document.querySelector('[data-scene-status]');
+      return { inPanel: !!el.closest('#scene-panel'), live: el.getAttribute('aria-live'), text: el.textContent };
+    });
+    assert.deepEqual({ inPanel: region.inPanel, live: region.live }, { inPanel: false, live: 'polite' });
+    assert.match(region.text, /Sound couldn’t start/);
+    assert.deepEqual(p.errors, []);
+  } finally { release(); await close(p); }
+});
+
 test('pause is independent of sound consent and of pose selection (F22)', async () => {
   const p = await open('/#work');
   try {
