@@ -6,6 +6,7 @@ import { chapterIds, resolveFragment, nextChapterId, activeNavHref, fragmentAlia
 import { chapters } from '../src/narrative/content.ts';
 import { hrefForTarget, inPageDestination, isCaseLink } from '../src/navigation.ts';
 import { sceneCues } from '../src/narrative/scene-adapter.ts';
+import { viewMode, motionPreference, liveByDefault, qualityChoice, qualityFor, detailFor } from '../src/narrative/preferences.ts';
 import { parseReturnRecord, parseRestoreRecord, returnQuery, caseKey, CASE_PATH, RESTORE_TTL_MS } from '../src/narrative/return-state.ts';
 
 test('resolveFragment: empty and #intro are the opening', () => {
@@ -114,4 +115,43 @@ test('the model and the scene adapter agree on progress and phase for every chap
     assert.equal(sceneCues[c.id].stage, c.scene.phase, `${c.id} phase`);
   }
   assert.equal(sceneCues.about.stage, 'build', 'Bloom is held back for Contact');
+});
+
+test('view: bare, garden and unknown values are guided; read and stills show stills', () => {
+  const at = q => viewMode(`https://example.test/${q}`);
+  assert.equal(at(''), 'guided');
+  assert.equal(at('?view=garden'), 'guided');
+  assert.equal(at('?view=explore'), 'guided');
+  assert.equal(at('?view=read#whisperbook'), 'stills');
+  assert.equal(at('?lang=fr&view=stills'), 'stills');
+});
+
+test('motion: system reduced wins over the visitor\'s pause, and neither is a snap', () => {
+  assert.equal(motionPreference(false, false), 'normal');
+  assert.equal(motionPreference(false, true), 'user-paused');
+  assert.equal(motionPreference(true, false), 'system-reduced');
+  assert.equal(motionPreference(true, true), 'system-reduced');
+});
+
+test('the live scene loads by default only in guided mode without reduced motion or save-data, unless asked', () => {
+  const base = { mode: 'guided', systemReduced: false, saveData: false, asked: false };
+  assert.equal(liveByDefault(base), true);
+  assert.equal(liveByDefault({ ...base, systemReduced: true }), false);
+  assert.equal(liveByDefault({ ...base, saveData: true }), false);
+  assert.equal(liveByDefault({ ...base, systemReduced: true, asked: true }), true);
+  assert.equal(liveByDefault({ ...base, mode: 'stills', asked: true }), false, 'stills mode is left through the control, which changes the mode');
+});
+
+test('quality: ?quality=low asks for the light build on any screen; auto follows the screen', () => {
+  const url = q => `https://example.test/${q}`;
+  assert.equal(qualityChoice(url('?quality=low'), 'full'), 'light');
+  assert.equal(qualityChoice(url('?quality=full'), 'light'), 'full');
+  assert.equal(qualityChoice(url(''), 'light'), 'light');
+  assert.equal(qualityChoice(url(''), 'bogus'), 'auto');
+  assert.equal(qualityFor('auto', true), 'light');
+  assert.equal(qualityFor('auto', false), 'full');
+  assert.equal(detailFor('light', false, url('?quality=low')), 'low');
+  assert.equal(detailFor('light', false, url('')), 'full');
+  assert.equal(detailFor('light', true, url('')), 'low');
+  assert.equal(detailFor('full', true, url('')), 'full');
 });
