@@ -4117,12 +4117,18 @@ async function buildGarden(
       invalidate();
     },
     setMotion(value) {
+      // Setting the motion the garden already has (a hold re-applies it)
+      // draws nothing; a change does, so unpausing resumes and pausing
+      // completes the draw-in.
+      if (paused === value) return;
       paused = value;
       invalidate();
     },
     setAmbient(on) {
       ambient = on;
-      invalidate();
+      // Off stops the clocks and draws nothing new: a running loop sleeps at
+      // its next frame, so a hold settles without one more draw. On wakes it.
+      if (on) invalidate();
     },
     snap() {
       progress = targetProgress;

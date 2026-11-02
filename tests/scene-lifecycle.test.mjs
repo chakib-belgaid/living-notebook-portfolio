@@ -103,6 +103,19 @@ async function over(p, ms) {
   const b = await p.evaluate(() => ({ s: window.__notebookStats(), d: window.__probe.drawFrames }));
   return { garden: b.s.garden.frames - a.s.garden.frames, sky: b.s.sky.frames - a.s.sky.frames, draws: b.d - a.d };
 }
+/** Waits until nothing has drawn for 400 ms and returns what was drawn
+ * meanwhile. A settled garden draws nothing more, however slow the runner;
+ * the sky may still be easing its own growth, so a hold is measured once
+ * the stage is quiet. */
+async function quiet(p, tries = 15) {
+  const late = { garden: 0, sky: 0 };
+  for (let i = 0; i < tries; i++) {
+    const o = await over(p, 400);
+    if (!o.garden && !o.sky && !o.draws) return late;
+    late.garden += o.garden; late.sky += o.sky;
+  }
+  throw new Error(`the stage kept drawing after settling: ${JSON.stringify(late)}`);
+}
 const openControls = async p => {
   if (await p.locator('#scene-panel').isHidden()) await p.locator('.scene-toggle').click();
 };
@@ -266,9 +279,10 @@ test('a reading hold draws no garden or sky frames once settled (desktop Contact
     await p.locator('#mcq-scan').hover();
     for (let i = 0; i < 60 && (await scene(p)).chapter !== 'contact'; i++) { await p.mouse.wheel(0, 400); await p.waitForTimeout(80); }
     await settledOn(p, 'contact');
-    await p.waitForTimeout(300);
+    const late = await quiet(p);
     const held = await over(p, 5000);
-    t.diagnostic(`held at Contact for 5 s: ${JSON.stringify(held)}`);
+    t.diagnostic(`held at Contact for 5 s: ${JSON.stringify(held)}; frames after settling: ${JSON.stringify(late)}`);
+    assert.equal(late.garden, 0, 'the garden drew after settling');
     assert.deepEqual(held, { garden: 0, sky: 0, draws: 0 });
     assert.equal((await scene(p)).held, true);
     assert.deepEqual(p.errors, []);
@@ -281,9 +295,10 @@ test('phone: a reading hold at Whisperbook draws no garden or sky frames', async
     await settledOn(p, 'bplog');
     for (let i = 0; i < 60 && (await scene(p)).chapter !== 'whisperbook'; i++) { await p.mouse.wheel(0, 250); await p.waitForTimeout(80); }
     await settledOn(p, 'whisperbook');
-    await p.waitForTimeout(300);
+    const late = await quiet(p);
     const held = await over(p, 5000);
-    t.diagnostic(`held at Whisperbook (phone) for 5 s: ${JSON.stringify(held)}`);
+    t.diagnostic(`held at Whisperbook (phone) for 5 s: ${JSON.stringify(held)}; frames after settling: ${JSON.stringify(late)}`);
+    assert.equal(late.garden, 0, 'the garden drew after settling');
     assert.deepEqual(held, { garden: 0, sky: 0, draws: 0 });
     assert.deepEqual(p.errors, []);
   } finally { await close(p); }

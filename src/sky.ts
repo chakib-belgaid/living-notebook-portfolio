@@ -656,7 +656,10 @@ export function createSky(
     },
     setMotion(value) {
       paused = value;
-      invalidate();
+      // Pausing a sky that is already where it is going redraws nothing: the
+      // frame on screen is the still one. A running loop sleeps at its next
+      // frame. Resuming, or pausing mid-change, draws.
+      if (!value || dirty || settling()) invalidate();
     },
     refresh(isDark) {
       dark = isDark;
