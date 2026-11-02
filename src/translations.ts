@@ -89,6 +89,7 @@ export const translations: Record<string, readonly [string, string]> = {
   "Build: the observatory, a ring of columns around an energy meter.": ["Construction : l’observatoire, un cercle de colonnes autour d’un compteur d’énergie.", "البناء: المرصد، حلقة من الأعمدة حول عدّاد للطاقة."],
   "Bloom: the finished house in autumn colour, with trees, water and falling leaves.": ["Floraison : la maison achevée aux couleurs de l’automne, avec ses arbres, son eau et ses feuilles qui tombent.", "الإزهار: البيت مكتمل بألوان الخريف، مع الأشجار والماء والأوراق المتساقطة."],
   "Selected work": ["Projets choisis", "أعمال مختارة"],
+  "Source": ["Code source", "المصدر"],
   "Read the source on GitHub ↗": ["Voir le code source sur GitHub ↗", "اطّلع على الكود المصدري في GitHub ↗"],
   "Sketch": ["Esquisse", "الرسم الأولي"],
   "Blueprint": ["Plan", "المخطط"],
