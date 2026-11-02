@@ -1,5 +1,5 @@
 import { chapters, chapter, cv, email, identity, notebook, posterAlt, timeline } from "./narrative/content.ts";
-import { fragmentAliases, nextChapterId, phaseLabels, phases, posterSrc, POSTER_SIZE, primaryNav, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
+import { fragmentAliases, nextChapterId, phaseLabels, phases, posterSrc, POSTER_SIZES, primaryNav, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const e = escapeHtml;
@@ -31,20 +31,22 @@ function sceneHost(c: Chapter) {
   const { poster } = c.scene;
   const lazy = c.id === "intro" ? "" : ` loading="lazy"`;
   const alt = describedBy(c) ? e(posterAlt[poster]) : "";
+  const size = POSTER_SIZES.portrait;
   return `<div class="scene-host" data-scene-host="${c.id}" data-phase="${c.scene.phase}" data-poster="${poster}">
-        <img class="scene-poster" src="${posterSrc(poster)}" width="${POSTER_SIZE.width}" height="${POSTER_SIZE.height}" alt="${alt}"${lazy} decoding="async" />
+        <img class="scene-poster" src="${posterSrc(poster, "portrait")}" width="${size.width}" height="${size.height}" alt="${alt}"${lazy} decoding="async" />
       </div>`;
 }
 
-/** Wide layouts (WIDE_LAYOUT_QUERY): one sticky rail beside the whole run of
- * chapters, the single mount point for the live scene. Decorative: the
- * chapter text is the content, and each chapter's own host (hidden on wide
- * layouts) carries the described poster. Without JS it shows the opening
- * sketch; P4 switches its poster and pose by chapter. */
+/** Wide layouts (WIDE_LAYOUT_QUERY): one rail fixed behind the whole page,
+ * the single mount point for the live scene. Decorative: the chapter text
+ * is the content, and each chapter's own host (hidden on wide layouts)
+ * carries the described poster. Without JS it shows the opening sketch; P4
+ * switches its poster and pose by chapter. */
 function sceneRail() {
   const poster = chapter("intro").scene.poster;
+  const size = POSTER_SIZES.wide;
   return `<aside class="scene-rail" data-scene-host="rail" data-phase="${chapter("intro").scene.phase}" data-poster="${poster}" aria-hidden="true">
-        <img class="scene-poster" src="${posterSrc(poster)}" width="${POSTER_SIZE.width}" height="${POSTER_SIZE.height}" alt="" decoding="async" />
+        <img class="scene-poster" src="${posterSrc(poster, "wide")}" width="${size.width}" height="${size.height}" alt="" decoding="async" />
       </aside>${railPosterScript()}`;
 }
 
@@ -54,7 +56,7 @@ function sceneRail() {
  * script sets its poster from the fragment before the first paint. The same
  * rule as resolveFragment: aliases, and a malformed escape lands on intro. */
 function railPosterScript() {
-  const posters = Object.fromEntries(chapters.map(c => [c.id, { src: posterSrc(c.scene.poster), poster: c.scene.poster, phase: c.scene.phase }]));
+  const posters = Object.fromEntries(chapters.map(c => [c.id, { src: posterSrc(c.scene.poster, "wide"), poster: c.scene.poster, phase: c.scene.phase }]));
   const aliases = Object.fromEntries(Object.entries(fragmentAliases).map(([alias, { chapter }]) => [alias, chapter]));
   const code = `(function(){try{var p=${JSON.stringify(posters)},a=${JSON.stringify(aliases)},h=decodeURIComponent(location.hash.slice(1));h=a[h]||h;var c=Object.prototype.hasOwnProperty.call(p,h)?p[h]:null;if(!c||h==="intro")return;var r=document.querySelector('[data-scene-host="rail"]');r.querySelector("img").src=c.src;r.setAttribute("data-poster",c.poster);r.setAttribute("data-phase",c.phase)}catch(e){}})()`;
   return `<script>${code}</script>`;
@@ -136,9 +138,11 @@ function renderChapter(c: Chapter) {
   const alias = c.id === "energy-tools" ? `<span class="fragment-alias" id="wattch"></span>` : "";
   return `
     <section id="${c.id}" class="chapter chapter-${c.id}" data-chapter="${c.id}" data-phase="${c.scene.phase}" aria-labelledby="${c.id}-title">${alias}
+      <div class="chapter-card">
       <div class="chapter-lead">${lead}</div>
       ${sceneHost(c)}
       <div class="chapter-body">${body}${chapterFoot(c)}</div>
+      </div>
     </section>`;
 }
 

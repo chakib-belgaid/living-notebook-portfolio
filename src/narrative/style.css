@@ -8,9 +8,11 @@
      between its lead and body; two-row header.
    - 700–899px: the same stacked narrative with a one-row header (a split
      would leave the text column under 420px).
-   - >= 900px and >= 500px tall (WIDE_LAYOUT_QUERY in model.ts): a text
-     column of 420–520px beside one sticky scene rail (about 50–60% of the
-     width from 1100px); the per-chapter hosts are not displayed.
+   - >= 900px and >= 500px tall (WIDE_LAYOUT_QUERY in model.ts): the scene
+     rail fills the viewport behind the page and each chapter reads in a
+     420–520px translucent card on the left (the user's G2 decision,
+     2 November 2026, restoring the previous page's layout); the
+     per-chapter hosts are not displayed.
    - Short landscape (< 500px tall): stacked, compact scene slot, the header
      scrolls away instead of covering a third of the screen.
    Explicit jumps and fragment landings clear the header through
@@ -36,7 +38,8 @@
   height: var(--header-height);
   display: grid; align-items: center; column-gap: 0.6rem;
   padding-inline: max(var(--gutter), calc((100% - 82rem) / 2));
-  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--hairline);
 }
 @media (max-height: 499.98px) and (orientation: landscape) {
@@ -138,7 +141,7 @@
   padding-inline: 1.1rem; background: var(--action); color: var(--action-ink);
   border-radius: 2px; text-decoration: none;
 }
-.action-primary:hover { background: color-mix(in srgb, var(--action) 85%, black); }
+.action-primary:hover { background: color-mix(in srgb, var(--action) 88%, white); }
 .evidence-note, .contact-email { font-family: var(--sans); font-size: 0.875rem; line-height: 1.55; color: var(--muted); }
 .evidence-note { padding-top: 0.75rem; border-top: 1px solid var(--hairline); }
 
@@ -187,8 +190,7 @@
   background: var(--scene-bg);
   border-radius: 3px;
 }
-.scene-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 36%; }
-.chapter-whisperbook .scene-poster, .chapter-energy-tools .scene-poster { object-position: 50% 30%; }
+.scene-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
 /* Reserved for P4: on stacked layouts the active slot is sticky below the
    header only while a scroll-driven transition runs (the controller sets
    data-scene-transition), then returns to the flow. */
@@ -201,35 +203,36 @@
 /* The rail exists only on wide layouts. */
 .scene-rail { display: none; }
 
-/* Wide: a text column of 420–520px (never narrower on this layout; capped
-   at 55% so enlarged text cannot squeeze the rail away) beside one sticky
-   rail spanning all eight chapter rows, so it stays put for the whole run.
-   At 1100px the rail is ~54% of the content width, at 1440px ~52%. */
+/* Wide: the rail is fixed behind the whole page and the live scene fills
+   the viewport; each chapter is a 420–520px card (never narrower on this
+   layout; capped at 55% so enlarged text cannot cover the scene) on the
+   left, translucent over the night. Each chapter keeps a viewport of scroll
+   so the reading paces the scene as before; the card is only as tall as its
+   text and starts under the header, so a landing shows the chapter label
+   first. The scene adapter shifts the garden right of the card. */
 @media screen and (min-width: 900px) and (min-height: 500px) {
-  .narrative {
-    display: grid;
-    grid-template-columns: [text] minmax(0, min(clamp(26.25rem, 36vw, 32.5rem), 55%)) [scene] minmax(0, 1fr);
-    column-gap: clamp(2rem, 5vw, 5rem);
-  }
+  .narrative { position: relative; }
+  /* The fixed rail is a positioned sibling of the chapters, so they are
+     positioned too, above it. */
   .chapter {
-    grid-column: text;
+    position: relative; z-index: 1;
+    width: min(clamp(26.25rem, 36vw, 32.5rem), 55%);
     min-height: calc(100vh - var(--header-clearance));
     min-height: calc(100svh - var(--header-clearance));
-    padding-block: 2.5rem;
+    padding-block: 2.5rem; border-bottom: 0;
   }
-  .chapter-body { flex: 1; display: flex; flex-direction: column; }
-  .chapter-foot { margin-top: auto; }
   .chapter-intro { justify-content: center; }
-  .chapter-intro .chapter-body { flex: 0; }
+  .chapter-card {
+    padding: 1.4rem 1.6rem 1.1rem;
+    background: var(--slip); backdrop-filter: blur(12px);
+    border: 1px solid var(--hairline); border-radius: 14px;
+    box-shadow: var(--lift);
+  }
   .chapter .scene-host { display: none; }
   .scene-rail {
-    display: block; grid-column: scene; grid-row: 1 / span 8; align-self: start;
-    position: sticky; top: calc(var(--header-clearance) + 1.25rem);
-    height: calc(100vh - var(--header-clearance) - 5rem);
-    height: calc(100svh - var(--header-clearance) - 5rem);
-    min-height: 20rem; margin-block: 1.25rem;
+    display: block; position: fixed; inset: 0; z-index: 0;
     overflow: hidden; contain: layout paint;
-    background: var(--scene-bg); border-radius: 3px;
+    background: var(--scene-bg);
   }
   .chapter-motivation, .chapter-decision p { font-size: 1.125rem; }
 }

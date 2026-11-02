@@ -43,12 +43,26 @@ The motion study (G1) runs from the dev server: `npx vite --config dev/vite.stud
 
 Implementer self-assessment against ACCEPTANCE §1, confirmed by the reviewers from the captures: V1, V2, V3, V4, V6, V7, V8, V9 pass; **V5 partial** (BP Log's pavilion still dominates the frame, portrait About clips the house on the left, the real rail is a little tighter than the study rail); V10 not applicable yet (no product imagery on the homepage); V11 pass (role line, promise and CV link in the first viewport on desktop and at 390×844).
 
+## G2 outcome so far (2 November 2026)
+
+The user reviewed the slice and asked for two things from the previous page back: **the navy night as the page's only theme** and **the chapter text in a translucent card on the left over the scene filling the viewport** (wide layouts). Both were applied the same day on this branch:
+
+- Theme: the previous page's palette (`--paper: #0e2b48`, light ink, stone accent) in `src/style.css`, `color-scheme: dark`; the garden draws its dark ink set at hour 22 (`NIGHT_HOUR`), the sky its night; print stays white.
+- Layout: on wide layouts the rail is `position: fixed; inset: 0` behind the page and each chapter's content sits in `.chapter-card` (blurred `--slip`, 14px radius); each chapter keeps a viewport of scroll so the reading paces the scene as before. The header floats translucent over the scene. Portrait keeps its stacked flow and inline slots, on navy.
+- Poses: the scene adapter carries every wide pose right by `HOST_SHIFT.wide` (0.17 of the view) so the house clears the card, and the five focused cues have `wide` overrides drawn smaller and lower than the P1 rail values (BP Log room 0.3, Whisperbook 0.4, Wattch 0.34, MCQ Scan 0.3, About 0.5), so the whole house stays around the room. This also settles the V5 framing notes above for the wide host.
+- Posters: two sets, `public/assets/stills/wide/` (1440×900) and `portrait/` (700×760), captured at night from each host's own stage; alt texts and FR/AR drafts reworded.
+- Tests: the wide-layout test now asserts the fixed, viewport-filling rail and the translucent card; the rest of the contract is unchanged.
+
+Evidence: `.qa/g2/wide-*.png` and `.qa/g2/portrait-*.png` (every chapter, both hosts, headless Chromium at 1440×900 and 390×844). The warm-paper captures in `.qa/p4/` and `.qa/p1/` are superseded for the look but still valid for holds, states and motion.
+
+Still open from the list below: the opening draw-in, the non-sticky portrait slot, passive-scroll easing, text-first images, Arabic, About = Build, and the CV facts.
+
 ## Decisions the user should confirm or overturn
 
 1. **Opening animation.** The pencil draw-in is skipped on every landing: the poster covers the pose until it is complete, so a 3.2 s draw-in would play under an opaque poster. The opening is poster → complete sketch. If you want the pencil animation back, P7 can replay a short draw-in after the reveal.
 2. **Portrait slot is not sticky during transitions.** The README allows it ("may stick"); P4 plays the transition as the slot scrolls into view instead. The P1 study has a sticky prototype if you prefer it.
 3. **Passive scroll eases to the nearest chapter cue** rather than interpolating the pose by scroll position (the plan says "may interpolate").
-4. **One sticky rail on wide layouts**, hidden per-chapter hosts; without JavaScript the desktop shows only the sketch poster.
+4. ~~One sticky rail on wide layouts~~ Superseded by the G2 outcome: the rail fills the viewport behind the text card; without JavaScript the desktop shows only the sketch poster behind the cards.
 5. **All six missing case images are text-first** in EN and FR (provenance unresolved; two are byte-identical to the already shipped `whisperbook.webp` and `wattch.png`, which the ledger wrongly called different files — corrected in CONTENT_AND_EVIDENCE.md). The recovered copies sit under `.qa/baseline/recovered/` if you can confirm their builds.
 6. **Arabic case links and CV.** Arabic visitors get the English case pages and an explicitly labeled English CV; returning from a case without storage drops `lang=ar`. Confirm Arabic stays a visible site language (default: yes).
 7. **About's visual phase is Build** with the bloom held back for Contact.

@@ -46,15 +46,25 @@ export interface ScenePoseCue extends ScenePose {
   stage: Stage;
   /** What the cue changes in a portrait host (the ~45vh slot on phones). */
   portrait: Partial<ScenePose>;
+  /** What the cue changes in the wide host, where the scene fills the
+      viewport behind the text card (G2 layout): the focused rooms are drawn
+      smaller than in the P1 rail so the house stays whole around them. */
+  wide: Partial<ScenePose>;
 }
 
 export type HostKind = "wide" | "portrait";
 
-const cue = (chapter: ChapterId, stage: Stage, pose: ScenePose, portrait: Partial<ScenePose> = {}): ScenePoseCue => ({
+/** Where the host's free area is: on wide layouts the chapter card covers
+ * the left third of the viewport, so every pose is carried right by this
+ * fraction of the view; a portrait slot is all scene. */
+export const HOST_SHIFT: Readonly<Record<HostKind, readonly [number, number]>> = { wide: [0.17, 0], portrait: [0, 0] };
+
+const cue = (chapter: ChapterId, stage: Stage, pose: ScenePose, portrait: Partial<ScenePose> = {}, wide: Partial<ScenePose> = {}): ScenePoseCue => ({
   chapter,
   stage,
   ...pose,
   portrait,
+  wide,
 });
 
 /* Chapter → scene (implementation plan §3), on the model's named points.
@@ -76,16 +86,16 @@ export const sceneCues: Readonly<Record<ChapterId, ScenePoseCue>> = {
      the model's front corner under the much larger pavilion, so it is drawn
      closer (about 2x) and centre-low, and marked with the hover ring; framing
      alone left the pavilion reading as the subject (P1 review, fix round 1). */
-  bplog: cue("bplog", "build", { progress: 0.52, focus: "bplog", shift: [-0.02, -0.16], room: 0.7, mark: "bplog" }, { shift: [0, -0.22], room: 0.7 }),
+  bplog: cue("bplog", "build", { progress: 0.52, focus: "bplog", shift: [-0.02, -0.16], room: 0.7, mark: "bplog" }, { shift: [0, -0.22], room: 0.7 }, { shift: [0.02, -0.12], room: 0.3 }),
   // The reading pavilion becomes dimensional; the camera approaches it.
-  whisperbook: cue("whisperbook", "build", { progress: 0.66, focus: "whisperbook", shift: [0, -0.06], room: 0.5 }, { shift: [0, -0.04], room: 0.56 }),
+  whisperbook: cue("whisperbook", "build", { progress: 0.66, focus: "whisperbook", shift: [0, -0.06], room: 0.5 }, { shift: [0, -0.04], room: 0.56 }, { shift: [0, -0.08], room: 0.4 }),
   // The observatory ring gains presence.
-  "energy-tools": cue("energy-tools", "build", { progress: 0.76, focus: "wattch", shift: [0.02, -0.06], room: 0.46 }, { shift: [0.02, -0.04], room: 0.5 }),
+  "energy-tools": cue("energy-tools", "build", { progress: 0.76, focus: "wattch", shift: [0.02, -0.06], room: 0.46 }, { shift: [0.02, -0.04], room: 0.5 }, { shift: [0, -0.02], room: 0.34 }),
   // The workshop as the setting for delivery.
-  "mcq-scan": cue("mcq-scan", "build", { progress: 0.84, focus: "workshop", shift: [0.02, -0.06], room: 0.43 }, { shift: [0.02, -0.04], room: 0.46 }),
+  "mcq-scan": cue("mcq-scan", "build", { progress: 0.84, focus: "workshop", shift: [0.02, -0.06], room: 0.43 }, { shift: [0.02, -0.04], room: 0.46 }, { shift: [0.12, -0.12], room: 0.3 }),
   // The tower and terraces, framed wider (about has no room: 1.4x focus).
   // Still Build: the final foliage and light (Bloom) are held back for Contact.
-  about: cue("about", "build", { progress: 0.93, focus: "about", shift: [0.08, 0], room: 0.78 }, { shift: [0.06, 0], room: 0.78 }),
+  about: cue("about", "build", { progress: 0.93, focus: "about", shift: [0.08, 0], room: 0.78 }, { shift: [0.06, 0], room: 0.78 }, { shift: [0.12, -0.04], room: 0.5 }),
   // Final foliage, light and the whole composition.
   contact: cue("contact", "bloom", { progress: 1, focus: null, shift: [-0.02, 0.03], room: 0.92 }, { shift: [-0.02, 0.04], room: 0.9 }),
 };
@@ -129,10 +139,10 @@ export interface SceneAdapter {
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
-/** The cue as a host draws it: the portrait overrides applied in a portrait host. */
+/** The cue as a host draws it: the host's overrides applied. */
 export function poseFor(ref: CueRef, host: HostKind): ScenePoseCue {
   const base = typeof ref === "string" ? sceneCues[ref] : ref;
-  return host === "portrait" ? { ...base, ...base.portrait } : base;
+  return { ...base, ...(host === "portrait" ? base.portrait : base.wide) };
 }
 
 export function createSceneAdapter(garden: Garden, host: HostKind = "wide"): SceneAdapter {
@@ -152,14 +162,15 @@ export function createSceneAdapter(garden: Garden, host: HostKind = "wide"): Sce
   const applyFocus = (ref: CueRef | null) => {
     focusRef = ref;
     // No cue: the whole world, centred, at its usual size.
+    const [dx, dy] = HOST_SHIFT[host];
     if (!ref) {
-      garden.focus(null, 0, 0, 1);
+      garden.focus(null, dx, dy, 1);
       garden.hover(null);
       return;
     }
     // A cue without a spot still carries its shift and room (whole-world views).
     const pose = poseFor(ref, host);
-    garden.focus(pose.focus, pose.shift[0], pose.shift[1], pose.room);
+    garden.focus(pose.focus, pose.shift[0] + dx, pose.shift[1] + dy, pose.room);
     // Each cue sets its mark, or clears the previous one.
     garden.hover(pose.mark ?? null);
   };

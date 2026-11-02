@@ -76,6 +76,9 @@ export interface SceneState {
 
 /** The controller's reading line (controller.ts READING_LINE). */
 const READING_LINE = 0.3;
+/** The page's time of day: the navy night of the previous page (G2), with
+ * the moon and stars up and the house's lamps lit. */
+const NIGHT_HOUR = 22;
 /** How far ahead of the reading line the scene starts its next transition. */
 const LEAD: Record<HostKind, number> = { wide: 0.25, portrait: 0.35 };
 
@@ -197,7 +200,7 @@ export function createSceneMount(controller: NarrativeController) {
     if (rail.dataset.poster === poster) return;
     rail.dataset.poster = poster;
     rail.dataset.phase = phase;
-    rail.querySelector<HTMLImageElement>(".scene-poster")!.src = posterSrc(poster);
+    rail.querySelector<HTMLImageElement>(".scene-poster")!.src = posterSrc(poster, "wide");
   }
   const preloaded = new Set<string>();
   /** Stills on a wide layout: the next chapter's poster is fetched ahead. */
@@ -205,7 +208,7 @@ export function createSceneMount(controller: NarrativeController) {
     if (hostKind() !== "wide" || stage) return;
     const next = chapterIds[chapterIds.indexOf(id) + 1];
     if (!next) return;
-    const src = posterSrc(chapterContent(next).scene.poster);
+    const src = posterSrc(chapterContent(next).scene.poster, "wide");
     if (preloaded.has(src)) return;
     preloaded.add(src);
     const img = new Image();
@@ -470,10 +473,13 @@ export function createSceneMount(controller: NarrativeController) {
       const built = await createGarden(box, [], detailFor(state.quality, compactQuery.matches, href()), state.quality);
       if (mine !== generation) { built.dispose(); return; }
       garden = built;
-      // Warm-paper ink set (P1): the release-1 look on the ivory page.
-      garden.setTheme(false);
+      // The navy night (the user's G2 decision): the garden's dark ink set
+      // and a night sky, as the previous page drew them.
+      garden.setTheme(true);
+      garden.setHour(NIGHT_HOUR);
       sky = createSky(back, front);
-      sky.refresh(false);
+      sky.refresh(true);
+      sky.setHour(NIGHT_HOUR);
       adapter = createSceneAdapter(garden, hostKind());
       adapter.setMotionPreference(state.motion);
       // Every landing shows its pose complete at once, the opening sketch
@@ -653,8 +659,8 @@ export function createSceneMount(controller: NarrativeController) {
           const scene = chapterContent(state.chapter).scene;
           return {
             growth: adapter?.state().progress ?? scene.progress,
-            hour: 13,
-            night: 0,
+            hour: NIGHT_HOUR,
+            night: 1,
             weather: { kind: "clear", cloud: 0.04, precip: 0, wind: 8 },
             season: "summer",
             spot: scene.focus,

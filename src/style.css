@@ -5,26 +5,30 @@
    src/narrative/style.css. The retired journey, ruler, dock, hotspot and
    note rules were removed with the retired page (P4 deleted src/legacy/). */
 :root {
-  /* Warm sketchbook paper and graphite ink. sky.ts reads --paper,
-     --graphite and --blueprint. */
-  --paper: #f4efe4;
-  --paper-deep: #ebe4d5;
-  --ink: #1d2b36;
-  --muted: #535e68;
-  --graphite: #6c757d;
-  --blueprint: #2c6396;
-  --stone: #9a7449;
-  --leaf: #4c7446;
-  /* The decision rule and its label: dark ochre, 5:1 on paper. */
-  --accent: #865718;
-  --action: #1f3a44;
-  --action-ink: #f7f3ea;
-  --hairline: color-mix(in srgb, var(--ink) 16%, transparent);
-  /* Behind posters and the live scene: the stills' sky. */
-  --scene-bg: #1c4a7b;
+  /* The navy night page: the previous page's palette, kept at the user's G2
+     decision (2 November 2026) over the warm-paper study. sky.ts reads
+     --paper, --graphite and --blueprint; the garden draws its dark ink set. */
+  --paper: #0e2b48;
+  --paper-deep: #0a2238;
+  --ink: #e6f0f8;
+  --muted: #a9c2d8;
+  --graphite: #8eaac2;
+  --blueprint: #8cc8f2;
+  --stone: #d8c6a6;
+  --leaf: #a6d79b;
+  /* The decision rule and its label: warm stone, about 10:1 on the navy. */
+  --accent: #d8c6a6;
+  --action: #e6f0f8;
+  --action-ink: #0e2b48;
+  --hairline: color-mix(in srgb, var(--ink) 15%, transparent);
+  /* The text card and the header pills over the scene. */
+  --slip: color-mix(in srgb, var(--paper) 86%, transparent);
+  --lift: 0 18px 40px -24px color-mix(in srgb, black 60%, transparent);
+  /* Behind posters and the live scene: the night sky's own navy. */
+  --scene-bg: #0e2b48;
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
 
-  color-scheme: light;
+  color-scheme: dark;
   font-family: "Newsreader", Georgia, "Times New Roman", serif;
   font-optical-sizing: auto;
   line-height: 1.55;
@@ -101,7 +105,7 @@ button { font: inherit; color: inherit; }
 .evidence-dialog > a { display: inline-flex; min-height: 2.75rem; align-items: center; }
 
 @media print {
-  :root { --paper: #fff; --ink: #162536; --muted: #37495b; }
+  :root { --paper: #fff; --ink: #162536; --muted: #37495b; --accent: #865718; --action: #1f3a44; --action-ink: #fff; --slip: transparent; --lift: none; color-scheme: light; }
   body { background: white; }
   .skip-link, .language-picker, .evidence-dialog { display: none !important; }
   a { color: inherit; }

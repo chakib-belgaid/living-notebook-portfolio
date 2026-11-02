@@ -420,7 +420,7 @@ test('320px and 400% zoom reflow without horizontal scrolling or overlap in the 
   }
 });
 
-test('no nested primary scrolling surface; wide text column stays 420–520px', async () => {
+test('no nested primary scrolling surface; wide text card stays 420–520px over a viewport-filling scene', async () => {
   for (const width of [900, 1100, 1280, 1440, 1920]) {
     const p = await open('/', { viewport: { width, height: 900 } });
     try {
@@ -429,11 +429,15 @@ test('no nested primary scrolling surface; wide text column stays 420–520px', 
           const s = getComputedStyle(el);
           return /(auto|scroll)/.test(s.overflowY + s.overflowX) && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1);
         }).map(el => el.className || el.tagName);
-        return { scrollers, text: document.querySelector('#intro').getBoundingClientRect().width, rail: document.querySelector('.scene-rail').getBoundingClientRect().width, content: document.querySelector('#portfolio').clientWidth };
+        const rail = document.querySelector('.scene-rail').getBoundingClientRect();
+        const card = document.querySelector('#intro .chapter-card');
+        return { scrollers, text: document.querySelector('#intro').getBoundingClientRect().width, rail: { x: rail.left, y: rail.top, width: rail.width, height: rail.height, position: getComputedStyle(document.querySelector('.scene-rail')).position }, cardBehind: card && getComputedStyle(card).backdropFilter !== 'none' };
       });
       assert.deepEqual(result.scrollers, []);
       assert.ok(result.text >= 419 && result.text <= 520.5, `${width}: text ${result.text}`);
-      if (width >= 1100) assert.ok(result.rail / result.content >= 0.48 && result.rail / result.content <= 0.62, `${width}: rail ${result.rail}/${result.content}`);
+      // The scene fills the viewport behind the page; the card is translucent over it.
+      assert.deepEqual({ ...result.rail }, { x: 0, y: 0, width, height: 900, position: 'fixed' }, `${width}: rail ${JSON.stringify(result.rail)}`);
+      assert.equal(result.cardBehind, true, `${width}: the chapter card is not a translucent card`);
     } finally { await close(p); }
   }
 });

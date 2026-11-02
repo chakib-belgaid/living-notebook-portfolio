@@ -30,12 +30,18 @@ export type FramingKind = "world" | "focus" | "wide";
 export const WIDE_LAYOUT_QUERY = "(min-width: 900px) and (min-height: 500px)";
 export const RAIL_HOST = "rail";
 
-/** Chapter posters in public/assets/stills/, captured from the live scene by
- * scripts/capture-stills.mjs at the wide rail's aspect (658×748 at 1440×900);
- * the portrait slots crop them with object-fit: cover. */
+/** Chapter posters in public/assets/stills/<host>/, captured from the live
+ * scene by scripts/capture-stills.mjs: the wide set from the fixed rail at
+ * 1440×900 (the scene fills the viewport on wide layouts), the portrait set
+ * from a chapter slot at 390×844 (about 358×380 CSS px). Each host shows its
+ * own set, so the first paint and the drawn pose frame the house alike. */
 export type PosterKey = "sketch" | "blueprint" | "build" | "whisperbook" | "wattch" | "bloom";
-export const posterSrc = (key: PosterKey) => `/assets/stills/${key}.webp`;
-export const POSTER_SIZE = { width: 780, height: 887 } as const;
+export type PosterHost = "wide" | "portrait";
+export const posterSrc = (key: PosterKey, host: PosterHost = "wide") => `/assets/stills/${host}/${key}.webp`;
+export const POSTER_SIZES: Readonly<Record<PosterHost, { width: number; height: number }>> = {
+  wide: { width: 1440, height: 900 },
+  portrait: { width: 700, height: 760 },
+};
 
 /** What the page shows while a chapter is read: phase label, poster and the
  * scene's construction progress (0 sketch … 1 bloom). `progress` carries the

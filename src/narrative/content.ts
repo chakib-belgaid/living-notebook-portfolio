@@ -174,12 +174,12 @@ export const notebook = {
 
 /** Phase stills' alt text: they describe the phase, not a product. */
 export const posterAlt = {
-  sketch: "Sketch: the house drawn in fine white lines on a blue page, before anything is built.",
-  blueprint: "Blueprint: the plan of the house, its walls, terraces and trees marked in line.",
-  build: "Build: the house standing in pale stone, its trees still bare.",
-  whisperbook: "Build: the reading pavilion, an open book for a roof above a desk and bookshelves.",
-  wattch: "Build: the observatory, a ring of columns around an energy meter.",
-  bloom: "Bloom: the finished house in autumn colour, with trees, water and falling leaves.",
+  sketch: "Sketch: the house drawn in fine pale lines on the night-blue page, under the moon, before anything is built.",
+  blueprint: "Blueprint: the plan of the house, its walls, terraces and trees marked in light blue line on the night page.",
+  build: "Build: the house standing in pale stone under the night sky, its windows lit, its trees still bare.",
+  whisperbook: "Build: the reading pavilion at night, an open book for a roof above a lamplit desk and bookshelves.",
+  wattch: "Build: the observatory at night, a ring of columns around an energy meter.",
+  bloom: "Bloom: the finished house on a summer night, its trees in leaf, the water lit and the lamps on.",
 } as const;
 
 /** Images the evidence dialog (src/evidence.ts) can enlarge, keyed by the
