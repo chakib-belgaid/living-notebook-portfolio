@@ -30,10 +30,12 @@ export type FramingKind = "world" | "focus" | "wide";
 export const WIDE_LAYOUT_QUERY = "(min-width: 900px) and (min-height: 500px)";
 export const RAIL_HOST = "rail";
 
-/** Existing stills in public/assets/stills/ (780×1688 portrait crops). */
+/** Chapter posters in public/assets/stills/, captured from the live scene by
+ * scripts/capture-stills.mjs at the wide rail's aspect (658×748 at 1440×900);
+ * the portrait slots crop them with object-fit: cover. */
 export type PosterKey = "sketch" | "blueprint" | "build" | "whisperbook" | "wattch" | "bloom";
 export const posterSrc = (key: PosterKey) => `/assets/stills/${key}.webp`;
-export const POSTER_SIZE = { width: 780, height: 1688 } as const;
+export const POSTER_SIZE = { width: 780, height: 887 } as const;
 
 /** What the page shows while a chapter is read: phase label, poster and the
  * scene's construction progress (0 sketch … 1 bloom). `progress` carries the
