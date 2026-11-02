@@ -1,17 +1,16 @@
-/* How the camera fits the garden in its frame, kept out of scene.ts so the
-   still shown while the scene loads can sit exactly where the drawing starts. */
+/* How the camera fits the garden in its frame, kept out of scene.ts so stills
+   can be captured with the same fit. */
 
 /** The world units the garden's frame spans, top to bottom, for a frame of
-    `aspect` (its width over its height). */
-export function gardenSpan(aspect: number) {
-  const stackedMobile = innerWidth <= 760 && innerHeight > 520;
-  return stackedMobile
+    `aspect` (its width over its height) in a host `width` CSS pixels wide.
+    The fit follows the host the garden is drawn in, not the window: a
+    portrait chapter slot on a phone (narrow, about as tall as it is wide)
+    draws the garden larger than the tall rail of a wide layout does. */
+export function gardenSpan(aspect: number, width: number) {
+  const slot = width <= 760 && aspect >= 0.75;
+  return slot
     ? Math.max(12.8, 14.6 / aspect)
     : aspect < 0.9
       ? 16.4 / aspect
       : 15.6;
 }
-
-/** The loading still: captured at this size, with the garden's frame the
-    whole view and the camera's look point at its centre (scripts/capture-stills.mjs). */
-export const loadingStill = { width: 1440, height: 900 };

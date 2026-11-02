@@ -41,9 +41,6 @@ export interface Garden {
   setTheme: (dark: boolean) => void;
   rotate: () => void;
   rotateBy: (radians: number) => void;
-  plant: () => number;
-  /** Plants a tree where a viewport point (relative to the container) meets a terrace. Returns the tree count, or -1 on a miss. */
-  plantAt: (x: number, y: number) => number;
   /** Local hour, 5–23. Moves the sun; lanterns and fireflies come out after dusk. */
   setHour: (hour: number) => void;
   /** Cloud cover and rain or snow, both 0–1. Clouds soften the sun and its shadows; snow settles on the foliage and terraces. */
@@ -69,17 +66,24 @@ export interface Garden {
   /** How the built garden is drawn: Full as designed, or Light (fewer pixels, 30 fps, cheaper shadows). What was built stays. */
   setQuality: (quality: Quality) => void;
   /** Draws the garden as it is on screen into a 2D canvas, once: a frame is
-      rendered and copied in the same task, so no drawing buffer is kept. */
+      rendered and copied in the same task, so no drawing buffer is kept.
+      (A portrait slot the stage leaves keeps this copy of its pose.) */
   drawInto: (target: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => void;
-  /** What the visitor has made of the garden: its planted trees and its turn. */
+  /** The view a rebuilt garden should keep: its turn, zoom and pan. */
   snapshot: () => GardenSnapshot;
-  /** Carries a snapshot into a rebuilt garden, already drawn in. Returns the tree count. */
-  restore: (snapshot: GardenSnapshot) => number;
+  /** Carries a snapshot into a rebuilt garden, already drawn in. */
+  restore: (snapshot: GardenSnapshot) => void;
+  /** Shows the drawing complete at once, without the pencil draw-in: for a
+      garden that opens on a later chapter (a deep link, a return) or that
+      replaces one already on screen. Call before its first frame. */
+  skipDrawIn: () => void;
+  /** Resolves once the next frame has been drawn; asks for that frame. A
+      garden off screen or in a hidden tab draws it when it is shown again. */
+  nextFrame: () => Promise<void>;
   dispose: () => void;
 }
 export type GardenSnapshot = {
   rotation: number;
-  trees: { x: number; y: number; z: number; seed: number }[];
   // The visitor's own zoom and pan, so a rebuilt garden keeps their view.
   zoom: number;
   pan: { x: number; y: number };
@@ -2495,70 +2499,7 @@ async function buildGarden(
   });
   world.add(new T.Points(fireflyGeometry, fireflyMaterial));
 
-  const planted: { group: T.Group; age: number; grown: boolean }[] = [];
-  const MAX_TREES = 24;
-  const plantMaterial = new T.MeshStandardMaterial({
-    color: 0x8ca360,
-    roughness: 1,
-  });
-  const plantLeaves = [0x8ca360, 0x6f9455, 0xa6b970, 0x4e7551].map(
-    (color) => new T.MeshStandardMaterial({ color, roughness: 1 }),
-  );
-  const trunkGeometry = new T.CylinderGeometry(0.025, 0.035, 0.45, 6);
-  const leafGeometry = new T.IcosahedronGeometry(0.19, 1);
-  // Until the garden is built, a planted tree is only drawn: a bare stick
-  // with a few forked branches, in the same ink as the rest of the drawing.
-  const stickMaterial = new T.LineBasicMaterial({
-    transparent: true,
-    depthWrite: false,
-  });
-  const stickGeometry = new T.BufferGeometry().setFromPoints(
-    [
-      [0, 0, 0], [0, 0.62, 0],
-      [0, 0.3, 0], [-0.14, 0.5, 0.03],
-      [0, 0.36, 0], [0.15, 0.56, -0.04],
-      [0, 0.44, 0], [0.04, 0.6, 0.13],
-      [0, 0.48, 0], [-0.05, 0.62, -0.12],
-    ].map(([x, y, z]) => new T.Vector3(x, y, z)),
-  );
-  // `grown` plants a tree at its full size, as when replanting a rebuilt garden.
-  function makeTree(local: T.Vector3, grown = reduced || paused) {
-    const g = new T.Group();
-    // The seed it was drawn from, to draw the same tree again (see snapshot).
-    g.userData.seed = seed;
-    g.add(new T.LineSegments(stickGeometry, stickMaterial));
-    const trunk = new T.Mesh(trunkGeometry, plantMaterial);
-    trunk.position.y = 0.23;
-    trunk.castShadow = true;
-    g.add(trunk);
-    // Clumps mix the season's shades, like the garden's own trees: a winter
-    // tree is snow over a dark core rather than one solid green.
-    const first = Math.floor(random() * plantLeaves.length);
-    const clumps = 2 + Math.floor(random() * 3);
-    for (let i = 0; i < clumps; i++) {
-      const leaves = plantLeaves[(first + i) % plantLeaves.length];
-      const m = new T.Mesh(leafGeometry, leaves);
-      m.position.set(
-        (random() - 0.5) * 0.28,
-        0.42 + random() * 0.18,
-        (random() - 0.5) * 0.22,
-      );
-      m.scale.setScalar(0.75 + random() * 0.5);
-      m.castShadow = true;
-      g.add(m);
-    }
-    g.position.copy(local);
-    g.rotation.y = random() * Math.PI * 2;
-    g.userData.size = 1.15 + random() * 0.6;
-    g.scale.setScalar(grown ? g.userData.size : 0.001);
-    world.add(g);
-    if (!grown) visitTree(local);
-    planted.push({ group: g, age: grown ? 1 : 0, grown });
-    invalidate();
-    return planted.length;
-  }
   const raycaster = new T.Raycaster();
-  const pointer = new T.Vector2();
 
   await checkpoint("seasons");
   /* Seasons. Foliage colours per batch, how many flowers are out, what lies
@@ -2971,133 +2912,6 @@ async function buildGarden(
     r.userData.t = 0;
   }
 
-  /* A planted tree is noticed by the nearest fennec on its level: it looks
-     up, trots over by a clear route, settles beneath the tree for a while,
-     then goes back to its day. One visit at a time, and not again for a
-     while; nothing happens while motion is paused or reduced. */
-  type Visit = {
-    fennec: T.Group;
-    route: T.Vector3[];
-    leg: number;
-    t: number;
-    phase: "notice" | "approach" | "settle";
-    time: number;
-    tree: T.Vector3;
-  };
-  let visit: Visit | null = null,
-    nextVisit = 0;
-  const probe = new T.Vector3(),
-    down = new T.Vector3(0, -1, 0);
-  // Every point along the way must be open ground on the fennec's own level:
-  // no water, bridge, building or step in between.
-  function clearWay(a: T.Vector3, b: T.Vector3) {
-    world.updateMatrixWorld();
-    const samples = Math.max(1, Math.ceil(a.distanceTo(b) / 0.15));
-    for (let i = 1; i <= samples; i++) {
-      probe.lerpVectors(a, b, i / samples);
-      if (inWater(probe) || onBridge(probe)) return false;
-      probe.y = 12;
-      world.localToWorld(probe);
-      raycaster.set(probe, down);
-      const hit = raycaster.intersectObjects(solidMeshes, false)[0];
-      if (!hit?.face || hit.face.normal.y < 0.7) return false;
-      if (Math.abs(world.worldToLocal(hit.point).y - a.y) > 0.03) return false;
-    }
-    return true;
-  }
-  function visitTree(tree: T.Vector3) {
-    if (!fennecs.length || visit || paused || reduced || elapsed < nextVisit) return;
-    if (fennecFur.opacity < 0.5) return;
-    // A tree on its own level, or up to a planter's or curb's height above it.
-    const near = fennecs
-      .filter((f) => tree.y - f.position.y > -0.05 && tree.y - f.position.y < 0.25 && f.position.distanceTo(tree) < 3.5)
-      .sort((a, b) => a.position.distanceTo(tree) - b.position.distanceTo(tree))[0];
-    if (!near) return;
-    const from = near.position.clone();
-    // At the foot of the tree, on open ground on the fennec's level: its own
-    // side of the trunk first, then around it.
-    const toward = Math.atan2(from.x - tree.x, from.z - tree.z);
-    const goal = new T.Vector3();
-    const open = [0, 0.8, -0.8, 1.6, -1.6].some((turn) => {
-      goal.set(tree.x + Math.sin(toward + turn) * 0.3, from.y, tree.z + Math.cos(toward + turn) * 0.3);
-      return !inWater(goal) && !onBridge(goal) && clearWay(goal, goal);
-    });
-    if (!open) return;
-    let route: T.Vector3[] | null = clearWay(from, goal) ? [from, goal] : null;
-    if (!route) {
-      // One turn by way of a known ground spot, the shortest that is clear.
-      // Few are tried, so a visit costs a few dozen short raycasts at most.
-      const turns = groundSpots
-        .filter((p) => Math.abs(p.y - from.y) < 0.03)
-        .sort((a, b) => a.distanceTo(from) + a.distanceTo(goal) - b.distanceTo(from) - b.distanceTo(goal))
-        .slice(0, 6);
-      const turn = turns.find((p) => clearWay(from, p) && clearWay(p, goal));
-      if (turn) route = [from, turn.clone(), goal];
-    }
-    if (!route) return;
-    visit = { fennec: near, route, leg: 0, t: 0, phase: "notice", time: 0, tree: tree.clone() };
-    nextVisit = elapsed + 20;
-    show("visitor", "notice");
-  }
-  function updateVisitor(dt: number) {
-    if (!visit) return;
-    const v = visit,
-      f = v.fennec,
-      u = f.userData;
-    const legs = u.legs as T.Mesh[],
-      tail = u.tail as T.Group,
-      ear = u.ear as T.Mesh;
-    v.time += dt;
-    const facing = Math.atan2(v.tree.x - f.position.x, v.tree.z - f.position.z);
-    if (v.phase === "notice") {
-      // Ears up, legs still, and a turn toward the new tree.
-      f.rotation.y = turnToward(f.rotation.y, facing, dt * 5);
-      ear.rotation.x = -0.45;
-      legs.forEach((l) => (l.rotation.x = 0));
-      if (v.time > 0.7) {
-        v.phase = "approach";
-        v.time = 0;
-        show("visitor", "approach");
-      }
-    } else if (v.phase === "approach") {
-      const a = v.route[v.leg],
-        b = v.route[v.leg + 1];
-      const distance = a.distanceTo(b);
-      const strides = Math.max(1, Math.round(distance / 0.2));
-      v.t = Math.min(1, v.t + dt / (strides * 0.26));
-      const k = v.t * strides,
-        frac = k - Math.floor(k);
-      f.position.lerpVectors(a, b, v.t);
-      f.position.y = a.y + Math.abs(Math.sin(Math.PI * 2 * frac)) * 0.02;
-      f.rotation.y = turnToward(f.rotation.y, Math.atan2(b.x - a.x, b.z - a.z), dt * 8);
-      const swing = Math.sin(Math.PI * 2 * frac) * 0.6;
-      legs.forEach((l, i) => (l.rotation.x = i === 0 || i === 3 ? swing : -swing));
-      tail.rotation.set(-1.75, 0, 0);
-      if (v.t >= 1) {
-        v.t = 0;
-        if (++v.leg >= v.route.length - 1) {
-          v.phase = "settle";
-          v.time = 0;
-          show("visitor", "settle");
-        }
-      }
-    } else {
-      f.position.y = v.route[v.route.length - 1].y;
-      f.rotation.y = turnToward(f.rotation.y, facing, dt * 3);
-      legs.forEach((l) => (l.rotation.x = 0));
-      ear.rotation.x = -0.15 + Math.max(0, Math.sin(elapsed * 2)) * 0.1;
-      tail.rotation.set(-2.1, Math.sin(elapsed * 0.6) * 0.3, 0);
-      if (v.time > 6) {
-        // Back to its own day from where it sat.
-        u.from = f.position.clone();
-        u.to = f.position.clone();
-        u.t = 1;
-        u.rest = 1 + random() * 2;
-        visit = null;
-        show("visitor", "none");
-      }
-    }
-  }
 
   // A ginger cat asleep on the terrace bench.
   const catFur = mat(0xd38b4c, 0.85);
@@ -3490,8 +3304,6 @@ async function buildGarden(
       d.rotation.z = Math.sin(t * 1.7 + i) * 0.05;
     });
     fennecs.forEach((r) => {
-      // A fennec visiting a new tree follows its own steps (updateVisitor).
-      if (visit?.fennec === r) return;
       const u = r.userData;
       const legs = u.legs as T.Mesh[],
         tail = u.tail as T.Group;
@@ -3539,7 +3351,6 @@ async function buildGarden(
     flower: 0.8,
     coral: 0.8,
   };
-  const plantSnowWeight = [0.82, 0.55, 0.92, 0.55];
   function paintFoliage() {
     const palette = seasonColors[season];
     const snow = (m: T.MeshStandardMaterial, hex: number, weight: number) =>
@@ -3548,7 +3359,6 @@ async function buildGarden(
       const hex = palette[key];
       if (hex !== undefined) snow(material, hex, snowWeight[key] ?? 0);
     });
-    plantLeaves.forEach((m, i) => snow(m, palette.plants[i], plantSnowWeight[i]));
     snow(bushMaterials[0], palette.leaf!, snowWeight.leaf!);
     snow(bushMaterials[1], palette.leafDark!, snowWeight.leafDark!);
     const lying = snowCover > 0.35;
@@ -3602,6 +3412,8 @@ async function buildGarden(
     wake();
   }
   const settleListeners = new Set<() => void>();
+  // Waiting for the next drawn frame (see nextFrame).
+  let frameWaiters: (() => void)[] = [];
   // The world is drawn smaller and flatter on the sketch; it reaches full size by Build.
   function worldScaleAt(p: number, out: T.Vector3) {
     const s = lerp(0.77, 1, smooth(0, 0.62, p));
@@ -3722,6 +3534,15 @@ async function buildGarden(
     height = container.clientHeight;
     renderer.setSize(width, height);
     invalidate();
+    // Resizing clears the canvas. Draw again in this same frame (the observer
+    // runs after layout, before paint), so a new host size or a rotation
+    // never shows one blank frame.
+    if (constructed && !disposed) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      last = -1;
+      render(performance.now());
+    }
   };
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(container);
@@ -3890,8 +3711,7 @@ async function buildGarden(
       Math.abs(userZoomGoal - userZoom) > 0.0005 ||
       pan.distanceTo(panGoal) > 0.0005 ||
       Math.abs(snowGoal - snowCover) > 0.001 ||
-      roomsSettling() ||
-      planted.some((p) => p.age < 1)
+      roomsSettling()
     );
   }
   function render(now: number) {
@@ -4012,8 +3832,6 @@ async function buildGarden(
           key === "flower" || key === "coral" ? flowerAmount[season] : 1;
         fade(material, flora ? life * bloom : solid * (glass ? 0.38 : 1));
       });
-      fade(plantMaterial, solid);
-      plantLeaves.forEach((m) => fade(m, life));
       lineMaterial.color
         .copy(pencilColor)
         .lerp(blueColor, blueprint)
@@ -4023,9 +3841,6 @@ async function buildGarden(
       lineMaterial.opacity =
         lerp(darkTheme ? 0.38 : 0.44, darkTheme ? 0.85 : 0.66, blueprint) *
         (1 - solid * 0.92);
-      stickMaterial.color.copy(lineMaterial.color);
-      stickMaterial.opacity = lineMaterial.opacity * (1 - solid);
-      stickMaterial.visible = stickMaterial.opacity > 0.003;
       ghostMaterial.opacity = 0.055 * (1 - blueprint);
       guideMaterial.opacity =
         smooth(0.06, 0.3, progress) * (1 - smooth(0.45, 0.62, progress)) * 0.38;
@@ -4089,24 +3904,13 @@ async function buildGarden(
               Math.sin(elapsed * 8 + i) * 0.7 * (j === 0 ? 1 : -1)),
         );
       });
-    for (const p of planted) {
-      // A grown tree keeps its final size; only growing ones are rescaled.
-      if (p.grown) continue;
-      p.age = reduced ? 1 : Math.min(1, p.age + dt * 1.6);
-      // A small overshoot, as if the tree springs up.
-      const t = p.age,
-        back = 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);
-      p.group.scale.setScalar(Math.max(0.001, back * p.group.userData.size));
-      p.grown = p.age >= 1;
-    }
-    updateVisitor(resting || reduced ? 0 : dt);
     // The garden is fitted to its frame, as if the frame were the whole
     // view; the rest of the view shows more of the same scene around it.
     // The camera and the labels move only when what frames them changes.
     if (cameraMoved(drawn)) {
       const band = Math.max(0.05, view.y - view.x);
       const aspect = width / (height * band);
-      const span = gardenSpan(aspect);
+      const span = gardenSpan(aspect, width);
       const half = span / 2 / (1 + focusAmount * focusZoom) / userZoom / room;
       const full = half / band;
       camera.left = -half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
@@ -4167,6 +3971,11 @@ async function buildGarden(
     show("hover", hoverSpot ?? "none");
     workMs += performance.now() - work;
     framesDrawn++;
+    if (frameWaiters.length) {
+      const waiting = frameWaiters;
+      frameWaiters = [];
+      waiting.forEach((resolve) => resolve());
+    }
   }
   await checkpoint("ground-litter");
   await buildLitter();
@@ -4344,14 +4153,6 @@ async function buildGarden(
       rotationTarget += radians;
       invalidate();
     },
-    plantAt(x, y) {
-      if (planted.length >= MAX_TREES) return MAX_TREES;
-      pointer.set((x / width) * 2 - 1, -(y / height) * 2 + 1);
-      raycaster.setFromCamera(pointer, camera);
-      const hit = raycaster.intersectObjects(solidMeshes, false)[0];
-      if (!hit?.face || hit.face.normal.y < 0.7) return -1;
-      return makeTree(world.worldToLocal(hit.point.clone()));
-    },
     setSeason(value) {
       season = value;
       applySeason();
@@ -4445,26 +4246,14 @@ async function buildGarden(
     setQuality(value) {
       applyQuality(value);
     },
-    drawInto(target, x, y, w, h) {
-      renderer.render(scene, camera);
-      target.drawImage(renderer.domElement, x, y, w, h);
-    },
     snapshot() {
       return {
         rotation: rotationTarget,
-        trees: planted.map(({ group: g }) => ({ x: g.position.x, y: g.position.y, z: g.position.z, seed: g.userData.seed })),
         zoom: userZoomGoal,
         pan: { x: panGoal.x, y: panGoal.y },
       };
     },
     restore(snapshot) {
-      // The same trees, drawn from the seeds they were drawn from.
-      const keep = seed;
-      for (const t of snapshot.trees.slice(0, MAX_TREES - planted.length)) {
-        seed = t.seed;
-        makeTree(new T.Vector3(t.x, t.y, t.z), true);
-      }
-      seed = keep;
       rotation = rotationTarget = snapshot.rotation;
       userZoom = userZoomGoal = snapshot.zoom;
       pan.copy(panGoal.set(snapshot.pan.x, snapshot.pan.y));
@@ -4472,15 +4261,20 @@ async function buildGarden(
       drawIn = 1;
       restored = true;
       invalidate();
-      return planted.length;
     },
-    plant() {
-      if (planted.length >= MAX_TREES) return MAX_TREES;
-      // Keyboard planting fills the front terrace from left to right.
-      const i = planted.length % 12;
-      return makeTree(
-        new T.Vector3(-4.3 + i * 0.78 + (random() - 0.5) * 0.2, 0.36, 3.95),
-      );
+    skipDrawIn() {
+      drawIn = 1;
+      invalidate();
+    },
+    drawInto(target, x, y, w, h) {
+      renderer.render(scene, camera);
+      target.drawImage(renderer.domElement, x, y, w, h);
+    },
+    nextFrame() {
+      return new Promise<void>((resolve) => {
+        frameWaiters.push(resolve);
+        invalidate();
+      });
     },
     dispose() {
       disposed = true;
