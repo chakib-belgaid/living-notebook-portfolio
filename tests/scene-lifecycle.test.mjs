@@ -24,7 +24,7 @@ after(async () => browser?.close());
  * controllable document.hidden. */
 function instrument() {
   const raf = window.requestAnimationFrame.bind(window);
-  const p = window.__probe = { raf: 0, tick: 0, seen: -1, drawFrames: 0, contexts: 0, audio: 0, audioResumes: 0, firstRailPoster: null, progress: [], liveAt: null };
+  const p = window.__probe = { raf: 0, tick: 0, seen: -1, drawFrames: 0, contexts: 0, audio: 0, audioResumes: 0, firstRailPoster: null, progress: [], drawn: [], liveAt: null };
   window.requestAnimationFrame = (cb) => { p.raf++; return raf(cb); };
   const tick = () => { p.tick++; raf(tick); };
   raf(tick);
@@ -61,11 +61,12 @@ function instrument() {
     for (const r of records) {
       const el = r.target;
       if (r.attributeName === 'data-progress' && el.classList?.contains('scene-garden')) p.progress.push(Number(el.dataset.progress));
+      if (r.attributeName === 'data-drawn' && el.classList?.contains('scene-garden')) p.drawn.push(Number(el.dataset.drawn));
       if (r.attributeName === 'data-live' && el.hasAttribute('data-live') && p.liveAt === null) {
-        p.liveAt = { frames: window.__notebookStats?.().garden?.frames ?? 0, chapter: window.__notebookScene?.state().pose?.chapter ?? null, progress: Number(el.querySelector('.scene-garden')?.dataset.progress) };
+        p.liveAt = { frames: window.__notebookStats?.().garden?.frames ?? 0, chapter: window.__notebookScene?.state().pose?.chapter ?? null, progress: Number(el.querySelector('.scene-garden')?.dataset.progress), drawn: Number(el.querySelector('.scene-garden')?.dataset.drawn) };
       }
     }
-  }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-progress', 'data-live'] });
+  }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-progress', 'data-drawn', 'data-live'] });
   let hidden = false;
   Object.defineProperty(Document.prototype, 'hidden', { configurable: true, get: () => hidden });
   Object.defineProperty(Document.prototype, 'visibilityState', { configurable: true, get: () => (hidden ? 'hidden' : 'visible') });
@@ -160,29 +161,84 @@ test('phone: the stage moves between chapter slots, one canvas, and the slice ro
   } finally { await close(p); }
 });
 
-test('the poster stays until the live pose is drawn', async () => {
+for (const [path, chapter, poster, progress] of [['/#whisperbook', 'whisperbook', 'whisperbook', 0.66], ['/', 'intro', 'sketch', 0]]) {
+  test(`${path}: the poster stays until the complete ${chapter} pose is drawn`, async () => {
+    let release;
+    const gate = new Promise(r => { release = r; });
+    const p = await open(path, {
+      before: page => page.route(/\/assets\/scene-[\w-]+\.js$/, async route => { await gate; await route.continue(); }),
+    });
+    try {
+      await p.waitForTimeout(1500);
+      const waiting = await p.evaluate(() => {
+        const host = document.querySelector('.scene-stage')?.parentElement ?? document.querySelector('[data-scene-host="rail"]');
+        const stage = host.querySelector('.scene-stage');
+        return { renderer: document.documentElement.dataset.renderer, poster: document.querySelector('[data-scene-host="rail"] img').getAttribute('src'), stageLive: stage?.hasAttribute('data-live') ?? false, stageVisible: stage ? getComputedStyle(stage).visibility : 'none' };
+      });
+      assert.equal(waiting.renderer, 'loading');
+      assert.match(waiting.poster, new RegExp(`${poster}\\.webp$`));
+      assert.equal(waiting.stageLive, false);
+      assert.notEqual(waiting.stageVisible, 'visible', 'nothing covers the poster while loading');
+      release();
+      await live(p);
+      const pr = await probe(p);
+      assert.ok(pr.liveAt.frames >= 1, 'revealed only after a frame was drawn');
+      assert.equal(pr.liveAt.chapter, chapter);
+      assert.equal(pr.liveAt.progress.toFixed(2), progress.toFixed(2), 'the first visible frame is the destination pose');
+      assert.equal(pr.liveAt.drawn, 1, 'the drawing is complete when it replaces the poster');
+      assert.ok(pr.drawn.length > 0 && pr.drawn.every(v => v === 1), `no partly drawn frame: ${[...new Set(pr.drawn)].join(', ')}`);
+      assert.deepEqual(p.errors, []);
+    } finally { release(); await close(p); }
+  });
+}
+
+test('a reload of /#contact restores Contact: bloom poster first, only Contact drawn', async () => {
+  const p = await open('/#contact');
+  try {
+    await settledOn(p, 'contact');
+    await p.locator('#contact').hover();
+    await p.mouse.wheel(0, -120);
+    await p.waitForTimeout(400);
+    assert.equal(await p.evaluate(() => location.hash), '#contact');
+    await p.reload();
+    await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
+    await live(p);
+    const pr = await probe(p);
+    assert.match(pr.firstRailPoster, /bloom\.webp$/, `first painted rail poster after reload: ${pr.firstRailPoster}`);
+    assert.ok(pr.progress.length > 0 && pr.progress.every(v => v > 0.99), `drawn after reload: ${[...new Set(pr.progress)].join(', ')}`);
+    assert.equal((await scene(p)).chapter, 'contact');
+    assert.deepEqual(p.errors, []);
+  } finally { await close(p); }
+});
+
+test('a fragment reload left at the top (no scroll restored) ends on the opening', async () => {
+  const p = await open('/#contact', { init: () => { history.scrollRestoration = 'manual'; } });
+  try {
+    await settledOn(p, 'contact');
+    await p.reload();
+    await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
+    assert.equal(await p.evaluate(() => scrollY), 0, 'no restored scroll');
+    await settledOn(p, 'intro');
+    assert.match(await p.evaluate(() => document.querySelector('[data-scene-host="rail"] img').getAttribute('src')), /sketch\.webp$/);
+    assert.deepEqual(p.errors, []);
+  } finally { await close(p); }
+});
+
+test('turning still images on and off again while the scene loads ends with a live stage', async () => {
   let release;
   const gate = new Promise(r => { release = r; });
-  const p = await open('/#whisperbook', {
-    before: page => page.route(/\/assets\/scene-[\w-]+\.js$/, async route => { await gate; await route.continue(); }),
-  });
+  const p = await open('/', { before: page => page.route(/\/assets\/scene-[\w-]+\.js$/, async route => { await gate; await route.continue(); }) });
   try {
-    await p.waitForTimeout(1500);
-    const waiting = await p.evaluate(() => {
-      const rail = document.querySelector('[data-scene-host="rail"]');
-      const stage = rail.querySelector('.scene-stage');
-      return { renderer: document.documentElement.dataset.renderer, poster: rail.querySelector('img').getAttribute('src'), stageLive: stage?.hasAttribute('data-live') ?? false, stageVisible: stage ? getComputedStyle(stage).visibility : 'none' };
-    });
-    assert.equal(waiting.renderer, 'loading');
-    assert.match(waiting.poster, /whisperbook\.webp$/);
-    assert.equal(waiting.stageLive, false);
-    assert.notEqual(waiting.stageVisible, 'visible', 'nothing covers the poster while loading');
+    await p.waitForFunction(() => document.documentElement.dataset.renderer === 'loading');
+    await openControls(p);
+    await control(p, 'stills').click();
+    assert.equal(await p.evaluate(() => document.documentElement.dataset.renderer), 'not-requested');
+    await control(p, 'stills').click();
+    assert.equal(await p.evaluate(() => document.documentElement.dataset.renderer), 'loading');
     release();
     await live(p);
-    const at = (await probe(p)).liveAt;
-    assert.ok(at.frames >= 1, 'revealed only after a frame was drawn');
-    assert.equal(at.chapter, 'whisperbook');
-    assert.equal(at.progress.toFixed(2), '0.66', 'the first visible frame is the destination pose');
+    assert.equal(await p.evaluate(() => document.querySelectorAll('.scene-stage').length), 1);
+    assert.equal(await p.evaluate(() => window.__probe.contexts), 1, 'the torn-down load built nothing');
     assert.deepEqual(p.errors, []);
   } finally { release(); await close(p); }
 });

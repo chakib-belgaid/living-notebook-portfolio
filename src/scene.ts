@@ -3952,6 +3952,8 @@ async function buildGarden(
     if (firstRender) { firstRender = false; performance.mark("notebook:first-render"); performance.measure("notebook:scene-to-first-render", "notebook:scene-construction:start", "notebook:first-render"); }
     renderMs = lerp(renderMs || 1, performance.now() - before, 0.1);
     show("progress", progress.toFixed(3));
+    // How much of the pencil drawing is drawn in (1: complete).
+    show("drawn", drawn.toFixed(2));
     show("drawCalls", String(renderer.info.render.calls));
     show("triangles", String(renderer.info.render.triangles));
     show("geometries", String(renderer.info.memory.geometries));

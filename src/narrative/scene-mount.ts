@@ -49,7 +49,7 @@ import type { Sky } from "../sky";
 import type { Soundscape } from "../soundscape";
 import { chapter as chapterContent } from "./content";
 import type { ChangeCause, NarrativeController } from "./controller";
-import { chapterIds, posterSrc, WIDE_LAYOUT_QUERY, type ChapterId, type MotionPreference, type RendererLifecycle } from "./model";
+import { chapterIds, posterSrc, resolveFragment, WIDE_LAYOUT_QUERY, type ChapterId, type MotionPreference, type RendererLifecycle } from "./model";
 import {
   COMPACT_QUERY, LIVE_KEY, PAUSE_KEY, QUALITY_KEY, REDUCED_MOTION_QUERY,
   detailFor, liveByDefault, motionPreference, qualityChoice, qualityFor, read, saveDataOn, viewMode, write,
@@ -108,8 +108,16 @@ export function createSceneMount(controller: NarrativeController) {
   let asked = read(session, LIVE_KEY) === "1";
   const choice = qualityChoice(href(), read(local, QUALITY_KEY));
 
+  /* The landing chapter. A fragment names it outright while the document has
+     not been scrolled yet: on a reload or a history traversal the browser
+     restores the scroll position after this module runs, and the scroll-based
+     chapter would be the opening, downgrading the rail poster the inline
+     script set (F16). */
+  const fragment = resolveFragment(location.hash);
+  const landing: ChapterId = fragment && location.hash.length > 1 && scrollY <= 1 ? fragment.chapter : controller.activeChapter();
+
   const state: SceneState = {
-    chapter: controller.activeChapter(),
+    chapter: landing,
     transition: 1,
     mode: viewMode(href()),
     motion: motionPreference(reducedQuery.matches, userPaused),
@@ -311,12 +319,18 @@ export function createSceneMount(controller: NarrativeController) {
   /* ---------- Reading → scene ---------- */
   /** An explicit destination the scene stays on until the visitor scrolls away. */
   let pin: { chapter: ChapterId; y: number; armedAt: number | null } | null = null;
-  const initial = resolveLanding();
-  function resolveLanding() {
-    // A fragment landing (deep link, reload, Return) is explicit.
-    return location.hash.length > 1 ? controller.activeChapter() : null;
+  // A fragment landing (deep link, reload, Return) is explicit.
+  if (location.hash.length > 1 && fragment) pin = { chapter: landing, y: scrollY, armedAt: null };
+  // A landing taken from the fragment before any scroll: if the page is
+  // still at the top once loaded (no scroll was restored), the opening is
+  // what the visitor sees, so the reading position decides again.
+  if (pin && pin.y <= 1 && landing !== "intro") {
+    const recheck = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (pin && pin.y <= 1 && scrollY <= 1) { pin = null; update("layout"); }
+    }));
+    if (document.readyState === "complete") recheck();
+    else addEventListener("load", recheck, { once: true });
   }
-  if (initial) pin = { chapter: initial, y: scrollY, armedAt: null };
 
   function update(cause: "scroll" | "layout" | "visibility") {
     if (pin) {
@@ -420,7 +434,7 @@ export function createSceneMount(controller: NarrativeController) {
     const mine = ++generation;
     state.renderer = "loading";
     publish();
-    loading = (async () => {
+    const attempt: Promise<void> = (async () => {
       // Let the semantic page paint before any scene work starts.
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       if (mine !== generation) return;
@@ -458,10 +472,11 @@ export function createSceneMount(controller: NarrativeController) {
       sky.refresh(false);
       adapter = createSceneAdapter(garden, hostKind());
       adapter.setMotionPreference(state.motion);
-      // The opening sketch draws itself in when the visit starts at the top
-      // with motion on; any other landing shows its pose complete at once.
-      const drawIn = target === "intro" && scrollY <= 1 && state.motion === "normal";
-      if (!drawIn) garden.skipDrawIn();
+      // Every landing shows its pose complete at once, the opening sketch
+      // included: a poster has already painted, and the stage must replace
+      // it with the matching pose, never with a half-drawn (at first, empty)
+      // page. The pencil draw-in is not used on the release-1 page.
+      garden.skipDrawIn();
       held = true;
       adapter.hold();
       adapter.go(target, { immediate: true });
@@ -484,8 +499,9 @@ export function createSceneMount(controller: NarrativeController) {
       teardown();
       state.renderer = "failed";
       publish();
-    }).finally(() => { loading = null; });
-    return loading;
+    }).finally(() => { if (loading === attempt) loading = null; });
+    loading = attempt;
+    return attempt;
   }
 
   /** Fades the stage in over the poster once the current pose is drawn. */
@@ -541,6 +557,9 @@ export function createSceneMount(controller: NarrativeController) {
 
   function teardown() {
     generation++;
+    // A load still on its way belongs to the scene torn down: forget it, so
+    // asking for the live drawing again starts a new one.
+    loading = null;
     offSettled?.();
     offSettled = null;
     stageObserver?.disconnect();
