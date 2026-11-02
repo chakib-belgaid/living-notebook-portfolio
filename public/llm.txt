@@ -2,7 +2,7 @@
 
 > Portfolio of Chakib Belgaid, a product engineer with a Ph.D. in software engineering. His work covers applied AI, developer tools, and software energy measurement.
 
-The default experience is an interactive garden with Sketch, Blueprint, Build, and Bloom stages. For text extraction, use the reading page at `?view=read`: it contains the portfolio content in semantic HTML without requiring JavaScript, WebGL, or garden audio. Visitors can select this page through Low-end mode. English, French, and Arabic are available with JavaScript through `?lang=en`, `?lang=fr`, and `?lang=ar`; the static HTML is English.
+The default experience is an interactive garden with Sketch, Blueprint, Build, and Bloom stages. For text extraction, use the reading page at `?view=read`: it contains the portfolio content in semantic HTML without requiring JavaScript, WebGL, or garden audio. English, French, and Arabic are available with JavaScript through `?lang=en`, `?lang=fr`, and `?lang=ar`; the static HTML is English.
 
 Whisperbook is an Android app for narrating EPUBs and PDFs on the device. The portfolio links to the v0.1 test APK and its release requirements. Current source features may differ from that downloadable build. The browser voice illustration uses browser-local speech and is not the Android narration engine.
 
@@ -43,7 +43,7 @@ Source: /work/mcq-scan/#agentdiet
 
 ### Store Chat
 
-Professional work · structured-output evaluation. A clothing-shopping assistant with Llama 3.1 8B LoRA, local vLLM inference, and Pydantic business validation. I evaluated constrained-decoding tools and integrated LM Format Enforcer to enforce enum values. Internal evaluation separates 97% structurally valid, enum-compliant requests from 95% semantic accuracy per attribute. These are internal evaluation results, not a public benchmark. My contribution was tool evaluation and integration, not a custom sampler.
+Professional work · structured-output evaluation. A clothing-shopping assistant with Llama 3.1 8B LoRA, local vLLM inference, and Pydantic business validation. I evaluated constrained-decoding tools and integrated LM Format Enforcer to enforce enum values. Internal evaluation separates 97% structurally valid, enum-compliant requests from 95% semantic accuracy per attribute. These are internal evaluation results, not a public benchmark. My contribution was evaluating and integrating existing constrained-decoding tools.
 
 Source: /work/mcq-scan/#store-chat
 
@@ -55,7 +55,7 @@ Source: https://github.com/chakib-belgaid/whispbook
 
 ### Z-Image-Turbo · Android
 
-Personal experiment · mobile diffusion inference. Porting image generation to Nothing Phone 3: 512×512 output, a comparison of 100 runtime/precision configurations, INT8/INT4 quantization, and a QNN w8a16 path on the Hexagon NPU. The work includes numerical checks, activation-saturation diagnosis, and calibration across all diffusion steps. Experimental work described in my October dossier. Single-block timings do not establish an end-to-end generation speedup; no public repository is linked here.
+Personal experiment · mobile diffusion inference. Porting image generation to Nothing Phone 3: 512×512 output, a comparison of 100 runtime/precision configurations, INT8/INT4 quantization, and a QNN w8a16 path on the Hexagon NPU. The work includes numerical checks, activation-saturation diagnosis, and calibration across all diffusion steps. This is experimental work. Single-block timings do not establish an end-to-end generation speedup; no public repository is linked here.
 
 ### Pocket TTS Android Benchmark
 
@@ -71,7 +71,7 @@ Source: https://github.com/chakib-belgaid/speculative-decoding-mlx
 
 ## Experience and skill scope
 
-At Inria, on an ANR project with Qarnot Computing as the industrial partner, I contributed to deploying PowerAPI on Qarnot’s infrastructure and reduced its binary size by roughly 300×.
+At Inria (2022–2024), with Qarnot Computing as the industrial partner, I adapted the existing HWPC sensor to Qarnot’s infrastructure.
 
 I co-founded a serious-games advertising startup, led six employees and two interns, and delivered two Unity games after winning Ooredoo T-Start in 2014. Our 2016 national campaign attracted more than 300,000 unique subscriber numbers.
 
