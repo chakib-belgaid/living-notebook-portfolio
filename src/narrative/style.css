@@ -10,9 +10,11 @@
      would leave the text column under 420px).
    - >= 900px and >= 500px tall (WIDE_LAYOUT_QUERY in model.ts): the scene
      rail fills the viewport behind the page and each chapter reads in a
-     420–520px translucent card on the left (the user's G2 decision,
-     2 November 2026, restoring the previous page's layout); the
-     per-chapter hosts are not displayed.
+     420–520px translucent card at the left gutter (the user's G2 decision,
+     2 November 2026, restoring the previous page's layout; moved from the
+     centred 82rem column to the viewport's edge on the user's request the
+     same day, so the garden has the rest of the width); the per-chapter
+     hosts are not displayed.
    - Short landscape (< 500px tall): stacked, compact scene slot, the header
      scrolls away instead of covering a third of the screen.
    Explicit jumps and fragment landings clear the header through
@@ -184,13 +186,16 @@
    first. The scene adapter shifts the garden right of the card. */
 @media screen and (min-width: 900px) and (min-height: 500px) {
   :root {
-    /* The chapter card's far edge, in viewport terms: the centred 82rem
-       page's inset, the gutter and the card's own width (the .chapter rule
-       below, 55% of the page's content box). The ruler sits beyond it. */
-    --card-width: min(clamp(26.25rem, 36vw, 32.5rem), calc((min(100vw, 82rem) - 2 * var(--gutter)) * 0.55));
-    --card-edge: calc((100vw - min(100vw, 82rem)) / 2 + var(--gutter) + var(--card-width));
+    /* The chapter card's far edge, in viewport terms: the gutter and the
+       card's own width (the .chapter rule below, 55% of the page's content
+       box). The ruler sits beyond it. */
+    --card-width: min(clamp(26.25rem, 36vw, 32.5rem), calc((100vw - 2 * var(--gutter)) * 0.55));
+    --card-edge: calc(var(--gutter) + var(--card-width));
   }
-  .narrative { position: relative; }
+  /* The page spans the viewport: the cards sit at the left gutter and the
+     garden has the rest of the width; the header's name aligns with them. */
+  .narrative { position: relative; max-width: none; }
+  .masthead { padding-inline: var(--gutter); }
   .enhanced .narrative { padding-bottom: 0; }
   /* The fixed rail is a positioned sibling of the chapters, so they are
      positioned too, above it. */
@@ -218,11 +223,12 @@
 }
 
 /* The reading ruler (src/narrative/ruler.ts; markup in src/render.ts
-   ruler()): the previous page's bottom bar. Enhancement only: hidden until
-   the module shows it. Stacked layouts show only the carbon tally, a pill in
-   the bottom corner, so the figure is on screen the whole way without a bar
-   over the text; the page ends with room for it. Wide layouts show the whole
-   bar at the foot of the scene, right of the chapter card (below). The
+   ruler()): the previous page's bottom bar reduced to its scale. Enhancement
+   only: hidden until the module shows it. Stacked layouts show only the
+   carbon tally, a pill in the bottom corner, so the figure is on screen the
+   whole way without a bar over the text; the page ends with room for it.
+   Wide layouts show one row at the foot of the scene, right of the chapter
+   card (below): the scale, the tally, the sound and pause buttons. The
    current chapter's construction phase tints the scale's handle, the current
    dot and the tally's edge. */
 .enhanced .narrative { padding-bottom: 4rem; }
@@ -233,12 +239,12 @@
 }
 .ruler {
   --stage: var(--graphite);
-  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; pointer-events: auto;
+  display: flex; align-items: center; gap: 0.6rem; pointer-events: auto;
 }
 .ruler[data-phase="blueprint"] { --stage: var(--blueprint); }
 .ruler[data-phase="build"] { --stage: var(--stone); }
 .ruler[data-phase="bloom"] { --stage: var(--leaf); }
-.chapter-index, .ruler-track, .stage-buttons, .ruler-motion { display: none; }
+.ruler-track, .ruler-motion { display: none; }
 
 /* The tally: an odometer with its panel above it. */
 .tally { position: relative; flex: none; }
@@ -288,20 +294,14 @@
     container: ruler-dock / inline-size;
   }
   .ruler {
-    width: min(44rem, 100%); padding: 0.6rem 0.8rem 0.6rem;
+    width: min(30rem, 100%); padding: 0.4rem 0.5rem 0.4rem 0.9rem;
     background: var(--slip); backdrop-filter: blur(10px);
-    border: 1px solid var(--hairline); border-radius: 1rem; box-shadow: var(--lift);
+    border: 1px solid var(--hairline); border-radius: 999px; box-shadow: var(--lift);
   }
-  /* The chapter being read, then the index. */
-  .chapter-index { display: block; flex: 0 0 100%; min-width: 0; }
-  .chapter-current { display: block; font-size: 0.875rem; color: var(--muted); }
-  .chapter-index > div { display: flex; flex-wrap: wrap; gap: 0 0.75rem; }
-  .chapter-index a { display: inline-flex; align-items: center; min-height: 2.25rem; font-size: 1rem; }
-  .chapter-index a[aria-current] { font-weight: 700; }
   /* The scale: the opening at the left, the end at the right, whatever the
      page's direction; dragging the handle scrolls the page. A dot marks
      where each chapter begins. */
-  .ruler-track { display: block; flex: 0 0 100%; min-width: 0; direction: ltr; }
+  .ruler-track { display: block; flex: 1 1 auto; min-width: 6rem; direction: ltr; }
   .ruler-scrub {
     -webkit-appearance: none; appearance: none;
     display: block; width: 100%; height: 1.25rem; margin: 0;
@@ -338,14 +338,6 @@
     transition: background-color 0.3s ease, opacity 0.3s ease;
   }
   .ruler-dot[data-current] { top: -1px; width: 6px; height: 6px; margin-left: -3px; background: var(--stage); opacity: 1; }
-  /* The phases, the tally and the controls share the last row. */
-  .stage-buttons { display: grid; flex: 1 1 auto; grid-template-columns: repeat(4, 1fr); gap: 0.15rem; }
-  .stage-buttons button {
-    min-height: 2.75rem; padding: 0.3rem; border: 0; border-radius: 6px; background: transparent;
-    font: inherit; font-size: 1rem; color: var(--muted); cursor: pointer;
-  }
-  .stage-buttons button:hover { color: var(--ink); }
-  .stage-buttons button[aria-current="step"] { color: var(--ink); background: var(--hairline); }
   .ruler-motion {
     display: grid; flex: none; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0;
     border: 1px solid var(--hairline); border-radius: 50%; background: none; color: var(--muted); cursor: pointer;
@@ -356,12 +348,15 @@
   .ruler-motion .icon-play, .ruler-motion[aria-pressed="true"] .icon-pause { display: none; }
   .ruler-motion[aria-pressed="true"] .icon-play { display: inline; }
   .ruler-sound[aria-pressed="false"] .icon-waves, .ruler-sound[aria-pressed="true"] .icon-mute { display: none; }
-  /* Inside the bar the tally wears no slip of its own. */
-  .tally > summary { background: transparent; backdrop-filter: none; box-shadow: none; }
+  /* Inside the bar the tally wears no slip of its own and sits tighter. */
+  .tally > summary { min-height: 2.5rem; padding-block: 0.15rem; background: transparent; backdrop-filter: none; box-shadow: none; }
   .tally > summary:hover, .tally[open] > summary { background: var(--hairline); }
+  .tally-figure { font-size: 0.9375rem; }
+  .tally-note { font-size: 0.75rem; }
+  .ruler-motion { width: 2.5rem; height: 2.5rem; }
   @container ruler-dock (width < 20rem) {
     .ruler { width: auto; margin-inline-start: auto; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; }
-    .chapter-index, .ruler-track, .stage-buttons, .ruler-motion { display: none; }
+    .ruler-track, .ruler-motion { display: none; }
     .ruler .tally > summary { background: var(--slip); backdrop-filter: blur(10px); box-shadow: var(--lift); }
     .ruler .tally > summary:hover, .ruler .tally[open] > summary { background: color-mix(in srgb, var(--paper) 92%, var(--ink)); }
   }

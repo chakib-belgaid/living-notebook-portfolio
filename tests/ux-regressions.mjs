@@ -67,7 +67,7 @@ export async function assertRuler(page, wide) {
   await page.waitForFunction(() => /CO₂e|Unavailable/.test(document.querySelector('[data-carbon-figure]')?.textContent ?? ''));
   const layout = await page.evaluate(() => {
     const box = el => { const b = el.getBoundingClientRect(); return { left: b.left, top: b.top, right: b.right, bottom: b.bottom }; };
-    const current = document.querySelector('.chapter-index a[aria-current]').getAttribute('href').slice(1);
+    const current = document.querySelector('.ruler-dot[data-current]').dataset.dot;
     const remote = document.querySelector('[data-scene-remote="pause"]');
     return { width: innerWidth, height: innerHeight, header: document.querySelector('.masthead').getBoundingClientRect().bottom,
       trackShown: getComputedStyle(document.querySelector('.ruler-track')).display !== 'none',

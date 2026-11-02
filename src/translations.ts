@@ -148,9 +148,7 @@ export const translations: Record<string, readonly [string, string]> = {
   "Under 0.01 mg CO₂e": ["Moins de 0,01 mg CO₂e", "أقل من 0.01 ملغ من مكافئ CO₂"],
   // The reading ruler and carbon tally (src/render.ts ruler(), tally();
   // src/narrative/ruler.ts). The tally strings return from the retired page.
-  "Chapters": ["Chapitres", "الفصول"],
   "Reading position": ["Position de lecture", "موضع القراءة"],
-  "Go to {stage}": ["Aller à {stage}", "انتقل إلى {stage}"],
   "Carbon footprint": ["Empreinte carbone", "البصمة الكربونية"],
   "this visit": ["cette visite", "هذه الزيارة"],
   "Estimated impact of this visit so far": ["Impact estimé de cette visite jusqu’ici", "الأثر التقديري لهذه الزيارة حتى الآن"],

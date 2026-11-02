@@ -1,13 +1,11 @@
 /** The reading ruler (markup in src/render.ts `ruler()`): the previous
- * page's bottom bar, on wide layouts only. From the top: the chapter being
- * read, the chapter index (links the navigation module takes over like any
- * other), a scale from the opening to the end that scrolls the page when
- * dragged, with a dot where each chapter begins, then the four construction
- * phases (each a jump to the first chapter of that phase), the carbon tally,
- * and the sound and pause controls, which mirror the header's disclosure
- * (src/narrative/scene-controls.ts binds them). Stacked layouts keep only
- * the tally, a pill in the bottom corner, so the figure stays on screen
- * without a bar over the text.
+ * page's bottom bar reduced to its scale, on wide layouts only. One row: a
+ * scale from the opening to the end that scrolls the page when dragged, with
+ * a dot where each chapter begins (its value text names the chapter being
+ * read), the carbon tally, and the sound and pause controls, which mirror
+ * the header's disclosure (src/narrative/scene-controls.ts binds them).
+ * Stacked layouts keep only the tally, a pill in the bottom corner, so the
+ * figure stays on screen without a bar over the text.
  *
  * The tally is an odometer of the visit's estimated footprint: reported
  * transfer (src/transfer.ts, Resource Timing through co2.js) plus the
@@ -19,9 +17,9 @@
  * only when a text changes, so translation work and repaints stay rare. */
 import { estimateCompute, type ComputeWork } from "../compute";
 import { createTransferEstimate, formatGrams } from "../transfer";
-import { chapter as chapterContent, chapters } from "./content";
+import { chapter as chapterContent } from "./content";
 import type { NarrativeController } from "./controller";
-import { chapterIds, phases, type ChapterId, type Phase } from "./model";
+import { chapterIds, type ChapterId } from "./model";
 
 /** What the ruler needs from the scene mount. */
 export interface RulerScene {
@@ -40,20 +38,14 @@ export const TALLY_INTERVAL_MS = 500;
 /** The scale's resolution. */
 const SCALE = 1000;
 
-/** The chapter a phase button jumps to: the first chapter of that phase. */
-export const phaseLanding = (phase: Phase): ChapterId => chapters.find(c => c.scene.phase === phase)!.id;
-
 export function createRuler(controller: NarrativeController, scene: RulerScene, root: Document = document): Ruler | null {
   const dock = root.querySelector<HTMLElement>(".ruler-dock");
   if (!dock) return null;
   // The dock always carries its bar (render.ts); the markers inside it are optional.
   const bar = dock.querySelector<HTMLElement>(".ruler")!;
-  const links = new Map(chapterIds.map(id => [id, bar.querySelector<HTMLAnchorElement>(`.chapter-index a[href="#${id}"]`)]));
   const dots = new Map(chapterIds.map(id => [id, bar.querySelector<HTMLElement>(`.ruler-dot[data-dot="${id}"]`)]));
   const sections = new Map(chapterIds.map(id => [id, root.getElementById(id)]));
-  const name = bar.querySelector<HTMLElement>("[data-ruler-chapter]");
   const scrub = bar.querySelector<HTMLInputElement>(".ruler-scrub");
-  const stageButtons = [...bar.querySelectorAll<HTMLButtonElement>("[data-go]")];
   const tally = bar.querySelector<HTMLDetailsElement>(".tally");
   const fields = {
     figure: bar.querySelector<HTMLElement>("[data-carbon-figure]"),
@@ -75,17 +67,8 @@ export function createRuler(controller: NarrativeController, scene: RulerScene, 
   /* ---------- The chapter being read ---------- */
   function mark(chapter: ChapterId) {
     const cue = chapterContent(chapter);
-    for (const [id, link] of links) {
-      if (id === chapter) link?.setAttribute("aria-current", "location");
-      else link?.removeAttribute("aria-current");
-      dots.get(id)?.toggleAttribute("data-current", id === chapter);
-    }
-    for (const button of stageButtons) {
-      if (button.dataset.go === cue.scene.phase) button.setAttribute("aria-current", "step");
-      else button.removeAttribute("aria-current");
-    }
+    for (const [id, dot] of dots) dot?.toggleAttribute("data-current", id === chapter);
     bar.dataset.phase = cue.scene.phase;
-    write(name, cue.short);
     if (scrub && scrub.getAttribute("aria-valuetext") !== cue.short) scrub.setAttribute("aria-valuetext", cue.short);
   }
   const offChange = controller.onChapterChange(chapter => mark(chapter));
@@ -119,12 +102,6 @@ export function createRuler(controller: NarrativeController, scene: RulerScene, 
   scrub?.addEventListener("input", onInput);
   addEventListener("scroll", schedule, { passive: true });
   addEventListener("resize", onResize);
-  const onGo = (event: Event) => {
-    const phase = (event.currentTarget as HTMLElement).dataset.go as Phase;
-    if (!phases.includes(phase)) return;
-    controller.visit(phaseLanding(phase), { push: true, focus: true, cause: "navigation" });
-  };
-  stageButtons.forEach(button => button.addEventListener("click", onGo));
   measure();
   sync();
 
@@ -171,7 +148,6 @@ export function createRuler(controller: NarrativeController, scene: RulerScene, 
       scrub?.removeEventListener("input", onInput);
       removeEventListener("scroll", schedule);
       removeEventListener("resize", onResize);
-      stageButtons.forEach(button => button.removeEventListener("click", onGo));
       offChange();
       transfer.dispose();
       dock.hidden = true;
