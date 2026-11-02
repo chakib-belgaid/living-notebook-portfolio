@@ -105,10 +105,48 @@ function ruler() {
           <div class="ruler-ticks" aria-hidden="true">${dots}</div>
         </div>
         ${tally()}
+        ${gardenPanel()}
         <button type="button" class="ruler-motion ruler-sound" data-scene-remote="sound" aria-pressed="false" aria-label="Sound" title="Sound">${speaker}</button>
         <button type="button" class="ruler-motion" data-scene-remote="pause" aria-pressed="false" aria-label="Pause motion" title="Pause motion">${pause}</button>
+        <p class="sr-only" data-garden-status role="status" aria-live="polite"></p>
       </div>
     </div>`;
+}
+
+/** The garden panel (src/narrative/garden-panel.ts): the previous page's
+ * "Make the garden yours" dock behind a round button in the ruler, on every
+ * layout. The sky widget (hour, weather, season) and the garden widget
+ * (planting, turning, drawing quality). Readouts and reports are empty
+ * here: the module writes them, so no placeholder needs a translation. */
+function gardenPanel() {
+  const sprout = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 21v-7.5"/><path d="M12 13.5c0-4.2 2.6-6.9 7.2-6.9c0 4.6-2.6 6.9-7.2 6.9Z"/><path d="M12 16.5c0-3.2-2-5.3-5.6-5.3c0 3.6 2 5.3 5.6 5.3Z"/></svg>`;
+  const chip = (attr: string, value: string, label: string, pressed = false) =>
+    `<button type="button" class="chip" data-${attr}="${value}" aria-pressed="${pressed}">${e(label)}</button>`;
+  const weather: [string, string][] = [["clear", "Clear"], ["cloudy", "Clouds"], ["rain", "Rain"], ["snow", "Snow"], ["storm", "Storm"], ["fog", "Fog"]];
+  const seasons: [string, string][] = [["spring", "Spring"], ["summer", "Summer"], ["autumn", "Autumn"], ["winter", "Winter"]];
+  const qualities: [string, string][] = [["auto", "Auto"], ["full", "Full"], ["light", "Light"]];
+  return `<details class="garden">
+          <summary aria-label="Make the garden yours" title="Make the garden yours">${sprout}</summary>
+          <section class="garden-panel" aria-labelledby="garden-label">
+            <p class="garden-label" id="garden-label">Make the garden yours</p>
+            <section class="widget" aria-labelledby="sky-title">
+              <div class="widget-head"><h3 id="sky-title">Play with the sky</h3><output data-hour-readout for="garden-hour" dir="auto"></output></div>
+              <p class="widget-report" data-sky-report aria-live="polite"></p>
+              <input type="range" class="garden-hour" id="garden-hour" data-hour min="5" max="23" step="0.25" value="22" aria-label="Time of day" />
+              <div class="chips" role="group" aria-label="Weather">${chip("weather", "live", "Live")}${weather.map(([k, label]) => chip("weather", k, label, k === "clear")).join("")}</div>
+              <p class="widget-foot"><button type="button" class="link-button" data-hour-now>Use my clock</button><button type="button" class="link-button" data-locate>Use my exact location</button></p>
+              <p class="widget-foot credit"><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo<span class="sr-only"> (opens in a new tab)</span></a></p>
+            </section>
+            <section class="widget" aria-labelledby="garden-title">
+              <div class="widget-head"><h3 id="garden-title">Tend the garden</h3><output data-tree-count dir="auto"></output></div>
+              <p class="widget-report" data-season-report aria-live="polite"></p>
+              <div class="chips" role="group" aria-label="Season">${chip("season", "now", "Now")}${seasons.map(([k, label]) => chip("season", k, label, k === "summer")).join("")}</div>
+              <div class="chips">${chip("plant-mode", "", "Plant by clicking")}<button type="button" class="chip" data-plant-one>Plant one</button><button type="button" class="chip" data-turn>Turn</button></div>
+              <p class="quality-label" id="quality-label">Drawing quality</p>
+              <div class="chips" role="group" aria-labelledby="quality-label">${qualities.map(([k, label]) => chip("quality", k, label)).join("")}</div>
+            </section>
+          </section>
+        </details>`;
 }
 
 /** The carbon tally: the visit's estimated footprint as an odometer, with

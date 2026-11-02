@@ -2,6 +2,7 @@ import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { phase, yieldTask } from "./performance";
 import { gardenSpan } from "./framing";
+import { MAX_TREES } from "./narrative/model";
 
 export type Season = "spring" | "summer" | "autumn" | "winter";
 
@@ -41,6 +42,12 @@ export interface Garden {
   setTheme: (dark: boolean) => void;
   rotate: () => void;
   rotateBy: (radians: number) => void;
+  /** Plants a tree on the front terrace (keyboard planting). Returns the tree count. */
+  plant: () => number;
+  /** Plants a tree where a viewport point (relative to the container) meets a terrace. Returns the tree count, or -1 on a miss. */
+  plantAt: (x: number, y: number) => number;
+  /** How many trees the visitor has planted, of MAX_TREES. */
+  trees: () => number;
   /** Local hour, 5–23. Moves the sun; lanterns and fireflies come out after dusk. */
   setHour: (hour: number) => void;
   /** Cloud cover and rain or snow, both 0–1. Clouds soften the sun and its shadows; snow settles on the foliage and terraces. */
@@ -69,7 +76,7 @@ export interface Garden {
       rendered and copied in the same task, so no drawing buffer is kept.
       (A portrait slot the stage leaves keeps this copy of its pose.) */
   drawInto: (target: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => void;
-  /** The view a rebuilt garden should keep: its turn, zoom and pan. */
+  /** What a rebuilt garden should keep: the visitor's trees, turn, zoom and pan. */
   snapshot: () => GardenSnapshot;
   /** Carries a snapshot into a rebuilt garden, already drawn in. */
   restore: (snapshot: GardenSnapshot) => void;
@@ -84,6 +91,7 @@ export interface Garden {
 }
 export type GardenSnapshot = {
   rotation: number;
+  trees: { x: number; y: number; z: number; seed: number }[];
   // The visitor's own zoom and pan, so a rebuilt garden keeps their view.
   zoom: number;
   pan: { x: number; y: number };
@@ -2497,7 +2505,71 @@ async function buildGarden(
   });
   world.add(new T.Points(fireflyGeometry, fireflyMaterial));
 
+  /* The visitor's trees (the garden panel). A tree springs up where it is
+     planted and keeps its size; a rebuilt garden draws the same trees again
+     from their seeds (see snapshot and restore). */
+  const planted: { group: T.Group; age: number; grown: boolean }[] = [];
+  const plantMaterial = new T.MeshStandardMaterial({
+    color: 0x8ca360,
+    roughness: 1,
+  });
+  const plantLeaves = [0x8ca360, 0x6f9455, 0xa6b970, 0x4e7551].map(
+    (color) => new T.MeshStandardMaterial({ color, roughness: 1 }),
+  );
+  const trunkGeometry = new T.CylinderGeometry(0.025, 0.035, 0.45, 6);
+  const leafGeometry = new T.IcosahedronGeometry(0.19, 1);
+  // Until the garden is built, a planted tree is only drawn: a bare stick
+  // with a few forked branches, in the same ink as the rest of the drawing.
+  const stickMaterial = new T.LineBasicMaterial({
+    transparent: true,
+    depthWrite: false,
+  });
+  const stickGeometry = new T.BufferGeometry().setFromPoints(
+    [
+      [0, 0, 0], [0, 0.62, 0],
+      [0, 0.3, 0], [-0.14, 0.5, 0.03],
+      [0, 0.36, 0], [0.15, 0.56, -0.04],
+      [0, 0.44, 0], [0.04, 0.6, 0.13],
+      [0, 0.48, 0], [-0.05, 0.62, -0.12],
+    ].map(([x, y, z]) => new T.Vector3(x, y, z)),
+  );
+  // `grown` plants a tree at its full size, as when replanting a rebuilt garden.
+  function makeTree(local: T.Vector3, grown = reduced || paused) {
+    const g = new T.Group();
+    // The seed it was drawn from, to draw the same tree again (see snapshot).
+    g.userData.seed = seed;
+    g.add(new T.LineSegments(stickGeometry, stickMaterial));
+    const trunk = new T.Mesh(trunkGeometry, plantMaterial);
+    trunk.position.y = 0.23;
+    trunk.castShadow = true;
+    g.add(trunk);
+    // Clumps mix the season's shades, like the garden's own trees: a winter
+    // tree is snow over a dark core rather than one solid green.
+    const first = Math.floor(random() * plantLeaves.length);
+    const clumps = 2 + Math.floor(random() * 3);
+    for (let i = 0; i < clumps; i++) {
+      const leaves = plantLeaves[(first + i) % plantLeaves.length];
+      const m = new T.Mesh(leafGeometry, leaves);
+      m.position.set(
+        (random() - 0.5) * 0.28,
+        0.42 + random() * 0.18,
+        (random() - 0.5) * 0.22,
+      );
+      m.scale.setScalar(0.75 + random() * 0.5);
+      m.castShadow = true;
+      g.add(m);
+    }
+    g.position.copy(local);
+    g.rotation.y = random() * Math.PI * 2;
+    g.userData.size = 1.15 + random() * 0.6;
+    g.scale.setScalar(grown ? g.userData.size : 0.001);
+    world.add(g);
+    planted.push({ group: g, age: grown ? 1 : 0, grown });
+    invalidate();
+    return planted.length;
+  }
   const raycaster = new T.Raycaster();
+  const pointer = new T.Vector2();
 
   await checkpoint("seasons");
   /* Seasons. Foliage colours per batch, how many flowers are out, what lies
@@ -3349,6 +3421,7 @@ async function buildGarden(
     flower: 0.8,
     coral: 0.8,
   };
+  const plantSnowWeight = [0.82, 0.55, 0.92, 0.55];
   function paintFoliage() {
     const palette = seasonColors[season];
     const snow = (m: T.MeshStandardMaterial, hex: number, weight: number) =>
@@ -3359,6 +3432,7 @@ async function buildGarden(
     });
     snow(bushMaterials[0], palette.leaf!, snowWeight.leaf!);
     snow(bushMaterials[1], palette.leafDark!, snowWeight.leafDark!);
+    plantLeaves.forEach((m, i) => snow(m, palette.plants[i], plantSnowWeight[i]));
     const lying = snowCover > 0.35;
     if (lying !== snowLying) {
       snowLying = lying;
@@ -3709,7 +3783,8 @@ async function buildGarden(
       Math.abs(userZoomGoal - userZoom) > 0.0005 ||
       pan.distanceTo(panGoal) > 0.0005 ||
       Math.abs(snowGoal - snowCover) > 0.001 ||
-      roomsSettling()
+      roomsSettling() ||
+      planted.some((p) => p.age < 1)
     );
   }
   function render(now: number) {
@@ -3830,6 +3905,8 @@ async function buildGarden(
           key === "flower" || key === "coral" ? flowerAmount[season] : 1;
         fade(material, flora ? life * bloom : solid * (glass ? 0.38 : 1));
       });
+      fade(plantMaterial, solid);
+      plantLeaves.forEach((m) => fade(m, life));
       lineMaterial.color
         .copy(pencilColor)
         .lerp(blueColor, blueprint)
@@ -3839,6 +3916,9 @@ async function buildGarden(
       lineMaterial.opacity =
         lerp(darkTheme ? 0.38 : 0.44, darkTheme ? 0.85 : 0.66, blueprint) *
         (1 - solid * 0.92);
+      stickMaterial.color.copy(lineMaterial.color);
+      stickMaterial.opacity = lineMaterial.opacity * (1 - solid);
+      stickMaterial.visible = stickMaterial.opacity > 0.003;
       ghostMaterial.opacity = 0.055 * (1 - blueprint);
       guideMaterial.opacity =
         smooth(0.06, 0.3, progress) * (1 - smooth(0.45, 0.62, progress)) * 0.38;
@@ -3902,6 +3982,16 @@ async function buildGarden(
               Math.sin(elapsed * 8 + i) * 0.7 * (j === 0 ? 1 : -1)),
         );
       });
+    for (const p of planted) {
+      // A grown tree keeps its final size; only growing ones are rescaled.
+      if (p.grown) continue;
+      p.age = reduced ? 1 : Math.min(1, p.age + dt * 1.6);
+      // A small overshoot, as if the tree springs up.
+      const t = p.age,
+        back = 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);
+      p.group.scale.setScalar(Math.max(0.001, back * p.group.userData.size));
+      p.grown = p.age >= 1;
+    }
     // The garden is fitted to its frame, as if the frame were the whole
     // view; the rest of the view shows more of the same scene around it.
     // The camera and the labels move only when what frames them changes.
@@ -4159,6 +4249,25 @@ async function buildGarden(
       rotationTarget += radians;
       invalidate();
     },
+    plant() {
+      if (planted.length >= MAX_TREES) return MAX_TREES;
+      // Keyboard planting fills the front terrace from left to right.
+      const i = planted.length % 12;
+      return makeTree(
+        new T.Vector3(-4.3 + i * 0.78 + (random() - 0.5) * 0.2, 0.36, 3.95),
+      );
+    },
+    plantAt(x, y) {
+      if (planted.length >= MAX_TREES) return MAX_TREES;
+      pointer.set((x / width) * 2 - 1, -(y / height) * 2 + 1);
+      raycaster.setFromCamera(pointer, camera);
+      const hit = raycaster.intersectObjects(solidMeshes, false)[0];
+      if (!hit?.face || hit.face.normal.y < 0.7) return -1;
+      return makeTree(world.worldToLocal(hit.point.clone()));
+    },
+    trees() {
+      return planted.length;
+    },
     setSeason(value) {
       season = value;
       applySeason();
@@ -4250,11 +4359,19 @@ async function buildGarden(
     snapshot() {
       return {
         rotation: rotationTarget,
+        trees: planted.map(({ group: g }) => ({ x: g.position.x, y: g.position.y, z: g.position.z, seed: g.userData.seed })),
         zoom: userZoomGoal,
         pan: { x: panGoal.x, y: panGoal.y },
       };
     },
     restore(snapshot) {
+      // The same trees, drawn from the seeds they were drawn from.
+      const keep = seed;
+      for (const t of snapshot.trees.slice(0, MAX_TREES - planted.length)) {
+        seed = t.seed;
+        makeTree(new T.Vector3(t.x, t.y, t.z), true);
+      }
+      seed = keep;
       rotation = rotationTarget = snapshot.rotation;
       userZoom = userZoomGoal = snapshot.zoom;
       pan.copy(panGoal.set(snapshot.pan.x, snapshot.pan.y));

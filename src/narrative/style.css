@@ -283,6 +283,57 @@
 .carbon-details p { margin: 0.4rem 0; }
 .carbon-details a { display: inline-flex; align-items: center; min-height: 2rem; margin-inline-end: 0.5rem; }
 
+/* The garden panel (src/narrative/garden-panel.ts; markup in src/render.ts
+   gardenPanel()): the previous page's "Make the garden yours" dock behind a
+   round button beside the tally, on every layout. Its panel opens above the
+   bar like the tally's: the sky (hour, weather, season) and the garden
+   (planting, turning, drawing quality) as rows of chips. */
+.garden { position: relative; flex: none; }
+.garden > summary {
+  display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0;
+  background: var(--slip); backdrop-filter: blur(10px);
+  border: 1px solid var(--hairline); border-radius: 50%; box-shadow: var(--lift);
+  color: var(--muted); cursor: pointer; list-style: none;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.garden > summary::-webkit-details-marker { display: none; }
+.garden > summary:hover, .garden[open] > summary { color: var(--ink); }
+.garden > summary svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.garden-panel {
+  position: absolute; z-index: 1; inset-inline-end: 0; bottom: calc(100% + 0.5rem);
+  width: min(21rem, calc(100vw - 1.5rem));
+  max-height: calc(100svh - var(--header-clearance) - 6rem);
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: 0.8rem 1rem 0.85rem;
+  background: var(--paper); border: 1px solid var(--hairline); border-radius: 0.75rem;
+  box-shadow: 0 6px 18px color-mix(in srgb, black 35%, transparent);
+  font-size: 0.875rem; line-height: 1.45;
+}
+.garden-label { margin: 0 0 0.6rem; font-size: 1rem; line-height: 1.3; }
+.widget + .widget { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--hairline); }
+.widget-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.25rem; }
+.widget h3 { margin: 0; font-size: 0.9375rem; font-weight: 600; }
+.widget output { font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
+.widget-report { margin: 0 0 0.2rem; font-size: 0.8125rem; font-style: italic; color: var(--muted); }
+.widget-report:empty { display: none; }
+.garden-hour { display: block; width: 100%; height: 2rem; margin: 0.2rem 0 0.25rem; accent-color: var(--stage); }
+.chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.35rem 0 0.4rem; }
+.chip {
+  min-height: 2.25rem; padding: 0.15rem 0.7rem;
+  border: 1px solid var(--hairline); border-radius: 999px; background: transparent;
+  color: inherit; font: inherit; font-size: 0.8125rem; line-height: 1.2; cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.chip:hover { border-color: var(--stage); }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.chip:disabled { opacity: 0.5; cursor: default; }
+.widget-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 0.75rem; margin: 0; }
+.widget-foot.credit { margin-top: 0.15rem; font-size: 0.75rem; color: var(--muted); }
+.link-button { min-height: 2rem; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
+.quality-label { margin: 0.5rem 0 0; font-size: 0.8125rem; color: var(--muted); }
+/* Planting by clicking: the stage, decorative otherwise, takes the click. */
+.planting .scene-stage { pointer-events: auto; cursor: crosshair; }
+
 /* Wide: the bar, centred in the scene beyond the card. Where that space
    falls under 20rem (enlarged text on a narrow window) the bar gives way to
    the pill rather than run over the card. */
@@ -354,15 +405,18 @@
   .tally-figure { font-size: 0.9375rem; }
   .tally-note { font-size: 0.75rem; }
   .ruler-motion { width: 2.5rem; height: 2.5rem; }
+  .garden > summary { width: 2.5rem; height: 2.5rem; background: none; backdrop-filter: none; box-shadow: none; }
+  .garden > summary:hover, .garden[open] > summary { background: var(--hairline); }
   @container ruler-dock (width < 20rem) {
     .ruler { width: auto; margin-inline-start: auto; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; }
     .ruler-track, .ruler-motion { display: none; }
     .ruler .tally > summary { background: var(--slip); backdrop-filter: blur(10px); box-shadow: var(--lift); }
     .ruler .tally > summary:hover, .ruler .tally[open] > summary { background: color-mix(in srgb, var(--paper) 92%, var(--ink)); }
+    .ruler .garden > summary { width: 2.75rem; height: 2.75rem; background: var(--slip); backdrop-filter: blur(10px); box-shadow: var(--lift); }
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ruler-dot, .ruler-scrub::-webkit-slider-thumb, .tally > summary { transition: none; }
+  .ruler-dot, .ruler-scrub::-webkit-slider-thumb, .tally > summary, .garden > summary, .chip { transition: none; }
 }
 
 :root[lang="ar"] :is(.chapter-label, .chapter-decision h3, .notebook h3) { letter-spacing: normal; text-transform: none; font-size: 0.875rem; }

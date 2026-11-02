@@ -42,10 +42,17 @@
  *
  * Reduced motion, stills (`?view=read|stills`) and save-data load no scene
  * until the visitor turns off "Still images". Sound starts only from its
- * control; pause and system-reduced silence it without changing consent. */
+ * control; pause and system-reduced silence it without changing consent.
+ *
+ * The garden panel (src/narrative/garden-panel.ts) sets the atmosphere (the
+ * hour, the weather, the season), the drawing quality and the visitor's
+ * trees through `garden` below. The mount keeps that state, so a scene built
+ * later (stills turned off, a lost context) opens as the visitor left it,
+ * trees included, and the soundscape hears the same weather. */
 import type { ComputeWork } from "../compute";
 import { getLocale, onLocaleChange } from "../i18n";
-import type { Garden } from "../scene";
+import type { Garden, GardenSnapshot, Season } from "../scene";
+import { presets, type Weather, type WeatherKind } from "../weather";
 import type { Sky } from "../sky";
 import type { Soundscape } from "../soundscape";
 import { chapter as chapterContent } from "./content";
@@ -54,7 +61,7 @@ import { chapterIds, posterSrc, resolveFragment, WIDE_LAYOUT_QUERY, type Chapter
 import {
   COMPACT_QUERY, LIVE_KEY, PAUSE_KEY, QUALITY_KEY, REDUCED_MOTION_QUERY,
   detailFor, liveByDefault, motionPreference, qualityChoice, qualityFor, read, saveDataOn, viewMode, write,
-  type Quality, type ViewMode,
+  type Quality, type QualityChoice, type ViewMode,
 } from "./preferences";
 import type { HostKind, SceneAdapter } from "./scene-adapter";
 import { createSceneControls, type ControlName } from "./scene-controls";
@@ -82,6 +89,46 @@ const READING_LINE = 0.3;
 const NIGHT_HOUR = 22;
 /** How far ahead of the reading line the scene starts its next transition. */
 const LEAD: Record<HostKind, number> = { wide: 0.25, portrait: 0.35 };
+/** 0–1 mist over the garden for each kind of weather. */
+const fogByKind: Record<WeatherKind, number> = {
+  clear: 0, partly: 0, cloudy: 0.1, fog: 1, drizzle: 0.3, rain: 0.35, snow: 0.4, storm: 0.45,
+};
+/** 0 by day, 1 by night, for the hour (the garden's own curve). */
+function nightOf(hour: number) {
+  const step = (a: number, b: number, v: number) => { const t = Math.min(Math.max((v - a) / (b - a), 0), 1); return t * t * (3 - 2 * t); };
+  return Math.min(1, step(19.2, 21.5, hour) + (1 - step(5, 6.6, hour)));
+}
+
+/** The atmosphere the visitor has chosen in the garden panel. */
+export interface Atmosphere {
+  /** Local hour, 5–23. */
+  hour: number;
+  weather: Weather;
+  season: Season;
+}
+
+/** What the garden panel (src/narrative/garden-panel.ts) drives. */
+export interface GardenScene {
+  atmosphere(): Atmosphere;
+  setHour(hour: number): void;
+  setWeather(weather: Weather): void;
+  setSeason(season: Season): void;
+  quality(): QualityChoice;
+  setQuality(choice: QualityChoice): void;
+  /** A live garden is on screen: planting and turning can act. */
+  live(): boolean;
+  /** The visitor's trees, kept across rebuilt gardens. */
+  trees(): number;
+  /** Plants a tree on the front terrace; null without a live garden. */
+  plant(): number | null;
+  /** Planting by clicking the garden: on, the stage takes clicks. */
+  setPlanting(on: boolean): void;
+  rotate(): void;
+  /** A click planted a tree (the new count) or missed a terrace (-1). */
+  onPlanted(listener: (count: number) => void): () => void;
+  /** The scene's state was published (renderer, live, quality, …). */
+  onState(listener: () => void): () => void;
+}
 
 const statusText = {
   reduced: "Reduced motion is on in your system settings.",
@@ -111,7 +158,15 @@ export function createSceneMount(controller: NarrativeController) {
   const saveData = saveDataOn();
   let userPaused = read(session, PAUSE_KEY) === "paused";
   let asked = read(session, LIVE_KEY) === "1";
-  const choice = qualityChoice(href(), read(local, QUALITY_KEY));
+  let choice = qualityChoice(href(), read(local, QUALITY_KEY));
+  /* The navy night (the user's G2 decision) until the visitor plays with
+     the sky: the moon and stars up and the house's lamps lit. */
+  const atmosphere: Atmosphere = { hour: NIGHT_HOUR, weather: presets.clear, season: "summer" };
+  /** The visitor's trees and turn, carried into the next garden built. */
+  let kept: GardenSnapshot | null = null;
+  let planting = false;
+  const plantedListeners = new Set<(count: number) => void>();
+  const stateListeners = new Set<() => void>();
 
   /* The landing chapter. A fragment names it outright while the document has
      not been scrolled yet: on a reload or a history traversal the browser
@@ -240,6 +295,9 @@ export function createSceneMount(controller: NarrativeController) {
     root.dataset.motion = state.motion;
     root.dataset.sound = String(state.sound);
     root.dataset.sceneChapter = state.chapter;
+    root.dataset.weather = atmosphere.weather.kind;
+    root.dataset.season = atmosphere.season;
+    stateListeners.forEach(listener => listener());
     controls?.show({
       paused: state.motion !== "normal",
       systemReduced: state.motion === "system-reduced",
@@ -249,6 +307,34 @@ export function createSceneMount(controller: NarrativeController) {
       soundSupported: typeof AudioContext !== "undefined",
       status: status(),
     });
+  }
+
+  /* ---------- Atmosphere ---------- */
+  /** The hour, weather and season, on the garden and the sky. The garden
+   * draws the change in its next frame (a held garden draws one); the mist
+   * takes the page's paper colour. */
+  function applyAtmosphere() {
+    const w = atmosphere.weather;
+    if (garden) {
+      garden.setHour(atmosphere.hour);
+      garden.setWeather(w.cloud, w.precip, w.kind === "snow");
+      garden.setSeason(atmosphere.season);
+      const paper = getComputedStyle(root).getPropertyValue("--paper").trim();
+      garden.setFog(fogByKind[w.kind], parseInt(paper.slice(1), 16) || 0x0e2b48);
+    }
+    if (sky) {
+      sky.setHour(atmosphere.hour);
+      sky.setWeather(w);
+    }
+  }
+  /** Planting by clicking: the stage takes the click and a tree is planted
+   * where it meets a terrace. */
+  function onStageClick(event: MouseEvent) {
+    if (!planting || !garden || !gardenBox) return;
+    const box = gardenBox.getBoundingClientRect();
+    const count = garden.plantAt(event.clientX - box.left, event.clientY - box.top);
+    if (count > 0) soundscape?.planted();
+    plantedListeners.forEach(listener => listener(count));
   }
 
   /* ---------- Pose ---------- */
@@ -471,6 +557,7 @@ export function createSceneMount(controller: NarrativeController) {
       const front = document.createElement("canvas");
       front.className = "scene-sky scene-sky-front";
       el.append(back, box, front);
+      el.addEventListener("click", onStageClick);
       stage = el;
       gardenBox = box;
       hostFor(target).append(el);
@@ -479,12 +566,14 @@ export function createSceneMount(controller: NarrativeController) {
       if (mine !== generation) { built.dispose(); return; }
       garden = built;
       // The navy night (the user's G2 decision): the garden's dark ink set
-      // and a night sky, as the previous page drew them.
+      // and a night sky, as the previous page drew them, unless the visitor
+      // has set another hour or weather in the garden panel.
       garden.setTheme(true);
-      garden.setHour(NIGHT_HOUR);
       sky = createSky(back, front);
       sky.refresh(true);
-      sky.setHour(NIGHT_HOUR);
+      applyAtmosphere();
+      // The trees and the turn of the garden this one replaces.
+      if (kept?.trees.length) garden.restore(kept);
       adapter = createSceneAdapter(garden, hostKind());
       adapter.setMotionPreference(state.motion);
       // Every landing shows its pose complete at once, the opening sketch
@@ -588,6 +677,7 @@ export function createSceneMount(controller: NarrativeController) {
       retired.gpuMs += g?.gpuMs ?? 0;
       retired.any = true;
     }
+    if (garden) kept = garden.snapshot();
     garden?.dispose();
     sky?.dispose();
     stage?.remove();
@@ -671,10 +761,10 @@ export function createSceneMount(controller: NarrativeController) {
           const scene = chapterContent(state.chapter).scene;
           return {
             growth: adapter?.state().progress ?? scene.progress,
-            hour: NIGHT_HOUR,
-            night: 1,
-            weather: { kind: "clear", cloud: 0.04, precip: 0, wind: 8 },
-            season: "summer",
+            hour: atmosphere.hour,
+            night: nightOf(atmosphere.hour),
+            weather: atmosphere.weather,
+            season: atmosphere.season,
             spot: scene.focus,
             narrating: false,
           };
@@ -733,12 +823,46 @@ export function createSceneMount(controller: NarrativeController) {
     };
   }
 
+  const gardenScene: GardenScene = {
+    atmosphere: () => ({ ...atmosphere }),
+    setHour(hour) { atmosphere.hour = hour; applyAtmosphere(); },
+    setWeather(weather) { atmosphere.weather = weather; applyAtmosphere(); publish(); },
+    setSeason(season) { atmosphere.season = season; applyAtmosphere(); publish(); },
+    quality: () => choice,
+    setQuality(value) {
+      choice = value;
+      write(local, QUALITY_KEY, value === "auto" ? null : value);
+      state.quality = qualityFor(choice, compactQuery.matches);
+      garden?.setQuality(state.quality);
+      publish();
+    },
+    live: () => state.renderer === "ready" && !!garden,
+    trees: () => garden?.trees() ?? kept?.trees.length ?? 0,
+    plant() {
+      if (!garden || state.renderer !== "ready") return null;
+      const count = garden.plant();
+      soundscape?.planted();
+      return count;
+    },
+    setPlanting(on) {
+      planting = on;
+      root.classList.toggle("planting", on);
+    },
+    rotate() { garden?.rotate(); },
+    onPlanted(listener) { plantedListeners.add(listener); return () => { plantedListeners.delete(listener); }; },
+    onState(listener) { stateListeners.add(listener); return () => { stateListeners.delete(listener); }; },
+  };
+
   return {
     state: () => ({ ...state }),
     work,
     /** The visit's total, drawn on the register in the observatory. */
     setTally(grams: number | null) { garden?.setTally(grams); },
+    garden: gardenScene,
     destroy() {
+      gardenScene.setPlanting(false);
+      plantedListeners.clear();
+      stateListeners.clear();
       teardown();
       soundscape?.dispose();
       offPosition();

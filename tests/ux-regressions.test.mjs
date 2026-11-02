@@ -35,7 +35,7 @@ for (const locale of ['en', 'fr', 'ar']) {
     });
   }
   for (const viewport of [{ width: 900, height: 700 }, { width: 1440, height: 900 }]) {
-    test(`${locale} ${viewport.width}×${viewport.height}: the ruler sits beside the chapter card with the tally on screen`, async () => {
+    test(`${locale} ${viewport.width}×${viewport.height}: the ruler sits beside the chapter card with the tally and the garden button on screen`, async () => {
       const p = await open(locale, viewport);
       try { await assertLanding(p, 'about'); await assertRuler(p, true); }
       finally { await p.context().close(); }

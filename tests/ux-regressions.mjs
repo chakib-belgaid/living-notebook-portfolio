@@ -99,6 +99,27 @@ export async function assertRuler(page, wide) {
   await page.keyboard.press('Escape');
   assert.equal(await page.evaluate(() => document.querySelector('.tally').open), false);
   assert.equal(await page.evaluate(() => document.activeElement.tagName), 'SUMMARY');
+  // The garden panel: its button beside the tally on every layout, its panel
+  // on screen above the bar, closed by Escape with focus back on the button.
+  const button = await page.evaluate(() => { const b = document.querySelector('.garden > summary').getBoundingClientRect(); return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, width: b.width, height: b.height }; });
+  assert.ok(within(button) && button.width >= 40 && button.height >= 40, `the garden button is on screen and large enough: ${JSON.stringify(button)}`);
+  await page.locator('.garden > summary').click();
+  const garden = await page.evaluate(() => {
+    const b = document.querySelector('.garden-panel').getBoundingClientRect();
+    return { open: document.querySelector('.garden').open, left: b.left, top: b.top, right: b.right, bottom: b.bottom,
+      chips: document.querySelectorAll('.garden-panel .chip').length,
+      weather: document.querySelector('.garden-panel [data-weather][aria-pressed="true"]')?.dataset.weather,
+      season: document.querySelector('.garden-panel [data-season][aria-pressed="true"]')?.dataset.season,
+      quality: document.querySelector('.garden-panel [data-quality][aria-pressed="true"]')?.dataset.quality,
+      hour: document.querySelector('[data-hour-readout]').textContent, trees: document.querySelector('[data-tree-count]').textContent };
+  });
+  assert.ok(garden.open && within(garden), JSON.stringify({ garden, layout }));
+  assert.equal(garden.chips, 18, 'live + six weathers, now + four seasons, three garden actions, three qualities');
+  assert.deepEqual([garden.weather, garden.season, garden.quality], ['clear', 'summer', 'auto'], JSON.stringify(garden));
+  assert.ok(garden.hour.trim() && /24/.test(garden.trees), `the hour and the tree count are written: ${JSON.stringify(garden)}`);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.evaluate(() => document.querySelector('.garden').open), false);
+  assert.ok(await page.evaluate(() => document.activeElement.closest('.garden') !== null), 'focus returns to the garden button');
 }
 
 export async function assertSceneIsolation(page, portrait = false) {

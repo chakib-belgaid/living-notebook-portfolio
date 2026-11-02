@@ -151,3 +151,7 @@ export interface ReadingState {
   /** False until the visitor explicitly turns sound on. */
   sound: boolean;
 }
+
+/** How many trees the visitor may plant in the garden (src/scene.ts
+ * `plant`; the panel in src/narrative/garden-panel.ts). */
+export const MAX_TREES = 24;
