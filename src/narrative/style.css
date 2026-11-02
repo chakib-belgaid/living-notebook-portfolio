@@ -218,12 +218,13 @@
 }
 
 /* The reading ruler (src/narrative/ruler.ts; markup in src/render.ts
-   ruler()). Enhancement only: hidden until the module shows it.
-   Stacked layouts show only the carbon tally, a pill in the bottom corner,
-   so the figure is on screen the whole way without a bar over the text; the
-   page ends with room for it. Wide layouts show the whole bar at the foot of
-   the scene, right of the chapter card (below). The current chapter's
-   construction phase tints the current dot, the fill and the tally's edge. */
+   ruler()): the previous page's bottom bar. Enhancement only: hidden until
+   the module shows it. Stacked layouts show only the carbon tally, a pill in
+   the bottom corner, so the figure is on screen the whole way without a bar
+   over the text; the page ends with room for it. Wide layouts show the whole
+   bar at the foot of the scene, right of the chapter card (below). The
+   current chapter's construction phase tints the scale's handle, the current
+   dot and the tally's edge. */
 .enhanced .narrative { padding-bottom: 4rem; }
 .ruler-dock {
   position: fixed; z-index: 5;
@@ -232,13 +233,12 @@
 }
 .ruler {
   --stage: var(--graphite);
-  display: flex; align-items: center; gap: 0.9rem; pointer-events: auto;
-  font-family: var(--sans);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; pointer-events: auto;
 }
 .ruler[data-phase="blueprint"] { --stage: var(--blueprint); }
 .ruler[data-phase="build"] { --stage: var(--stone); }
 .ruler[data-phase="bloom"] { --stage: var(--leaf); }
-.ruler-track { display: none; }
+.chapter-index, .ruler-track, .stage-buttons, .ruler-motion { display: none; }
 
 /* The tally: an odometer with its panel above it. */
 .tally { position: relative; flex: none; }
@@ -253,9 +253,9 @@
 }
 .tally > summary::-webkit-details-marker { display: none; }
 .tally > summary:hover, .tally[open] > summary { background: color-mix(in srgb, var(--paper) 92%, var(--ink)); }
-.tally-figure { font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0.01em; unicode-bidi: isolate; }
+.tally-figure { font-size: 1.0625rem; font-weight: 600; font-variant-numeric: tabular-nums lining-nums; unicode-bidi: isolate; }
 .tally-figure:empty::before { content: "…"; color: var(--muted); }
-.tally-note { font-size: 0.75rem; font-style: italic; color: var(--muted); }
+.tally-note { font-size: 0.8125rem; font-style: italic; color: var(--muted); }
 .tally-panel {
   position: absolute; z-index: 1; inset-inline-end: 0; bottom: calc(100% + 0.5rem);
   width: min(19rem, calc(100vw - 1.5rem));
@@ -264,15 +264,15 @@
   padding: 0.8rem 1rem 0.85rem;
   background: var(--paper); border: 1px solid var(--hairline); border-radius: 0.75rem;
   box-shadow: 0 6px 18px color-mix(in srgb, black 35%, transparent);
-  font-size: 0.8125rem; line-height: 1.45;
+  font-size: 0.875rem; line-height: 1.45;
 }
-.carbon-label { margin: 0; font-size: 0.9375rem; line-height: 1.3; }
+.carbon-label { margin: 0; font-size: 1rem; line-height: 1.3; }
 .carbon-split { display: grid; gap: 0.1rem; margin: 0.5rem 0 0; font-variant-numeric: tabular-nums; }
 .carbon-split div { display: flex; justify-content: space-between; gap: 0.75rem; }
 .carbon-split dt { color: var(--muted); }
 .carbon-split dd { margin: 0; white-space: nowrap; unicode-bidi: isolate; }
-.carbon-source { margin: 0.35rem 0 0; font-size: 0.75rem; color: var(--muted); }
-.carbon-details { margin-top: 0.5rem; font-size: 0.75rem; }
+.carbon-source { margin: 0.35rem 0 0; font-size: 0.8125rem; color: var(--muted); }
+.carbon-details { margin-top: 0.5rem; font-size: 0.8125rem; }
 .carbon-details > summary { display: flex; align-items: center; min-height: 2rem; cursor: pointer; }
 .carbon-details p { margin: 0.4rem 0; }
 .carbon-details a { display: inline-flex; align-items: center; min-height: 2rem; margin-inline-end: 0.5rem; }
@@ -288,41 +288,86 @@
     container: ruler-dock / inline-size;
   }
   .ruler {
-    width: min(34rem, 100%); padding: 0.55rem 0.7rem 0.55rem 1rem;
+    width: min(44rem, 100%); padding: 0.6rem 0.8rem 0.6rem;
     background: var(--slip); backdrop-filter: blur(10px);
     border: 1px solid var(--hairline); border-radius: 1rem; box-shadow: var(--lift);
   }
-  .ruler-track { position: relative; display: block; flex: 1; min-width: 0; }
-  .ruler-current {
-    display: flex; justify-content: space-between; gap: 0.75rem; margin: 0 0 0.15rem;
-    font-size: 0.8125rem; line-height: 1.25;
+  /* The chapter being read, then the index. */
+  .chapter-index { display: block; flex: 0 0 100%; min-width: 0; }
+  .chapter-current { display: block; font-size: 0.875rem; color: var(--muted); }
+  .chapter-index > div { display: flex; flex-wrap: wrap; gap: 0 0.75rem; }
+  .chapter-index a { display: inline-flex; align-items: center; min-height: 2.25rem; font-size: 1rem; }
+  .chapter-index a[aria-current] { font-weight: 700; }
+  /* The scale: the opening at the left, the end at the right, whatever the
+     page's direction; dragging the handle scrolls the page. A dot marks
+     where each chapter begins. */
+  .ruler-track { display: block; flex: 0 0 100%; min-width: 0; direction: ltr; }
+  .ruler-scrub {
+    -webkit-appearance: none; appearance: none;
+    display: block; width: 100%; height: 1.25rem; margin: 0;
+    background: transparent; cursor: ew-resize;
   }
-  .ruler-phase { color: var(--muted); }
-  .ruler-ticks { position: relative; z-index: 1; display: flex; justify-content: space-between; list-style: none; margin: 0; padding: 0; }
-  .ruler-dot { display: grid; place-items: center; width: 1.5rem; height: 1.75rem; }
-  .ruler-dot::before {
-    content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%;
-    background: var(--paper); border: 1.5px solid color-mix(in srgb, var(--ink) 55%, transparent);
-    transition: transform 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
+  .ruler-scrub::-webkit-slider-runnable-track {
+    height: 1.25rem;
+    background:
+      linear-gradient(var(--ink), var(--ink)) 0 50% / 100% 1px no-repeat,
+      repeating-linear-gradient(90deg, var(--muted) 0 1px, transparent 1px 10%) 0 30% / 100% 40% no-repeat,
+      repeating-linear-gradient(90deg, var(--hairline) 0 1px, transparent 1px 2%) 0 40% / 100% 20% no-repeat;
   }
-  .ruler-dot[data-passed]::before { background: color-mix(in srgb, var(--ink) 55%, transparent); border-color: transparent; }
-  .ruler-dot[aria-current]::before { width: 0.7rem; height: 0.7rem; background: var(--stage); border-color: var(--stage); }
-  .ruler-dot:hover::before { transform: scale(1.3); }
-  /* From the first dot's centre to the last; the ink fills as the page is read. */
-  .ruler-fill { position: absolute; inset-inline: 0.75rem; bottom: calc(0.875rem - 1px); height: 2px; background: color-mix(in srgb, var(--ink) 22%, transparent); }
-  .ruler-fill::after { content: ""; position: absolute; inset-inline-start: 0; top: 0; height: 100%; width: calc(var(--read, 0) * 100%); background: var(--stage); transition: width 0.25s ease, background-color 0.6s ease; }
+  .ruler-scrub::-moz-range-track {
+    height: 1.25rem;
+    background:
+      linear-gradient(var(--ink), var(--ink)) 0 50% / 100% 1px no-repeat,
+      repeating-linear-gradient(90deg, var(--muted) 0 1px, transparent 1px 10%) 0 30% / 100% 40% no-repeat;
+  }
+  .ruler-scrub::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 0.9rem; height: 1.25rem; border-radius: 3px;
+    background: var(--stage); border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--stage);
+    transition: background-color 0.6s ease;
+  }
+  .ruler-scrub::-moz-range-thumb {
+    width: 0.7rem; height: 1.1rem; border-radius: 3px;
+    background: var(--stage); border: 2px solid var(--paper);
+  }
+  .ruler-scrub:focus-visible { outline-offset: 2px; }
+  .ruler-ticks { position: relative; height: 0.5rem; margin: 0.1rem 0.45rem 0; }
+  .ruler-dot {
+    position: absolute; top: 0; left: calc(var(--at, 0) * 100%);
+    width: 4px; height: 4px; margin-left: -2px; border-radius: 50%;
+    background: var(--muted); opacity: 0.55;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
+  }
+  .ruler-dot[data-current] { top: -1px; width: 6px; height: 6px; margin-left: -3px; background: var(--stage); opacity: 1; }
+  /* The phases, the tally and the controls share the last row. */
+  .stage-buttons { display: grid; flex: 1 1 auto; grid-template-columns: repeat(4, 1fr); gap: 0.15rem; }
+  .stage-buttons button {
+    min-height: 2.75rem; padding: 0.3rem; border: 0; border-radius: 6px; background: transparent;
+    font: inherit; font-size: 1rem; color: var(--muted); cursor: pointer;
+  }
+  .stage-buttons button:hover { color: var(--ink); }
+  .stage-buttons button[aria-current="step"] { color: var(--ink); background: var(--hairline); }
+  .ruler-motion {
+    display: grid; flex: none; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0;
+    border: 1px solid var(--hairline); border-radius: 50%; background: none; color: var(--muted); cursor: pointer;
+  }
+  .ruler-motion:hover, .ruler-motion[aria-pressed="true"] { color: var(--ink); }
+  .ruler-motion[aria-disabled="true"] { color: var(--muted); cursor: default; }
+  .ruler-motion svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ruler-motion .icon-play, .ruler-motion[aria-pressed="true"] .icon-pause { display: none; }
+  .ruler-motion[aria-pressed="true"] .icon-play { display: inline; }
+  .ruler-sound[aria-pressed="false"] .icon-waves, .ruler-sound[aria-pressed="true"] .icon-mute { display: none; }
   /* Inside the bar the tally wears no slip of its own. */
   .tally > summary { background: transparent; backdrop-filter: none; box-shadow: none; }
   .tally > summary:hover, .tally[open] > summary { background: var(--hairline); }
   @container ruler-dock (width < 20rem) {
     .ruler { width: auto; margin-inline-start: auto; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; }
-    .ruler-track { display: none; }
+    .chapter-index, .ruler-track, .stage-buttons, .ruler-motion { display: none; }
     .ruler .tally > summary { background: var(--slip); backdrop-filter: blur(10px); box-shadow: var(--lift); }
     .ruler .tally > summary:hover, .ruler .tally[open] > summary { background: color-mix(in srgb, var(--paper) 92%, var(--ink)); }
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ruler-dot::before, .ruler-fill::after, .tally > summary { transition: none; }
+  .ruler-dot, .ruler-scrub::-webkit-slider-thumb, .tally > summary { transition: none; }
 }
 
 :root[lang="ar"] :is(.chapter-label, .chapter-decision h3, .notebook h3) { letter-spacing: normal; text-transform: none; font-size: 0.875rem; }

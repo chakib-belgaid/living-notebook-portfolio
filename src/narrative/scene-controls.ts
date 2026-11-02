@@ -6,6 +6,9 @@
  *   how a reduced-motion, data-saving or `?view=stills` visitor asks for the
  *   live scene.
  * - Sound: the only way garden sound starts.
+ * The reading ruler's sound and pause buttons (`[data-scene-remote]`, in
+ * src/render.ts ruler()) are bound here too: pressing one is the same toggle,
+ * and every button shows the same state.
  * It owns no state: the scene mount passes it the state to show. */
 export type ControlName = "pause" | "stills" | "sound";
 
@@ -38,6 +41,14 @@ export function createSceneControls(onToggle: (name: ControlName) => void, root:
   const buttons = Object.fromEntries(
     [...wrapper.querySelectorAll<HTMLButtonElement>("[data-scene-control]")].map(b => [b.dataset.sceneControl, b]),
   ) as Record<ControlName, HTMLButtonElement>;
+  const remotes = [...root.querySelectorAll<HTMLButtonElement>("[data-scene-remote]")];
+  const all = (name: ControlName) => [buttons[name], ...remotes.filter(b => b.dataset.sceneRemote === name)];
+  const onRemoteClick = (event: Event) => {
+    const button = event.currentTarget as HTMLButtonElement;
+    if (button.getAttribute("aria-disabled") === "true") return;
+    onToggle(button.dataset.sceneRemote as ControlName);
+  };
+  remotes.forEach(b => b.addEventListener("click", onRemoteClick));
 
   let shownStatus = "";
   const open = (value: boolean) => {
@@ -74,10 +85,9 @@ export function createSceneControls(onToggle: (name: ControlName) => void, root:
 
   return {
     show(view) {
-      press(buttons.pause, view.paused || view.systemReduced, view.systemReduced);
+      all("pause").forEach(b => press(b, view.paused || view.systemReduced, view.systemReduced));
       press(buttons.stills, view.stills, view.stillsLocked);
-      press(buttons.sound, view.sound, false);
-      buttons.sound.hidden = !view.soundSupported;
+      all("sound").forEach(b => { press(b, view.sound, false); b.hidden = !view.soundSupported; });
       // Compared with the English source: the page's localization rewrites
       // the rendered text in place.
       if (shownStatus !== view.status) {
@@ -91,6 +101,7 @@ export function createSceneControls(onToggle: (name: ControlName) => void, root:
       wrapper.removeEventListener("keydown", onKey);
       root.removeEventListener("pointerdown", onOutside, true);
       root.removeEventListener("focusin", onOutside);
+      remotes.forEach(b => b.removeEventListener("click", onRemoteClick));
       wrapper.hidden = true;
     },
   };

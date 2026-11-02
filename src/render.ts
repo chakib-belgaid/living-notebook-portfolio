@@ -83,24 +83,35 @@ function sceneControls() {
       </div>`;
 }
 
-/** The reading ruler (src/narrative/ruler.ts). Enhancement only: hidden
- * until the module shows it. On wide layouts a bar at the foot of the scene
- * (the chapter being read and its phase, a dot per chapter, a line that fills
- * as the page is read, the carbon tally); on stacked layouts the stylesheet
- * keeps only the tally as a pill in the bottom corner. The figures are empty
- * here: the module writes them, so no placeholder needs a translation. */
+/** The reading ruler (src/narrative/ruler.ts): the previous page's bottom
+ * bar. Enhancement only: hidden until the module shows it. On wide layouts
+ * the chapter being read, the chapter index, a scale from the opening to the
+ * end (a dot where each chapter begins), the four construction phases, the
+ * carbon tally and the sound and pause controls (bound with the header's by
+ * src/narrative/scene-controls.ts; `data-scene-remote` keeps them apart from
+ * the header's own `data-scene-control` buttons); on stacked layouts the
+ * stylesheet keeps only the tally as a pill in the bottom corner. The figures
+ * are empty here: the module writes them, so no placeholder needs a
+ * translation. */
 function ruler() {
   const first = chapter("intro");
-  const dots = chapters.map(c => `<li><a class="ruler-dot" href="#${c.id}" title="${e(c.short)}" aria-label="${e(c.short)}"${c.id === "intro" ? ` aria-current="location"` : ""}></a></li>`).join("");
+  const index = chapters.map(c => `<a href="#${c.id}"${c.id === "intro" ? ` aria-current="location"` : ""}>${e(c.short)}</a>`).join("");
+  const dots = chapters.map(c => `<span class="ruler-dot" data-dot="${c.id}"${c.id === "intro" ? " data-current" : ""}></span>`).join("");
+  const stages = phases.map(p => `<button type="button" data-go="${p}" aria-label="Go to ${phaseLabels[p]}"${p === first.scene.phase ? ` aria-current="step"` : ""}>${phaseLabels[p]}</button>`).join("");
+  const speaker = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path class="icon-speaker" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path class="icon-waves" d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path class="icon-waves" d="M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/><path class="icon-mute" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>`;
+  const pause = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path class="icon-pause" d="M8 5.5v13M16 5.5v13"/><path class="icon-play" d="M8 5.5v13l10-6.5Z"/></svg>`;
   return `<div class="ruler-dock" hidden>
-      <nav class="ruler" aria-label="Reading progress" data-phase="${first.scene.phase}">
+      <div class="ruler" data-phase="${first.scene.phase}">
+        <nav class="chapter-index" aria-label="Chapters"><span class="chapter-current" data-ruler-chapter>${e(first.short)}</span><div>${index}</div></nav>
         <div class="ruler-track">
-          <p class="ruler-current"><span data-ruler-chapter>${e(first.short)}</span><span class="ruler-phase" data-ruler-phase>${phaseLabels[first.scene.phase]}</span></p>
-          <ol class="ruler-ticks">${dots}</ol>
-          <span class="ruler-fill" aria-hidden="true"></span>
+          <input type="range" class="ruler-scrub" min="0" max="1000" step="1" value="0" aria-label="Reading position" aria-valuetext="${e(first.short)}" />
+          <div class="ruler-ticks" aria-hidden="true">${dots}</div>
         </div>
+        <div class="stage-buttons" role="group" aria-label="Construction phase">${stages}</div>
         ${tally()}
-      </nav>
+        <button type="button" class="ruler-motion ruler-sound" data-scene-remote="sound" aria-pressed="false" aria-label="Sound" title="Sound">${speaker}</button>
+        <button type="button" class="ruler-motion" data-scene-remote="pause" aria-pressed="false" aria-label="Pause motion" title="Pause motion">${pause}</button>
+      </div>
     </div>`;
 }
 

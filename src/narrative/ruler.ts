@@ -1,12 +1,13 @@
-/** The reading ruler (markup in src/render.ts `ruler()`): where the visitor
- * is in the page, and what the visit has cost so far.
- *
- * On wide layouts it is a bar at the foot of the scene, right of the chapter
- * card: the chapter being read and its construction phase, a dot for each
- * chapter (a link the navigation module takes over like any other), a line
- * that fills as the page is read, and the carbon tally. On stacked layouts
- * the stylesheet keeps only the tally, a small pill in the bottom corner,
- * so the figure stays on screen without a bar over the text.
+/** The reading ruler (markup in src/render.ts `ruler()`): the previous
+ * page's bottom bar, on wide layouts only. From the top: the chapter being
+ * read, the chapter index (links the navigation module takes over like any
+ * other), a scale from the opening to the end that scrolls the page when
+ * dragged, with a dot where each chapter begins, then the four construction
+ * phases (each a jump to the first chapter of that phase), the carbon tally,
+ * and the sound and pause controls, which mirror the header's disclosure
+ * (src/narrative/scene-controls.ts binds them). Stacked layouts keep only
+ * the tally, a pill in the bottom corner, so the figure stays on screen
+ * without a bar over the text.
  *
  * The tally is an odometer of the visit's estimated footprint: reported
  * transfer (src/transfer.ts, Resource Timing through co2.js) plus the
@@ -18,9 +19,9 @@
  * only when a text changes, so translation work and repaints stay rare. */
 import { estimateCompute, type ComputeWork } from "../compute";
 import { createTransferEstimate, formatGrams } from "../transfer";
-import { chapter as chapterContent } from "./content";
+import { chapter as chapterContent, chapters } from "./content";
 import type { NarrativeController } from "./controller";
-import { chapterIds, chapterOrder, phaseLabels, type ChapterId } from "./model";
+import { chapterIds, phases, type ChapterId, type Phase } from "./model";
 
 /** What the ruler needs from the scene mount. */
 export interface RulerScene {
@@ -36,15 +37,23 @@ export interface Ruler {
 
 /** How often the odometer is read. */
 export const TALLY_INTERVAL_MS = 500;
+/** The scale's resolution. */
+const SCALE = 1000;
+
+/** The chapter a phase button jumps to: the first chapter of that phase. */
+export const phaseLanding = (phase: Phase): ChapterId => chapters.find(c => c.scene.phase === phase)!.id;
 
 export function createRuler(controller: NarrativeController, scene: RulerScene, root: Document = document): Ruler | null {
   const dock = root.querySelector<HTMLElement>(".ruler-dock");
   if (!dock) return null;
   // The dock always carries its bar (render.ts); the markers inside it are optional.
   const bar = dock.querySelector<HTMLElement>(".ruler")!;
-  const dots = new Map(chapterIds.map(id => [id, bar.querySelector<HTMLAnchorElement>(`.ruler-dot[href="#${id}"]`)]));
+  const links = new Map(chapterIds.map(id => [id, bar.querySelector<HTMLAnchorElement>(`.chapter-index a[href="#${id}"]`)]));
+  const dots = new Map(chapterIds.map(id => [id, bar.querySelector<HTMLElement>(`.ruler-dot[data-dot="${id}"]`)]));
+  const sections = new Map(chapterIds.map(id => [id, root.getElementById(id)]));
   const name = bar.querySelector<HTMLElement>("[data-ruler-chapter]");
-  const phase = bar.querySelector<HTMLElement>("[data-ruler-phase]");
+  const scrub = bar.querySelector<HTMLInputElement>(".ruler-scrub");
+  const stageButtons = [...bar.querySelectorAll<HTMLButtonElement>("[data-go]")];
   const tally = bar.querySelector<HTMLDetailsElement>(".tally");
   const fields = {
     figure: bar.querySelector<HTMLElement>("[data-carbon-figure]"),
@@ -63,33 +72,61 @@ export function createRuler(controller: NarrativeController, scene: RulerScene, 
     el.textContent = text;
   };
 
-  /* ---------- Position ---------- */
+  /* ---------- The chapter being read ---------- */
   function mark(chapter: ChapterId) {
-    const order = chapterOrder(chapter);
-    for (const [id, dot] of dots) {
-      if (!dot) continue;
-      if (id === chapter) dot.setAttribute("aria-current", "location");
-      else dot.removeAttribute("aria-current");
-      dot.toggleAttribute("data-passed", chapterOrder(id) < order);
-    }
     const cue = chapterContent(chapter);
+    for (const [id, link] of links) {
+      if (id === chapter) link?.setAttribute("aria-current", "location");
+      else link?.removeAttribute("aria-current");
+      dots.get(id)?.toggleAttribute("data-current", id === chapter);
+    }
+    for (const button of stageButtons) {
+      if (button.dataset.go === cue.scene.phase) button.setAttribute("aria-current", "step");
+      else button.removeAttribute("aria-current");
+    }
     bar.dataset.phase = cue.scene.phase;
     write(name, cue.short);
-    write(phase, phaseLabels[cue.scene.phase]);
+    if (scrub && scrub.getAttribute("aria-valuetext") !== cue.short) scrub.setAttribute("aria-valuetext", cue.short);
   }
-  function fill(chapter: ChapterId, offset: number) {
-    const read = Math.min(1, Math.max(0, (chapterOrder(chapter) + offset) / (chapterIds.length - 1)));
-    bar.style.setProperty("--read", read.toFixed(4));
-  }
-  // A visit lands without a position notification (the controller records
-  // the landing itself), so every chapter change and visit refills from the
-  // controller's own reading of where the page is.
-  const refill = () => { const { chapter, offset } = controller.position(); fill(chapter, offset); };
-  const offChange = controller.onChapterChange(chapter => { mark(chapter); refill(); });
-  const offPosition = controller.onPosition(({ chapter, offset }) => fill(chapter, offset));
-  const offVisit = controller.onVisit(refill);
+  const offChange = controller.onChapterChange(chapter => mark(chapter));
   mark(controller.activeChapter());
-  refill();
+
+  /* ---------- The scale ---------- */
+  // Where each chapter begins, as a share of the page's scroll; measured
+  // again whenever the document's height changes (fonts, posters, locale).
+  let measuredHeight = 0;
+  const maxScroll = () => Math.max(1, root.documentElement.scrollHeight - innerHeight);
+  function measure() {
+    measuredHeight = root.documentElement.scrollHeight;
+    const max = maxScroll();
+    for (const [id, dot] of dots) {
+      const section = sections.get(id);
+      if (!dot || !section) continue;
+      const at = Math.min(1, Math.max(0, (section.getBoundingClientRect().top + scrollY) / max));
+      dot.style.setProperty("--at", at.toFixed(4));
+    }
+  }
+  let frame = 0;
+  function sync() {
+    frame = 0;
+    if (root.documentElement.scrollHeight !== measuredHeight) measure();
+    // The visitor's own drag is not overwritten.
+    if (scrub && root.activeElement !== scrub) scrub.value = String(Math.round((scrollY / maxScroll()) * SCALE));
+  }
+  const schedule = () => { if (!frame) frame = requestAnimationFrame(sync); };
+  const onInput = () => { scrollTo({ top: (Number(scrub!.value) / SCALE) * maxScroll(), behavior: "instant" }); };
+  const onResize = () => { measure(); schedule(); };
+  scrub?.addEventListener("input", onInput);
+  addEventListener("scroll", schedule, { passive: true });
+  addEventListener("resize", onResize);
+  const onGo = (event: Event) => {
+    const phase = (event.currentTarget as HTMLElement).dataset.go as Phase;
+    if (!phases.includes(phase)) return;
+    controller.visit(phaseLanding(phase), { push: true, focus: true, cause: "navigation" });
+  };
+  stageButtons.forEach(button => button.addEventListener("click", onGo));
+  measure();
+  sync();
 
   /* ---------- The tally ---------- */
   const transfer = createTransferEstimate();
@@ -127,12 +164,15 @@ export function createRuler(controller: NarrativeController, scene: RulerScene, 
   return {
     destroy() {
       clearInterval(timer);
+      cancelAnimationFrame(frame);
       root.removeEventListener("visibilitychange", onVisibility);
       root.removeEventListener("pointerdown", onPress);
       tally?.removeEventListener("keydown", onKey);
+      scrub?.removeEventListener("input", onInput);
+      removeEventListener("scroll", schedule);
+      removeEventListener("resize", onResize);
+      stageButtons.forEach(button => button.removeEventListener("click", onGo));
       offChange();
-      offPosition();
-      offVisit();
       transfer.dispose();
       dock.hidden = true;
     },

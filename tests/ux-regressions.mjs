@@ -67,16 +67,21 @@ export async function assertRuler(page, wide) {
   await page.waitForFunction(() => /CO₂e|Unavailable/.test(document.querySelector('[data-carbon-figure]')?.textContent ?? ''));
   const layout = await page.evaluate(() => {
     const box = el => { const b = el.getBoundingClientRect(); return { left: b.left, top: b.top, right: b.right, bottom: b.bottom }; };
-    const current = document.querySelector('.ruler-dot[aria-current]').getAttribute('href').slice(1);
+    const current = document.querySelector('.chapter-index a[aria-current]').getAttribute('href').slice(1);
+    const remote = document.querySelector('[data-scene-remote="pause"]');
     return { width: innerWidth, height: innerHeight, header: document.querySelector('.masthead').getBoundingClientRect().bottom,
       trackShown: getComputedStyle(document.querySelector('.ruler-track')).display !== 'none',
       dots: document.querySelectorAll('.ruler-dot').length, current,
+      pauseShown: getComputedStyle(remote).display !== 'none',
+      pauseMirrored: remote.getAttribute('aria-pressed') === document.querySelector('[data-scene-control="pause"]').getAttribute('aria-pressed'),
       bar: box(document.querySelector('.ruler')), pill: box(document.querySelector('.tally > summary')),
       card: box(document.querySelector(`.chapter[data-chapter="${current}"] .chapter-card`)),
       figure: document.querySelector('[data-carbon-figure]').textContent };
   });
   assert.equal(layout.trackShown, wide, JSON.stringify(layout));
   assert.equal(layout.dots, 8);
+  assert.equal(layout.pauseShown, wide, JSON.stringify(layout));
+  assert.ok(layout.pauseMirrored, 'the bar\'s pause button shows the header\'s state');
   assert.match(layout.figure, /CO₂e|Unavailable/);
   const within = b => b.left >= -1 && b.right <= layout.width + 1 && b.top >= layout.header - 1 && b.bottom <= layout.height + 1;
   assert.ok(within(layout.pill), JSON.stringify(layout));
