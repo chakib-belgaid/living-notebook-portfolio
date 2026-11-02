@@ -96,7 +96,7 @@ export const chapters: Chapter[] = [
     actions: [
       { label: "Source", type: "source", href: links.whisperbookSource },
       { label: "Test releases", type: "source", href: links.whisperbookReleases },
-      { label: "Existing Android case", type: "case", ...cases.whispbook },
+      { label: "Read Android case study", type: "case", ...cases.whispbook },
     ],
     index: { title: "Whisperbook", summary: "Product ownership · Audiobooks on my own terms." },
     scene: { phase: "build", focus: "whisperbook", progress: 0.66, framing: { desktop: "focus", portrait: "focus" }, poster: "whisperbook" },

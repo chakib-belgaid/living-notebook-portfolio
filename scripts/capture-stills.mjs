@@ -30,6 +30,7 @@ import { join } from 'node:path';
 import { chapters } from '../src/narrative/content.ts';
 import { POSTER_SIZES } from '../src/narrative/model.ts';
 import { sceneCues } from '../src/narrative/scene-adapter.ts';
+import { captureScene } from './scene-capture.mjs';
 
 const base = process.env.DEV_URL || 'http://127.0.0.1:5198';
 const root = new URL('../public/assets/stills/', import.meta.url).pathname;
@@ -79,6 +80,12 @@ for (const [name, h] of Object.entries(hosts)) {
       a.click();
       a.remove();
     }, chapter);
+    // Content-first Work/Contact leads can put their portrait slot entirely
+    // below the landing viewport. Rendering waits while offscreen, so bring
+    // the host into view before waiting for its settled live frame.
+    if (name === 'portrait') {
+      await page.locator(`[data-scene-host="${chapter}"]`).evaluate(host => host.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    }
     await page.waitForFunction(id => {
       const s = window.__notebookScene.state();
       return s.live && s.chapter === id && s.transition === 1 && s.settled;
@@ -87,7 +94,7 @@ for (const [name, h] of Object.entries(hosts)) {
     await page.waitForTimeout(800);
     const pose = await page.evaluate(() => window.__notebookScene.state().pose);
     const png = join(scratch, `${name}-${poster}.png`);
-    await page.locator(h.stage(chapter)).screenshot({ path: png });
+    await captureScene(page.locator(h.stage(chapter)), { path: png });
     const webp = join(out, `${poster}.webp`);
     execFileSync('cwebp', ['-quiet', '-q', quality, '-m', '6', ...(h.resize ? ['-resize', String(h.resize), '0'] : []), png, '-o', webp]);
     sizes[`${name}/${poster}`] = (await stat(webp)).size;

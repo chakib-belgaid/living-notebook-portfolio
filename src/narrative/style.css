@@ -5,8 +5,8 @@
    Responsive contract (IMPLEMENTATION_PLAN §4.2), one rule set per range:
    - < 700px (portrait/small): 20px gutters, 17px body, 38–44px opening
      heading; each chapter's own scene slot (~45svh, 220–400px) sits inline
-     between its lead and body; two-row header.
-   - 700–899px: the same stacked narrative with a one-row header (a split
+     between its lead and body; header rows follow available space.
+   - 700–899px: the same stacked narrative with a wrapping header (a split
      would leave the text column under 420px).
    - >= 900px and >= 500px tall (WIDE_LAYOUT_QUERY in model.ts): the scene
      rail fills the viewport behind the page and each chapter reads in a
@@ -18,90 +18,62 @@
    Explicit jumps and fragment landings clear the header through
    --header-clearance (0 when the header is not sticky). */
 :root {
-  --header-height: 6rem;
-  --header-clearance: var(--header-height);
+  --header-clearance: 0px;
   --gutter: 1.25rem;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 @media (min-width: 700px) {
-  :root { --header-height: 4.5rem; --gutter: 2rem; }
+  :root { --gutter: 2rem; }
 }
 @media (max-height: 499.98px) and (orientation: landscape) {
   :root { --header-clearance: 0px; }
 }
 
-/* Header: name; the Sections landmark (Work · About · Contact, then CV);
-   language. Its height is fixed so fragment and focus offsets can rely on
-   --header-clearance. */
+/* Header rows follow their contents, including enlarged and translated text.
+   Before enhancement it stays in flow, so native fragment landings need no
+   estimated offset. header.ts publishes the measured sticky clearance. */
 .masthead {
-  position: sticky; top: 0; z-index: 10;
-  height: var(--header-height);
-  display: grid; align-items: center; column-gap: 0.6rem;
+  position: relative; z-index: 10;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem;
+  min-height: 4.5rem; padding-block: 0.35rem;
   padding-inline: max(var(--gutter), calc((100% - 82rem) / 2));
   background: color-mix(in srgb, var(--paper) 78%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--hairline);
 }
+.enhanced .masthead { position: sticky; top: 0; }
+.enhanced .masthead[data-flow] { position: relative; }
 @media (max-height: 499.98px) and (orientation: landscape) {
-  .masthead { position: relative; }
+  .enhanced .masthead { position: relative; }
 }
-/* Above the Sections landmark where, on narrow screens, its box spans the header. */
-.owner, .masthead .language-picker { position: relative; z-index: 1; }
 .owner {
-  justify-self: start; display: inline-flex; align-items: center; min-height: 2.75rem;
+  display: inline-flex; align-items: center; min-height: 2.75rem;
+  margin-inline-end: auto; max-width: 100%; overflow-wrap: anywhere;
   font-size: 1.125rem; line-height: 1.15; text-decoration: none;
 }
+.primary-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; min-width: 0; }
+.nav-sections { display: flex; flex-wrap: wrap; align-items: center; min-width: 0; }
 .nav-sections a {
-  display: inline-flex; align-items: center; min-height: 2.75rem; padding-inline: 0.75rem;
+  display: inline-flex; align-items: center; min-height: 2.75rem; padding-inline: 0.5rem;
+  max-width: 100%; overflow-wrap: anywhere;
   font-family: var(--sans); font-size: 0.9375rem; text-decoration: none;
 }
 .nav-sections a:hover, .nav-sections a[aria-current] { text-decoration: underline; text-underline-offset: 0.45em; }
 .cv-link {
   display: inline-flex; align-items: center; justify-content: center;
-  min-height: 2.5rem; min-width: 2.75rem; max-width: 11rem; padding: 0.2rem 0.75rem;
+  min-height: 2.5rem; min-width: 2.75rem; max-width: 100%; padding: 0.2rem 0.75rem;
   border: 1px solid color-mix(in srgb, var(--ink) 45%, transparent); border-radius: 2px;
   font-family: var(--sans); font-size: 0.875rem; line-height: 1.2; text-align: center; text-decoration: none;
+  overflow-wrap: anywhere;
 }
 .cv-link:hover { border-color: var(--ink); }
 .masthead .language-picker select { font-family: var(--sans); font-size: 0.8125rem; }
-
-/* Narrow: name, CV and language on the first row; the sections on the
-   second. The Sections landmark spans both rows as a subgrid so the CV link
-   sits in it while lining up with the name. */
 @media (max-width: 699.98px) {
-  .masthead {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-rows: 3.25rem 2.75rem;
-  }
-  .owner { grid-area: 1 / 1; }
-  .masthead .language-picker { grid-area: 1 / 3; }
-  .primary-nav {
-    grid-row: 1 / 3; grid-column: 1 / -1; align-self: stretch;
-    display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; align-items: center;
-  }
-  .nav-sections { grid-row: 2; grid-column: 1 / -1; align-self: stretch; display: flex; justify-content: space-around; }
-  /* The CV label wraps before it squeezes the name's column: the Arabic
-     label is three words, and Linux fonts set it wider than macOS ones. */
-  .cv-link { grid-area: 1 / 2; max-width: min(11rem, 38vw); }
-  /* With the scene control shown (enhanced only), the sections share row 2
-     with it, under the language picker; tighter link padding keeps the
-     French labels clear of it at 320px. */
-  .masthead:has(.scene-controls:not([hidden])) .nav-sections { grid-column: 1 / -2; }
-  .masthead:has(.scene-controls:not([hidden])) .nav-sections a { padding-inline: 0.5rem; }
-  .scene-controls { grid-area: 2 / 3; justify-self: end; }
-  @supports not (grid-template-rows: subgrid) {
-    .primary-nav { grid-row: 2; display: flex; justify-content: space-around; align-items: center; }
-    .scene-controls { grid-area: 1 / 2; }
-  }
-}
-/* From 700px: one row, name · sections and CV · language. */
-@media (min-width: 700px) {
-  .masthead { grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 1.25rem; }
-  .masthead:has(.scene-controls[hidden]) { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .owner { white-space: nowrap; }
-  .primary-nav { display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; min-width: 0; }
-  .nav-sections { display: flex; gap: 0.25rem; }
-  .cv-link { white-space: nowrap; max-width: none; }
+  .owner { flex: 1 1 calc(100% - 5rem); }
+  .masthead .language-picker { order: 1; }
+  .primary-nav { order: 2; flex: 1 1 calc(100% - 4rem); }
+  .scene-controls { order: 3; margin-inline-start: auto; }
+  .nav-sections { flex: 1 1 auto; justify-content: space-between; }
 }
 
 /* Chapters. */
@@ -113,7 +85,7 @@
 .fragment-alias { position: absolute; top: 0; inset-inline-start: 0; width: 1px; height: 1px; }
 /* Every fragment and focus target clears the sticky header, with a little
    air: chapters, alias anchors, the notebook and headings with ids. */
-.chapter, .fragment-alias, .notebook, .chapter :is(h1, h2, h3)[id] { scroll-margin-top: calc(var(--header-clearance) + 0.75rem); }
+.chapter, .fragment-alias, .notebook, .chapter :is(h1, h2, h3)[id], .chapter :is(a, button, select) { scroll-margin-top: calc(var(--header-clearance) + 0.75rem); }
 
 .chapter-label {
   margin-bottom: 0.9rem;
@@ -242,7 +214,7 @@
 :root[dir="rtl"] .action-icon { transform: scaleX(-1); }
 
 @media print {
-  .masthead { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding-block: 0.5rem; }
+  .masthead, .enhanced .masthead, .enhanced .masthead[data-flow] { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding-block: 0.5rem; }
   .scene-host, .scene-rail, .scene-controls, .chapter-foot, .skip-link { display: none !important; }
   .primary-nav, .nav-sections { display: flex; flex-wrap: wrap; gap: 0 1rem; }
   .chapter { display: block; min-height: 0; padding-block: 1rem; break-inside: avoid-page; }

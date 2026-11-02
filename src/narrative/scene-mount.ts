@@ -380,6 +380,7 @@ export function createSceneMount(controller: NarrativeController) {
   const main = document.getElementById("portfolio");
   const layoutObserver = main && typeof ResizeObserver === "function" ? new ResizeObserver(invalidate) : null;
   if (layoutObserver && main) layoutObserver.observe(main);
+  if (layoutObserver && masthead) layoutObserver.observe(masthead);
   document.fonts?.addEventListener?.("loadingdone", invalidate);
   const offLocale = onLocaleChange(() => { state.locale = getLocale(); invalidate(); publish(); });
 

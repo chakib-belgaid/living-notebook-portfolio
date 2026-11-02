@@ -5,6 +5,7 @@
  * events into its visits; the scene mount (src/narrative/scene-mount.ts)
  * follows the controller with the one live scene, its posters and the
  * motion, stills and sound controls. */
+import { initHeader } from "./narrative/header";
 import { initLocalization } from "./i18n";
 import { initEvidence } from "./evidence";
 import { initLocalizedLinks } from "./narrative/localized-links";
@@ -15,7 +16,8 @@ import { createSceneMount } from "./narrative/scene-mount";
 initLocalization();
 initLocalizedLinks();
 initEvidence();
+document.documentElement.classList.add("enhanced");
+initHeader();
 const controller = createController();
 createNavigation(controller);
 createSceneMount(controller);
-document.documentElement.classList.add("enhanced");

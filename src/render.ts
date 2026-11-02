@@ -107,7 +107,7 @@ function aboutExtras() {
 }
 
 /** Which motivation paragraphs precede the scene slot on narrow screens. */
-const leadParagraphs: Partial<Record<ChapterId, number>> = { work: 0, about: 1 };
+const leadParagraphs: Partial<Record<ChapterId, number>> = { about: 1 };
 
 function renderChapter(c: Chapter) {
   const heading = c.id === "intro"
@@ -121,15 +121,15 @@ function renderChapter(c: Chapter) {
     heading,
     c.subtitle ? `<p class="chapter-subtitle">${e(c.subtitle)}</p>` : "",
     ...paragraphs.slice(0, split).map(para),
-    c.id === "intro" ? actions(c.actions) : "",
+    c.id === "intro" || c.id === "contact" ? actions(c.actions) : "",
+    c.id === "work" ? workIndex() : "",
   ].join("");
   let body = paragraphs.slice(split).map(para).join("");
   if (c.decision) body += `<div class="chapter-decision"><h3>${e(c.decision.heading)}</h3><p>${e(c.decision.text)}</p></div>`;
-  if (c.id === "work") body += workIndex();
   if (c.id === "about") {
     const extras = aboutExtras();
     body += extras.timeline + actions(c.actions) + extras.notebook;
-  } else if (c.id !== "intro") {
+  } else if (c.id !== "intro" && c.id !== "contact") {
     body += actions(c.actions);
   }
   if (c.evidence) body += `<p class="evidence-note" data-evidence-kind="${c.evidence.kinds.join(" ")}">${e(c.evidence.text)}</p>`;

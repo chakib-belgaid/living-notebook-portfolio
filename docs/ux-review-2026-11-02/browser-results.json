@@ -1,0 +1,114 @@
+[
+  {
+    "name": "en-320-200percent",
+    "passed": true
+  },
+  {
+    "name": "en-390-200percent",
+    "passed": true
+  },
+  {
+    "name": "en-768-200percent",
+    "passed": true
+  },
+  {
+    "name": "en-900-200percent",
+    "passed": true
+  },
+  {
+    "name": "en-1440-200percent",
+    "passed": true
+  },
+  {
+    "name": "en-375x667-priorities",
+    "passed": true
+  },
+  {
+    "name": "en-390x844-priorities",
+    "passed": true
+  },
+  {
+    "name": "fr-320-200percent",
+    "passed": true
+  },
+  {
+    "name": "fr-390-200percent",
+    "passed": true
+  },
+  {
+    "name": "fr-768-200percent",
+    "passed": true
+  },
+  {
+    "name": "fr-900-200percent",
+    "passed": true
+  },
+  {
+    "name": "fr-1440-200percent",
+    "passed": true
+  },
+  {
+    "name": "fr-375x667-priorities",
+    "passed": true
+  },
+  {
+    "name": "fr-390x844-priorities",
+    "passed": true
+  },
+  {
+    "name": "ar-320-200percent",
+    "passed": true
+  },
+  {
+    "name": "ar-390-200percent",
+    "passed": true
+  },
+  {
+    "name": "ar-768-200percent",
+    "passed": true
+  },
+  {
+    "name": "ar-900-200percent",
+    "passed": true
+  },
+  {
+    "name": "ar-1440-200percent",
+    "passed": true
+  },
+  {
+    "name": "ar-375x667-priorities",
+    "passed": true
+  },
+  {
+    "name": "ar-390x844-priorities",
+    "passed": true
+  },
+  {
+    "name": "wide-capture-pixels",
+    "passed": true
+  },
+  {
+    "name": "portrait-capture-pixels",
+    "passed": true
+  },
+  {
+    "name": "stills-french-contact",
+    "passed": true
+  },
+  {
+    "name": "no-js-direct-contact",
+    "passed": true
+  },
+  {
+    "name": "keyboard-escape-and-print-header",
+    "passed": true
+  },
+  {
+    "name": "history-and-case-return",
+    "passed": true
+  },
+  {
+    "name": "scene-import-failure",
+    "passed": true
+  }
+]

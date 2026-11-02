@@ -295,6 +295,7 @@ export function createController(root: Document = document): NarrativeController
   addEventListener("resize", resized);
   const observer = typeof ResizeObserver === "function" && main ? new ResizeObserver(() => { measured = false; schedule(); }) : null;
   if (observer && main) observer.observe(main);
+  if (observer && masthead) observer.observe(masthead);
   const fontsLoaded = () => { measured = false; schedule(); };
   root.fonts?.addEventListener?.("loadingdone", fontsLoaded);
   /** A new language reflows every chapter: keep the reader's place. */
