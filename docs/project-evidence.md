@@ -16,7 +16,7 @@ Updated against the owner's 30 October 2026 dossier de compétences, accompanyin
 - Inria / Qarnot: Inria research role on an ANR project with Qarnot as industrial partner; approximately 300× smaller PowerAPI binary, not a blanket container-size claim.
 - Funecs: co-founder and CTO, 2014–2018; Ooredoo T-Start 2014; 2016 campaign with more than 300,000 unique participating subscriber numbers, not verified contract conversions. Engineering degree: 2017.
 
-Legacy case studies and CVs are maintained in `public/` so future deployments preserve these corrections. Legacy case studies are static HTML to prevent the old JavaScript bundle from restoring superseded claims. PDF editions are regenerated with `python scripts/render-public-resumes.py` (ReportLab required). The old `/live` landing pages lead to the maintained portfolio.
+Legacy case studies and CVs are maintained in `public/` so future deployments preserve these corrections. Legacy case studies are static HTML to prevent the old JavaScript bundle from restoring superseded claims. PDF editions are regenerated with `npm run resume:pdf` (Playwright Chromium; `scripts/build-resume-pdfs.mjs`). The old `/live` landing pages lead to the maintained portfolio.
 
 The dated checks below remain historical evidence for distribution and benchmark limitations.
 

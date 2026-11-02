@@ -1,4 +1,4 @@
-import type { Spot } from "./content";
+import type { SceneSpot as Spot } from "./narrative/model";
 import type { Season } from "./scene";
 import type { Weather } from "./weather";
 
@@ -150,28 +150,32 @@ export type Soundscape = {
   /** Plays or stops the garden. Browsers hold sound back until a click, tap
       or key press, so asking to play again from a later gesture retries. */
   setAudible: (on: boolean) => void;
-  /** A short sound for a tree just planted; silent while the garden is. */
-  planted: () => void;
   dispose: () => void;
 };
 
 export const soundSupported = () => typeof AudioContext !== "undefined";
 
-/** `onHeard` is called once, when the browser first lets the garden play. */
-export function createSoundscape(read: () => SoundState, onHeard?: () => void): Soundscape {
+/** `context` is created and resumed by the caller inside the visitor's own
+    click on the sound control: WebKit keeps a context created later, after
+    this module has loaded, suspended. The soundscape never creates one.
+    `onHeard` is called once, when the browser first lets the garden play. */
+export function createSoundscape(context: AudioContext, read: () => SoundState, onHeard?: () => void): Soundscape {
   let engine: ReturnType<typeof build> | undefined;
   let timer = 0;
   let sleep = 0;
   let audible = false;
+  let disposed = false;
 
   function build() {
-    const ctx = new AudioContext();
+    const ctx = context;
     const heard = () => {
       if (ctx.state !== "running") return;
       ctx.removeEventListener("statechange", heard);
       onHeard?.();
     };
     ctx.addEventListener("statechange", heard);
+    // The caller's context may already be running.
+    heard();
     const rate = ctx.sampleRate;
     /* A loop of noise. The tail crossfades into the head, so the loop has no
        seam to click on. Brown noise is white noise, gently integrated. */
@@ -489,33 +493,7 @@ export function createSoundscape(read: () => SoundState, onHeard?: () => void): 
         nextThunder = now + random(18, 45);
       }
     }
-    /* A tree planted: a soft thud of soil, then two bright notes rising. It
-       goes straight to the master, so it plays whatever the weather. */
-    function planted(at: number) {
-      const soil = ctx.createBufferSource();
-      soil.buffer = brown;
-      const thud = ctx.createGain();
-      thud.gain.setValueAtTime(0, at);
-      thud.gain.linearRampToValueAtTime(0.5, at + 0.01);
-      thud.gain.setTargetAtTime(0, at + 0.01, 0.05);
-      soil.connect(filter("lowpass", 300, 0.7)).connect(thud).connect(master);
-      soil.start(at, random(0, 4));
-      soil.stop(at + 0.4);
-      [[79, 0.08], [86, 0.2]].forEach(([midi, delay]) => {
-        const t = at + delay;
-        const tone = ctx.createOscillator();
-        tone.type = "sine";
-        tone.frequency.value = 440 * 2 ** ((midi - 69) / 12);
-        const level = ctx.createGain();
-        level.gain.setValueAtTime(0, t);
-        level.gain.linearRampToValueAtTime(0.09, t + 0.008);
-        level.gain.setTargetAtTime(0, t + 0.008, 0.18);
-        tone.connect(level).connect(master);
-        tone.start(t);
-        tone.stop(t + 1.2);
-      });
-    }
-    return { ctx, master, tick, planted };
+    return { ctx, master, tick };
   }
 
   function setAudible(on: boolean) {
@@ -523,10 +501,8 @@ export function createSoundscape(read: () => SoundState, onHeard?: () => void): 
       if (on && engine?.ctx.state === "suspended") void engine.ctx.resume();
       return;
     }
-    if (on && !engine) {
-      if (!soundSupported()) return;
-      engine = build();
-    }
+    if (disposed) return;
+    if (on && !engine) engine = build();
     if (!engine) return;
     audible = on;
     const { ctx, master, tick } = engine;
@@ -546,16 +522,13 @@ export function createSoundscape(read: () => SoundState, onHeard?: () => void): 
 
   return {
     setAudible,
-    planted() {
-      if (!audible || engine?.ctx.state !== "running") return;
-      engine.planted(engine.ctx.currentTime + 0.02);
-    },
     dispose() {
       clearTimeout(sleep);
       clearInterval(timer);
-      void engine?.ctx.close();
+      void context.close().catch(() => {});
       engine = undefined;
       audible = false;
+      disposed = true;
     },
   };
 }

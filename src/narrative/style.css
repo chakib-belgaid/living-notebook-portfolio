@@ -1,0 +1,311 @@
+/* The narrative document: one sticky header, eight chapters in ordinary
+   flow, and reserved scene geometry. Every host reserves its size here,
+   before any script, font, poster or canvas arrives.
+
+   Responsive contract (IMPLEMENTATION_PLAN §4.2), one rule set per range:
+   - < 700px (portrait/small): 20px gutters, 17px body, 38–44px opening
+     heading; each chapter's own scene slot (~45svh, 220–400px) sits inline
+     between its lead and body; two-row header.
+   - 700–899px: the same stacked narrative with a one-row header (a split
+     would leave the text column under 420px).
+   - >= 900px and >= 500px tall (WIDE_LAYOUT_QUERY in model.ts): the scene
+     rail fills the viewport behind the page and each chapter reads in a
+     420–520px translucent card on the left (the user's G2 decision,
+     2 November 2026, restoring the previous page's layout); the
+     per-chapter hosts are not displayed.
+   - Short landscape (< 500px tall): stacked, compact scene slot, the header
+     scrolls away instead of covering a third of the screen.
+   Explicit jumps and fragment landings clear the header through
+   --header-clearance (0 when the header is not sticky). */
+:root {
+  --header-height: 6rem;
+  --header-clearance: var(--header-height);
+  --gutter: 1.25rem;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (min-width: 700px) {
+  :root { --header-height: 4.5rem; --gutter: 2rem; }
+}
+@media (max-height: 499.98px) and (orientation: landscape) {
+  :root { --header-clearance: 0px; }
+}
+
+/* Header: name; the Sections landmark (Work · About · Contact, then CV);
+   language. Its height is fixed so fragment and focus offsets can rely on
+   --header-clearance. */
+.masthead {
+  position: sticky; top: 0; z-index: 10;
+  height: var(--header-height);
+  display: grid; align-items: center; column-gap: 0.6rem;
+  padding-inline: max(var(--gutter), calc((100% - 82rem) / 2));
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--hairline);
+}
+@media (max-height: 499.98px) and (orientation: landscape) {
+  .masthead { position: relative; }
+}
+/* Above the Sections landmark where, on narrow screens, its box spans the header. */
+.owner, .masthead .language-picker { position: relative; z-index: 1; }
+.owner {
+  justify-self: start; display: inline-flex; align-items: center; min-height: 2.75rem;
+  font-size: 1.125rem; line-height: 1.15; text-decoration: none;
+}
+.nav-sections a {
+  display: inline-flex; align-items: center; min-height: 2.75rem; padding-inline: 0.75rem;
+  font-family: var(--sans); font-size: 0.9375rem; text-decoration: none;
+}
+.nav-sections a:hover, .nav-sections a[aria-current] { text-decoration: underline; text-underline-offset: 0.45em; }
+.cv-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 2.5rem; min-width: 2.75rem; max-width: 11rem; padding: 0.2rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--ink) 45%, transparent); border-radius: 2px;
+  font-family: var(--sans); font-size: 0.875rem; line-height: 1.2; text-align: center; text-decoration: none;
+}
+.cv-link:hover { border-color: var(--ink); }
+.masthead .language-picker select { font-family: var(--sans); font-size: 0.8125rem; }
+
+/* Narrow: name, CV and language on the first row; the sections on the
+   second. The Sections landmark spans both rows as a subgrid so the CV link
+   sits in it while lining up with the name. */
+@media (max-width: 699.98px) {
+  .masthead {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: 3.25rem 2.75rem;
+  }
+  .owner { grid-area: 1 / 1; }
+  .masthead .language-picker { grid-area: 1 / 3; }
+  .primary-nav {
+    grid-row: 1 / 3; grid-column: 1 / -1; align-self: stretch;
+    display: grid; grid-template-columns: subgrid; grid-template-rows: subgrid; align-items: center;
+  }
+  .nav-sections { grid-row: 2; grid-column: 1 / -1; align-self: stretch; display: flex; justify-content: space-around; }
+  /* The CV label wraps before it squeezes the name's column: the Arabic
+     label is three words, and Linux fonts set it wider than macOS ones. */
+  .cv-link { grid-area: 1 / 2; max-width: min(11rem, 38vw); }
+  /* With the scene control shown (enhanced only), the sections share row 2
+     with it, under the language picker; tighter link padding keeps the
+     French labels clear of it at 320px. */
+  .masthead:has(.scene-controls:not([hidden])) .nav-sections { grid-column: 1 / -2; }
+  .masthead:has(.scene-controls:not([hidden])) .nav-sections a { padding-inline: 0.5rem; }
+  .scene-controls { grid-area: 2 / 3; justify-self: end; }
+  @supports not (grid-template-rows: subgrid) {
+    .primary-nav { grid-row: 2; display: flex; justify-content: space-around; align-items: center; }
+    .scene-controls { grid-area: 1 / 2; }
+  }
+}
+/* From 700px: one row, name · sections and CV · language. */
+@media (min-width: 700px) {
+  .masthead { grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 1.25rem; }
+  .masthead:has(.scene-controls[hidden]) { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .owner { white-space: nowrap; }
+  .primary-nav { display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; min-width: 0; }
+  .nav-sections { display: flex; gap: 0.25rem; }
+  .cv-link { white-space: nowrap; max-width: none; }
+}
+
+/* Chapters. */
+.narrative { max-width: 82rem; margin-inline: auto; padding-inline: var(--gutter); }
+.chapter { position: relative; display: flex; flex-direction: column; padding-block: 2.25rem 1.5rem; border-bottom: 1px solid var(--hairline); }
+.chapter-contact { border-bottom: 0; }
+.chapter-lead, .chapter-body { min-width: 0; overflow-wrap: break-word; }
+/* Alias targets (#wattch) sit at the chapter top, outside the flow. */
+.fragment-alias { position: absolute; top: 0; inset-inline-start: 0; width: 1px; height: 1px; }
+/* Every fragment and focus target clears the sticky header, with a little
+   air: chapters, alias anchors, the notebook and headings with ids. */
+.chapter, .fragment-alias, .notebook, .chapter :is(h1, h2, h3)[id] { scroll-margin-top: calc(var(--header-clearance) + 0.75rem); }
+
+.chapter-label {
+  margin-bottom: 0.9rem;
+  font-family: var(--sans); font-size: 0.75rem; line-height: 1.5; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted);
+}
+.chapter h1, .chapter h2 { letter-spacing: -0.01em; text-wrap: balance; }
+.chapter h1 { font-size: clamp(2.375rem, 1.7rem + 2.4vw, 4.25rem); line-height: 1.04; font-weight: 450; margin-bottom: 1.1rem; }
+.chapter h2 { font-size: clamp(2.125rem, 1.5rem + 2.2vw, 3.25rem); line-height: 1.08; font-weight: 450; margin-bottom: 0.75rem; }
+.chapter-subtitle { font-size: clamp(1.3rem, 1.1rem + 0.6vw, 1.6rem); line-height: 1.25; margin-bottom: 1.1rem; text-wrap: balance; }
+.chapter-motivation, .chapter-decision p, .timeline p { font-size: 1.0625rem; line-height: 1.6; }
+.chapter-intro .chapter-motivation { font-size: 1.125rem; max-width: 34rem; }
+
+.chapter-decision { margin-block: 0.25rem 1.25rem; padding-inline-start: 1rem; border-inline-start: 2px solid var(--accent); }
+.chapter-decision h3, .notebook h3 {
+  margin-bottom: 0.4rem;
+  font-family: var(--sans); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.chapter-decision h3 { color: var(--accent); }
+
+.chapter-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.25rem; margin-block: 0.5rem 1rem; }
+.action { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.75rem; font-family: var(--sans); font-size: 0.9375rem; }
+.action-icon { font-size: 0.9em; }
+.action-primary {
+  padding-inline: 1.1rem; background: var(--action); color: var(--action-ink);
+  border-radius: 2px; text-decoration: none;
+}
+.action-primary:hover { background: color-mix(in srgb, var(--action) 88%, white); }
+.evidence-note, .contact-email { font-family: var(--sans); font-size: 0.875rem; line-height: 1.55; color: var(--muted); }
+.evidence-note { padding-top: 0.75rem; border-top: 1px solid var(--hairline); }
+
+/* The Work index: three projects, then the professional entry apart. */
+.work-index ul { list-style: none; margin: 1rem 0 1.5rem; padding: 0; }
+.work-index li { border-top: 1px solid var(--hairline); }
+.work-index li:last-child { border-bottom: 1px solid var(--hairline); }
+.work-index li.index-professional { margin-top: 1.5rem; }
+.work-index a { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.1rem 1rem; padding-block: 0.8rem; text-decoration: none; }
+.work-index a::after { content: "↓"; content: "↓" / ""; grid-column: 2; grid-row: 1 / span 2; align-self: center; font-family: var(--sans); color: var(--muted); }
+.index-title { font-size: 1.375rem; line-height: 1.25; }
+.index-summary { font-family: var(--sans); font-size: 0.8125rem; color: var(--muted); }
+.work-index a:hover .index-title { text-decoration: underline; text-underline-offset: 0.2em; }
+
+/* About: the career timeline, then the secondary notebook. */
+.timeline { list-style: none; margin: 1.5rem 0; padding: 0; padding-inline-start: 1rem; border-inline-start: 1px solid var(--hairline); }
+.timeline li + li { margin-top: 1rem; }
+.timeline-years { margin-bottom: 0.1rem; font-family: var(--sans); font-size: 0.8125rem; color: var(--muted); }
+.timeline h3 { font-size: 1.125rem; line-height: 1.3; margin-bottom: 0.2rem; }
+.timeline p:last-child { margin-bottom: 0; font-size: 0.9375rem; }
+.notebook { margin-block: 1.5rem 0.5rem; padding-top: 1rem; border-top: 1px solid var(--hairline); color: var(--muted); }
+.notebook ul { list-style: none; margin: 0; padding: 0; }
+.notebook li + li { margin-top: 0.6rem; }
+.notebook h4 { font-size: 1rem; color: var(--ink); }
+.notebook p { margin-bottom: 0; font-size: 0.9375rem; line-height: 1.5; }
+.notebook a { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2.25rem; font-family: var(--sans); font-size: 0.8125rem; }
+
+/* Footer: the static phase indicator and the next chapter. */
+.chapter-foot {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.25rem 1rem;
+  margin-top: 1.75rem; padding-top: 0.6rem; border-top: 1px solid var(--hairline);
+  font-family: var(--sans); font-size: 0.8125rem;
+}
+.phase-indicator { display: flex; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; color: var(--muted); }
+.phase-indicator li + li::before { content: "·"; content: "·" / ""; margin-inline: 0.45rem; }
+.phase-indicator [aria-current] { color: var(--ink); font-weight: 700; }
+.next-link { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2.75rem; }
+
+/* Scene hosts. The poster is the no-JS and failure content; P4 mounts the
+   single decorative canvas into the active host. */
+.scene-host {
+  position: relative; overflow: hidden; contain: layout paint;
+  height: clamp(220px, 45vh, 400px);
+  height: clamp(220px, 45svh, 400px);
+  margin-block: 0.5rem 1.5rem;
+  background: var(--scene-bg);
+  border-radius: 3px;
+}
+.scene-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+/* Reserved for P4: on stacked layouts the active slot is sticky below the
+   header only while a scroll-driven transition runs (the controller sets
+   data-scene-transition), then returns to the flow. */
+.chapter .scene-host[data-scene-transition] { position: sticky; top: var(--header-clearance); z-index: 1; }
+/* Short landscape: a compact, content-led slot. */
+@media (max-height: 499.98px) and (orientation: landscape) {
+  .scene-host { height: clamp(10rem, 55svh, 15rem); max-width: 36rem; }
+}
+
+/* The rail exists only on wide layouts. */
+.scene-rail { display: none; }
+
+/* Wide: the rail is fixed behind the whole page and the live scene fills
+   the viewport; each chapter is a 420–520px card (never narrower on this
+   layout; capped at 55% so enlarged text cannot cover the scene) on the
+   left, translucent over the night. Each chapter keeps a viewport of scroll
+   so the reading paces the scene as before; the card is only as tall as its
+   text and starts under the header, so a landing shows the chapter label
+   first. The scene adapter shifts the garden right of the card. */
+@media screen and (min-width: 900px) and (min-height: 500px) {
+  .narrative { position: relative; }
+  /* The fixed rail is a positioned sibling of the chapters, so they are
+     positioned too, above it. */
+  .chapter {
+    position: relative; z-index: 1;
+    width: min(clamp(26.25rem, 36vw, 32.5rem), 55%);
+    min-height: calc(100vh - var(--header-clearance));
+    min-height: calc(100svh - var(--header-clearance));
+    padding-block: 2.5rem; border-bottom: 0;
+  }
+  .chapter-intro { justify-content: center; }
+  .chapter-card {
+    padding: 1.4rem 1.6rem 1.1rem;
+    background: var(--slip); backdrop-filter: blur(12px);
+    border: 1px solid var(--hairline); border-radius: 14px;
+    box-shadow: var(--lift);
+  }
+  .chapter .scene-host { display: none; }
+  .scene-rail {
+    display: block; position: fixed; inset: 0; z-index: 0;
+    overflow: hidden; contain: layout paint;
+    background: var(--scene-bg);
+  }
+  .chapter-motivation, .chapter-decision p { font-size: 1.125rem; }
+}
+
+:root[lang="ar"] :is(.chapter-label, .chapter-decision h3, .notebook h3) { letter-spacing: normal; text-transform: none; font-size: 0.875rem; }
+:root[lang="ar"] .chapter h1, :root[lang="ar"] .chapter h2 { letter-spacing: normal; line-height: 1.35; }
+:root[dir="rtl"] .action-icon { transform: scaleX(-1); }
+
+@media print {
+  .masthead { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding-block: 0.5rem; }
+  .scene-host, .scene-rail, .scene-controls, .chapter-foot, .skip-link { display: none !important; }
+  .primary-nav, .nav-sections { display: flex; flex-wrap: wrap; gap: 0 1rem; }
+  .chapter { display: block; min-height: 0; padding-block: 1rem; break-inside: avoid-page; }
+  .action-primary { background: none; color: inherit; padding: 0; text-decoration: underline; }
+}
+
+/* Motion, stills and sound (src/narrative/scene-controls.ts): one disclosure
+   in the header. The panel opens below it, above the page (the header's
+   stacking context), and closes on Escape or a click elsewhere. */
+.scene-controls { position: relative; z-index: 1; display: flex; }
+.scene-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; padding: 0;
+  border: 1px solid transparent; border-radius: 2px; background: none; cursor: pointer;
+}
+.scene-toggle:hover, .scene-toggle[aria-expanded="true"] { border-color: color-mix(in srgb, var(--ink) 45%, transparent); }
+.scene-panel {
+  position: absolute; top: calc(100% + 0.35rem); inset-inline-end: 0;
+  width: max-content; min-width: 13rem; max-width: min(18rem, calc(100vw - 2 * var(--gutter)));
+  display: grid; gap: 0.15rem; padding: 0.45rem;
+  background: var(--paper); border: 1px solid var(--hairline); border-radius: 3px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 14%, transparent);
+  font-family: var(--sans); font-size: 0.875rem;
+}
+.scene-option {
+  display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; padding: 0.3rem 0.6rem;
+  border: 0; border-radius: 2px; background: none; text-align: start; cursor: pointer;
+}
+.scene-option:hover { background: var(--paper-deep); }
+.scene-option[aria-disabled="true"] { color: var(--muted); cursor: default; }
+.scene-option-mark {
+  flex: none; width: 1.75rem; height: 1rem; border-radius: 0.5rem; position: relative;
+  border: 1px solid color-mix(in srgb, var(--ink) 55%, transparent);
+}
+.scene-option-mark::after {
+  content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 0.6rem; height: 0.6rem; border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+.scene-option[aria-pressed="true"] .scene-option-mark { background: var(--action); border-color: var(--action); }
+.scene-option[aria-pressed="true"] .scene-option-mark::after { inset-inline-start: auto; inset-inline-end: 2px; background: var(--action-ink); }
+.scene-status { margin: 0.2rem 0.6rem 0.1rem; color: var(--muted); font-size: 0.8125rem; line-height: 1.35; }
+.scene-status:empty { display: none; }
+
+/* The live scene (src/narrative/scene-mount.ts): one stage, moved between
+   the rail and the portrait slots, laid over the host's poster. The poster
+   stays visible underneath until the stage has drawn the matching pose, then
+   the stage fades in; a lost or failed renderer hides the stage again. The
+   stage is decorative and never takes pointer input. */
+.scene-stage {
+  position: absolute; inset: 0; z-index: 1; overflow: hidden;
+  background: var(--paper); pointer-events: none;
+  opacity: 0; visibility: hidden;
+  transition: opacity 320ms var(--ease), visibility 0s linear 320ms;
+}
+.scene-stage[data-live] { opacity: 1; visibility: visible; transition: opacity 320ms var(--ease), visibility 0s; }
+.scene-stage[data-instant] { transition: none; }
+.scene-stage > * { position: absolute; inset: 0; width: 100%; height: 100%; }
+.scene-stage .scene-garden canvas { display: block; }
+.chapter .scene-host[data-scene-releasing] { transition: transform 260ms var(--ease); }
+@media (prefers-reduced-motion: reduce) {
+  .scene-stage, .scene-stage[data-live] { transition: none; }
+}
+/* Under a live stage the host's own backdrop is paper too, so no poster
+   colour shows at the rounded corners. */
+[data-scene-host]:has(> .scene-stage[data-live]) { background: var(--paper); }
+.scene-snapshot { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
