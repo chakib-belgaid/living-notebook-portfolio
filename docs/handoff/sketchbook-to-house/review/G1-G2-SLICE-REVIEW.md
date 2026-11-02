@@ -13,7 +13,7 @@ Prepared 2 November 2026 on branch `feat/sketchbook-house-narrative` (not pushed
 | P3 layout and navigation | responsive contract, reading controller, navigation with history and cancellation, retained cases with Return paths and text-first images, 23 browser tests | clean after one fix round |
 | P4 scene | one live renderer following the reading; holds draw 0 house and sky frames; motion / stills / sound controls; planting, postcard and fennec visits removed; retired controller deleted; 22 lifecycle tests | clean after one fix round |
 
-The whole-branch review result is recorded in PROGRESS.md and the session ledger once it lands.
+Whole-branch review (2 November 2026): **not ready to merge** (merging `main` deploys, and release-1 P7/P8 are not done); **ready for G1/G2 review**. The reviewer re-ran the live suites (45/45 browser, 33/33 node). One fix wave followed: the Sound control creates its AudioContext inside the click (iOS/WebKit) and recovers from a failed module; the six chapter posters were re-captured from the live scene's poses (warm paper, day, ≤ 32 KB each); the old page's browser suites moved to `tests/retired/` with a migration note so `npm test` is green (80/80); `llms.txt`/`llm.txt` lost the 300× claim and the dossier citation; the scene status is announced from a live region outside the hidden panel.
 
 ## How to look at it
 
@@ -63,12 +63,12 @@ PROGRESS.md "Strings awaiting the user's review" lists every new English string 
 
 ## Known gaps left for P7 (not blockers for this review)
 
-- The phase posters are still the old blue-paper crops; the poster-to-live fade shows the style change until they are re-captured from the new poses (`scripts/capture-stills.mjs` is repointed, not run).
+- Posters now come from the live poses (`npm run stills` against the dev server; settings in PROGRESS.md P4). Still open: the Sketch/Bloom poster alt text in `src/narrative/content.ts` says "blue page" / "autumn"; one Build poster serves BP Log, MCQ Scan and About, so the last two fade from a different framing.
 - V5 framing tuning (BP Log, portrait About, rail aspect).
-- WebKit sound activation after a dynamic import (construct the AudioContext synchronously in the click handler).
-- The retired browser suites (`portfolio`, `presentation`, `journey`, `lifecycle`, `localization`, `quality`) still target the old page; `npm test` is red until P7 migrates them. New suites: `narrative-model`, `translations`, `navigation`, `scene-lifecycle`.
+- WebKit sound activation is fixed in code but verified in Chromium only; check on a real iPhone.
+- The old page's browser suites live in `tests/retired/` (README maps each to ACCEPTANCE §5) until P7 migrates them; release-1 behaviours they covered and the new suites do not yet (F13 blocked module, A11 print, A9/F20 locale switch keeping chapter and offset, quality persistence, whole-page no-JS) need tests in P7. `npm test` runs `narrative-model`, `translations`, `navigation`, `scene-lifecycle` and the node units: 80/80.
 - Performance baseline is SwiftShader-only; the accelerated rerun, real-device sessions and the budget protocol are P7.
-- `public/llms.txt`, `llm.txt`, README, sitemap and the social preview image still describe the old site (P7/P8).
+- `public/llms.txt` and `llm.txt` carry the contract's Qarnot wording now but otherwise still describe the old site; README, sitemap and the social preview image (`og:image`) are P7/P8.
 
 ## Not done, by design
 
