@@ -1,5 +1,6 @@
 import { chapters, chapter, cv, email, identity, notebook, posterAlt, timeline } from "./narrative/content.ts";
 import { fragmentAliases, nextChapterId, phaseLabels, phases, posterSrc, POSTER_SIZES, primaryNav, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
+import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY } from "./compute.ts";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const e = escapeHtml;
@@ -82,6 +83,48 @@ function sceneControls() {
       </div>`;
 }
 
+/** The reading ruler (src/narrative/ruler.ts). Enhancement only: hidden
+ * until the module shows it. On wide layouts a bar at the foot of the scene
+ * (the chapter being read and its phase, a dot per chapter, a line that fills
+ * as the page is read, the carbon tally); on stacked layouts the stylesheet
+ * keeps only the tally as a pill in the bottom corner. The figures are empty
+ * here: the module writes them, so no placeholder needs a translation. */
+function ruler() {
+  const first = chapter("intro");
+  const dots = chapters.map(c => `<li><a class="ruler-dot" href="#${c.id}" title="${e(c.short)}" aria-label="${e(c.short)}"${c.id === "intro" ? ` aria-current="location"` : ""}></a></li>`).join("");
+  return `<div class="ruler-dock" hidden>
+      <nav class="ruler" aria-label="Reading progress" data-phase="${first.scene.phase}">
+        <div class="ruler-track">
+          <p class="ruler-current"><span data-ruler-chapter>${e(first.short)}</span><span class="ruler-phase" data-ruler-phase>${phaseLabels[first.scene.phase]}</span></p>
+          <ol class="ruler-ticks">${dots}</ol>
+          <span class="ruler-fill" aria-hidden="true"></span>
+        </div>
+        ${tally()}
+      </nav>
+    </div>`;
+}
+
+/** The carbon tally: the visit's estimated footprint as an odometer, with
+ * its split, sources and method in a panel that opens above it. */
+function tally() {
+  const method = [
+    "Data transfer: reported bytes × 0.3 kWh/GB × 494 g CO₂e/kWh, computed with co2.js using the Sustainable Web Design Model v4, which includes operational and embodied estimates for data centres, networks, and devices. Unknown sizes are excluded, and cached resources add no reported network bytes.",
+    `Rendering and animation: the main-thread time spent updating and drawing the garden and sky at an assumed ${CPU_WATTS} W, plus the GPU time of each garden frame at an assumed ${GPU_WATTS} W, × ${Math.round(GRID_INTENSITY)} g CO₂e/kWh, co2.js’s world average grid intensity. GPU time is counted only where the browser exposes GPU timers; elsewhere this part is a CPU-only lower bound. Browsers report time, not power, so the wattages are assumptions, and the model’s device share of transfer may overlap a little with this measured rendering.`,
+    "Garden sounds, when on, are made by the browser’s audio engine. Their small cost isn’t measured here.",
+  ].map(text => `<p>${e(text)}</p>`).join("");
+  const link = (href: string, label: string) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${e(label)}<span class="sr-only"> (opens in a new tab)</span></a>`;
+  return `<details class="tally">
+          <summary><span class="sr-only">Carbon footprint</span><span class="tally-figure" dir="ltr" data-carbon-figure></span><span class="tally-note">this visit</span></summary>
+          <section class="tally-panel" aria-labelledby="carbon-label">
+            <p class="carbon-label" id="carbon-label">Estimated impact of this visit so far</p>
+            <dl class="carbon-split"><div><dt>Data transfer</dt><dd data-carbon-transfer></dd></div><div><dt>Rendering</dt><dd data-carbon-compute></dd></div></dl>
+            <p class="carbon-source" data-carbon-source></p>
+            <p class="carbon-source" data-compute-source></p>
+            <details class="carbon-details"><summary>Details</summary>${method}${link("https://sustainablewebdesign.org/estimating-digital-emissions/", "Read the transfer methodology ↗")} ${link("https://developers.thegreenwebfoundation.org/co2js/overview/", "About co2.js ↗")}</details>
+          </section>
+        </details>`;
+}
+
 function chapterFoot(c: Chapter) {
   const next = nextChapterId(c.id);
   const link = next
@@ -159,5 +202,6 @@ export function renderPortfolio() {
     </header>
     <main id="portfolio" class="narrative">${chapters.map(renderChapter).join("")}
       ${sceneRail()}
-    </main>`;
+    </main>
+    ${ruler()}`;
 }

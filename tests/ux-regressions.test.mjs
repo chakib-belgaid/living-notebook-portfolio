@@ -3,7 +3,7 @@
 import { test, before, after } from 'node:test';
 import { chromium } from 'playwright';
 import { setupPage } from './browser-fixture.mjs';
-import { assertHeader, assertLanding, assertMobilePriorities, assertSceneIsolation } from './ux-regressions.mjs';
+import { assertHeader, assertLanding, assertMobilePriorities, assertRuler, assertSceneIsolation } from './ux-regressions.mjs';
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
 let browser;
 before(async () => { browser = await chromium.launch({ ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) }); });
@@ -30,7 +30,14 @@ for (const locale of ['en', 'fr', 'ar']) {
   for (const viewport of [{ width: 375, height: 667 }, { width: 390, height: 844 }]) {
     test(`${locale} ${viewport.width}×${viewport.height}: Work choices and contact action precede the scene`, async () => {
       const p = await open(locale, viewport);
-      try { await assertHeader(p); await assertMobilePriorities(p); }
+      try { await assertHeader(p); await assertMobilePriorities(p); await assertRuler(p, false); }
+      finally { await p.context().close(); }
+    });
+  }
+  for (const viewport of [{ width: 900, height: 700 }, { width: 1440, height: 900 }]) {
+    test(`${locale} ${viewport.width}×${viewport.height}: the ruler sits beside the chapter card with the tally on screen`, async () => {
+      const p = await open(locale, viewport);
+      try { await assertLanding(p, 'about'); await assertRuler(p, true); }
       finally { await p.context().close(); }
     });
   }

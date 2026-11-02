@@ -43,6 +43,7 @@
  * Reduced motion, stills (`?view=read|stills`) and save-data load no scene
  * until the visitor turns off "Still images". Sound starts only from its
  * control; pause and system-reduced silence it without changing consent. */
+import type { ComputeWork } from "../compute";
 import { getLocale, onLocaleChange } from "../i18n";
 import type { Garden } from "../scene";
 import type { Sky } from "../sky";
@@ -138,6 +139,9 @@ export function createSceneMount(controller: NarrativeController) {
   let gardenBox: HTMLElement | null = null;
   let garden: Garden | null = null;
   let sky: Sky | null = null;
+  /* Drawing done by renderers already torn down (a lost context, stills
+     turned on), so the visit's footprint keeps counting across them. */
+  const retired = { cpuMs: 0, gpuMs: 0, any: false };
   let adapter: SceneAdapter | null = null;
   let loading: Promise<void> | null = null;
   /** Bumped when a scene is torn down, so a late load or reveal is ignored. */
@@ -577,6 +581,13 @@ export function createSceneMount(controller: NarrativeController) {
     stageObserver = null;
     gardenBox?.removeEventListener("garden-context-lost", lost);
     gardenBox?.removeEventListener("garden-context-restored", restored);
+    if (garden || sky) {
+      const g = garden?.stats();
+      const s = sky?.stats();
+      retired.cpuMs += (g?.cpuMs ?? 0) + (s?.cpuMs ?? 0);
+      retired.gpuMs += g?.gpuMs ?? 0;
+      retired.any = true;
+    }
     garden?.dispose();
     sky?.dispose();
     stage?.remove();
@@ -707,8 +718,26 @@ export function createSceneMount(controller: NarrativeController) {
   if (wantLive()) void load();
   else publish();
 
+  /** All the drawing of this visit: the garden's frames on the CPU and GPU,
+   * the sky's canvases on the CPU, and whatever earlier renderers drew.
+   * Null while nothing has ever been drawn. `gpuMs` is null where the
+   * browser exposes no GPU timers. */
+  function work(): ComputeWork | null {
+    if (!garden && !sky && !retired.any) return null;
+    const g = garden?.stats();
+    const s = sky?.stats();
+    const gpu = g ? g.gpuMs : retired.gpuMs > 0 ? 0 : null;
+    return {
+      cpuMs: (g?.cpuMs ?? 0) + (s?.cpuMs ?? 0) + retired.cpuMs,
+      gpuMs: gpu === null ? null : gpu + retired.gpuMs,
+    };
+  }
+
   return {
     state: () => ({ ...state }),
+    work,
+    /** The visit's total, drawn on the register in the observatory. */
+    setTally(grams: number | null) { garden?.setTally(grams); },
     destroy() {
       teardown();
       soundscape?.dispose();

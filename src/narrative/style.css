@@ -183,7 +183,15 @@
    text and starts under the header, so a landing shows the chapter label
    first. The scene adapter shifts the garden right of the card. */
 @media screen and (min-width: 900px) and (min-height: 500px) {
+  :root {
+    /* The chapter card's far edge, in viewport terms: the centred 82rem
+       page's inset, the gutter and the card's own width (the .chapter rule
+       below, 55% of the page's content box). The ruler sits beyond it. */
+    --card-width: min(clamp(26.25rem, 36vw, 32.5rem), calc((min(100vw, 82rem) - 2 * var(--gutter)) * 0.55));
+    --card-edge: calc((100vw - min(100vw, 82rem)) / 2 + var(--gutter) + var(--card-width));
+  }
   .narrative { position: relative; }
+  .enhanced .narrative { padding-bottom: 0; }
   /* The fixed rail is a positioned sibling of the chapters, so they are
      positioned too, above it. */
   .chapter {
@@ -209,13 +217,121 @@
   .chapter-motivation, .chapter-decision p { font-size: 1.125rem; }
 }
 
+/* The reading ruler (src/narrative/ruler.ts; markup in src/render.ts
+   ruler()). Enhancement only: hidden until the module shows it.
+   Stacked layouts show only the carbon tally, a pill in the bottom corner,
+   so the figure is on screen the whole way without a bar over the text; the
+   page ends with room for it. Wide layouts show the whole bar at the foot of
+   the scene, right of the chapter card (below). The current chapter's
+   construction phase tints the current dot, the fill and the tally's edge. */
+.enhanced .narrative { padding-bottom: 4rem; }
+.ruler-dock {
+  position: fixed; z-index: 5;
+  bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); inset-inline-end: 0.75rem;
+  display: flex; justify-content: flex-end; pointer-events: none;
+}
+.ruler {
+  --stage: var(--graphite);
+  display: flex; align-items: center; gap: 0.9rem; pointer-events: auto;
+  font-family: var(--sans);
+}
+.ruler[data-phase="blueprint"] { --stage: var(--blueprint); }
+.ruler[data-phase="build"] { --stage: var(--stone); }
+.ruler[data-phase="bloom"] { --stage: var(--leaf); }
+.ruler-track { display: none; }
+
+/* The tally: an odometer with its panel above it. */
+.tally { position: relative; flex: none; }
+.tally > summary {
+  display: flex; flex-direction: column; justify-content: center;
+  min-height: 2.75rem; padding: 0.25rem 0.7rem 0.25rem 0.6rem;
+  background: var(--slip); backdrop-filter: blur(10px);
+  border: 1px solid var(--hairline); border-inline-start: 3px solid var(--stage); border-radius: 0.5rem;
+  box-shadow: var(--lift);
+  list-style: none; cursor: pointer; line-height: 1.15; white-space: nowrap;
+  transition: border-color 0.6s ease, background-color 0.2s ease;
+}
+.tally > summary::-webkit-details-marker { display: none; }
+.tally > summary:hover, .tally[open] > summary { background: color-mix(in srgb, var(--paper) 92%, var(--ink)); }
+.tally-figure { font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0.01em; unicode-bidi: isolate; }
+.tally-figure:empty::before { content: "…"; color: var(--muted); }
+.tally-note { font-size: 0.75rem; font-style: italic; color: var(--muted); }
+.tally-panel {
+  position: absolute; z-index: 1; inset-inline-end: 0; bottom: calc(100% + 0.5rem);
+  width: min(19rem, calc(100vw - 1.5rem));
+  max-height: calc(100svh - var(--header-clearance) - 6rem);
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: 0.8rem 1rem 0.85rem;
+  background: var(--paper); border: 1px solid var(--hairline); border-radius: 0.75rem;
+  box-shadow: 0 6px 18px color-mix(in srgb, black 35%, transparent);
+  font-size: 0.8125rem; line-height: 1.45;
+}
+.carbon-label { margin: 0; font-size: 0.9375rem; line-height: 1.3; }
+.carbon-split { display: grid; gap: 0.1rem; margin: 0.5rem 0 0; font-variant-numeric: tabular-nums; }
+.carbon-split div { display: flex; justify-content: space-between; gap: 0.75rem; }
+.carbon-split dt { color: var(--muted); }
+.carbon-split dd { margin: 0; white-space: nowrap; unicode-bidi: isolate; }
+.carbon-source { margin: 0.35rem 0 0; font-size: 0.75rem; color: var(--muted); }
+.carbon-details { margin-top: 0.5rem; font-size: 0.75rem; }
+.carbon-details > summary { display: flex; align-items: center; min-height: 2rem; cursor: pointer; }
+.carbon-details p { margin: 0.4rem 0; }
+.carbon-details a { display: inline-flex; align-items: center; min-height: 2rem; margin-inline-end: 0.5rem; }
+
+/* Wide: the bar, centred in the scene beyond the card. Where that space
+   falls under 20rem (enlarged text on a narrow window) the bar gives way to
+   the pill rather than run over the card. */
+@media screen and (min-width: 900px) and (min-height: 500px) {
+  .ruler-dock {
+    bottom: 1.25rem; inset-inline-end: var(--gutter);
+    inset-inline-start: calc(var(--card-edge) + var(--gutter));
+    justify-content: center;
+    container: ruler-dock / inline-size;
+  }
+  .ruler {
+    width: min(34rem, 100%); padding: 0.55rem 0.7rem 0.55rem 1rem;
+    background: var(--slip); backdrop-filter: blur(10px);
+    border: 1px solid var(--hairline); border-radius: 1rem; box-shadow: var(--lift);
+  }
+  .ruler-track { position: relative; display: block; flex: 1; min-width: 0; }
+  .ruler-current {
+    display: flex; justify-content: space-between; gap: 0.75rem; margin: 0 0 0.15rem;
+    font-size: 0.8125rem; line-height: 1.25;
+  }
+  .ruler-phase { color: var(--muted); }
+  .ruler-ticks { position: relative; z-index: 1; display: flex; justify-content: space-between; list-style: none; margin: 0; padding: 0; }
+  .ruler-dot { display: grid; place-items: center; width: 1.5rem; height: 1.75rem; }
+  .ruler-dot::before {
+    content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%;
+    background: var(--paper); border: 1.5px solid color-mix(in srgb, var(--ink) 55%, transparent);
+    transition: transform 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
+  }
+  .ruler-dot[data-passed]::before { background: color-mix(in srgb, var(--ink) 55%, transparent); border-color: transparent; }
+  .ruler-dot[aria-current]::before { width: 0.7rem; height: 0.7rem; background: var(--stage); border-color: var(--stage); }
+  .ruler-dot:hover::before { transform: scale(1.3); }
+  /* From the first dot's centre to the last; the ink fills as the page is read. */
+  .ruler-fill { position: absolute; inset-inline: 0.75rem; bottom: calc(0.875rem - 1px); height: 2px; background: color-mix(in srgb, var(--ink) 22%, transparent); }
+  .ruler-fill::after { content: ""; position: absolute; inset-inline-start: 0; top: 0; height: 100%; width: calc(var(--read, 0) * 100%); background: var(--stage); transition: width 0.25s ease, background-color 0.6s ease; }
+  /* Inside the bar the tally wears no slip of its own. */
+  .tally > summary { background: transparent; backdrop-filter: none; box-shadow: none; }
+  .tally > summary:hover, .tally[open] > summary { background: var(--hairline); }
+  @container ruler-dock (width < 20rem) {
+    .ruler { width: auto; margin-inline-start: auto; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; }
+    .ruler-track { display: none; }
+    .ruler .tally > summary { background: var(--slip); backdrop-filter: blur(10px); box-shadow: var(--lift); }
+    .ruler .tally > summary:hover, .ruler .tally[open] > summary { background: color-mix(in srgb, var(--paper) 92%, var(--ink)); }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ruler-dot::before, .ruler-fill::after, .tally > summary { transition: none; }
+}
+
 :root[lang="ar"] :is(.chapter-label, .chapter-decision h3, .notebook h3) { letter-spacing: normal; text-transform: none; font-size: 0.875rem; }
 :root[lang="ar"] .chapter h1, :root[lang="ar"] .chapter h2 { letter-spacing: normal; line-height: 1.35; }
 :root[dir="rtl"] .action-icon { transform: scaleX(-1); }
 
 @media print {
   .masthead, .enhanced .masthead, .enhanced .masthead[data-flow] { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding-block: 0.5rem; }
-  .scene-host, .scene-rail, .scene-controls, .chapter-foot, .skip-link { display: none !important; }
+  .scene-host, .scene-rail, .scene-controls, .chapter-foot, .skip-link, .ruler-dock { display: none !important; }
   .primary-nav, .nav-sections { display: flex; flex-wrap: wrap; gap: 0 1rem; }
   .chapter { display: block; min-height: 0; padding-block: 1rem; break-inside: avoid-page; }
   .action-primary { background: none; color: inherit; padding: 0; text-decoration: underline; }

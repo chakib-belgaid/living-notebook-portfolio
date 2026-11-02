@@ -60,6 +60,42 @@ export async function assertMobilePriorities(page) {
   assert.ok(contact.sceneAfter, 'contact actions precede the scene');
 }
 
+/** The reading ruler: on wide layouts the whole bar beside the chapter card,
+ * on stacked layouts the carbon tally alone as a pill; the figure is on
+ * screen, its panel opens on screen and closes on Escape. */
+export async function assertRuler(page, wide) {
+  await page.waitForFunction(() => /CO₂e|Unavailable/.test(document.querySelector('[data-carbon-figure]')?.textContent ?? ''));
+  const layout = await page.evaluate(() => {
+    const box = el => { const b = el.getBoundingClientRect(); return { left: b.left, top: b.top, right: b.right, bottom: b.bottom }; };
+    const current = document.querySelector('.ruler-dot[aria-current]').getAttribute('href').slice(1);
+    return { width: innerWidth, height: innerHeight, header: document.querySelector('.masthead').getBoundingClientRect().bottom,
+      trackShown: getComputedStyle(document.querySelector('.ruler-track')).display !== 'none',
+      dots: document.querySelectorAll('.ruler-dot').length, current,
+      bar: box(document.querySelector('.ruler')), pill: box(document.querySelector('.tally > summary')),
+      card: box(document.querySelector(`.chapter[data-chapter="${current}"] .chapter-card`)),
+      figure: document.querySelector('[data-carbon-figure]').textContent };
+  });
+  assert.equal(layout.trackShown, wide, JSON.stringify(layout));
+  assert.equal(layout.dots, 8);
+  assert.match(layout.figure, /CO₂e|Unavailable/);
+  const within = b => b.left >= -1 && b.right <= layout.width + 1 && b.top >= layout.header - 1 && b.bottom <= layout.height + 1;
+  assert.ok(within(layout.pill), JSON.stringify(layout));
+  if (wide) {
+    const { bar, card } = layout;
+    assert.ok(within(bar), JSON.stringify(layout));
+    assert.ok(!(bar.left < card.right && bar.right > card.left && bar.top < card.bottom && bar.bottom > card.top), `the bar is clear of the card: ${JSON.stringify(layout)}`);
+  }
+  await page.locator('.tally > summary').click();
+  const panel = await page.evaluate(() => {
+    const b = document.querySelector('.tally-panel').getBoundingClientRect();
+    return { open: document.querySelector('.tally').open, left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+  });
+  assert.ok(panel.open && within(panel), JSON.stringify({ panel, layout }));
+  await page.keyboard.press('Escape');
+  assert.equal(await page.evaluate(() => document.querySelector('.tally').open), false);
+  assert.equal(await page.evaluate(() => document.activeElement.tagName), 'SUMMARY');
+}
+
 export async function assertSceneIsolation(page, portrait = false) {
   await page.setContent(`<style>body{margin:0}.scene-stage{position:${portrait ? 'absolute' : 'fixed'};inset:0;background:#123456}.scene-stage span{display:block;background:#abcdef;width:70px;height:80px}.chapter{position:relative;height:300px}.overlay{position:fixed;z-index:10;inset:0 50% 50% 0;background:red}</style><div class="chapter"><div class="scene-stage"><span></span></div></div><header class="overlay">Fake navigation and copy</header>`);
   const stage = page.locator('.scene-stage');

@@ -2329,12 +2329,10 @@ async function buildGarden(
       pathGlow !== (pathStep === null ? 0 : 1) ||
       flagLift !== (postbox === "idle" ? 0 : 1) ||
       letterTime >= 0 ||
-      hoverGlow !== (hoverSpot ? 1 : 0) ||
-      // The register's wheels, only while they are on show and still turning.
-      (built > 0.01 &&
-        tallyGoal !== null &&
-        tallyShown !== null &&
-        Math.abs(tallyGoal - tallyShown) >= 0.0005)
+      hoverGlow !== (hoverSpot ? 1 : 0)
+      // The register's turning wheels are not a reason to keep drawing: they
+      // snap to the figure when the garden is still (updateRooms) and roll
+      // only in frames drawn anyway.
     );
   }
   // The rings sound out while narrating, and from the voices step on; the
@@ -4171,16 +4169,11 @@ async function buildGarden(
       invalidate();
     },
     setTally(grams) {
+      // The register never wakes a sleeping garden: a pause, a reading hold
+      // and the unbuilt house draw no frame for it (the ruler is the live
+      // readout). Its wheels catch up in the next frame drawn for any other
+      // reason, and turn in the frames the loop draws anyway after Bloom.
       tallyGoal = grams;
-      // A frame only when the register is on show and its figure would
-      // change visibly; after Bloom the loop is drawing anyway.
-      const drawn = tallyDrawn ?? null;
-      if (
-        built > 0.01 &&
-        ((grams === null) !== (drawn === null) ||
-          (grams !== null && Math.abs(grams - drawn!) >= 0.0005))
-      )
-        invalidate();
     },
     setWeather(cloud, precip, snowing = false) {
       weatherCloud = cloud;
