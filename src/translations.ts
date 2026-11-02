@@ -149,4 +149,13 @@ export const translations: Record<string, readonly [string, string]> = {
   "Fit image": ["Adapter l’image", "لائم حجم الصورة"],
   "Close": ["Fermer", "أغلق"],
   "{project} — product screenshot": ["{project} — capture du produit", "{project} — لقطة شاشة المنتج"],
+  // Motion, stills and sound controls (P4, src/render.ts sceneControls and
+  // src/narrative/scene-mount.ts). Drafts awaiting the user's review.
+  "Motion and sound": ["Mouvement et son", "الحركة والصوت"],
+  "Still images": ["Images fixes", "صور ثابتة"],
+  "Sound": ["Son", "الصوت"],
+  "Reduced motion is on in your system settings.": ["La réduction des animations est activée dans les réglages de votre système.", "تقليل الحركة مفعّل في إعدادات نظامك."],
+  "Data saver is on, so still images are shown.": ["L’économiseur de données est activé : des images fixes sont affichées.", "موفّر البيانات مفعّل، لذا تُعرض صور ثابتة."],
+  "The live drawing can’t be shown here. Still images are shown instead.": ["Le dessin animé ne peut pas s’afficher ici. Des images fixes le remplacent.", "لا يمكن عرض الرسم الحي هنا. تُعرض صور ثابتة بدلاً منه."],
+  "The live drawing stopped. A still image is shown instead.": ["Le dessin animé s’est arrêté. Une image fixe le remplace.", "توقف الرسم الحي. تُعرض صورة ثابتة بدلاً منه."],
 };

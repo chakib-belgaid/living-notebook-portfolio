@@ -78,13 +78,21 @@
   }
   .nav-sections { grid-row: 2; grid-column: 1 / -1; align-self: stretch; display: flex; justify-content: space-around; }
   .cv-link { grid-area: 1 / 2; }
+  /* With the scene control shown (enhanced only), the sections share row 2
+     with it, under the language picker; tighter link padding keeps the
+     French labels clear of it at 320px. */
+  .masthead:has(.scene-controls:not([hidden])) .nav-sections { grid-column: 1 / -2; }
+  .masthead:has(.scene-controls:not([hidden])) .nav-sections a { padding-inline: 0.5rem; }
+  .scene-controls { grid-area: 2 / 3; justify-self: end; }
   @supports not (grid-template-rows: subgrid) {
     .primary-nav { grid-row: 2; display: flex; justify-content: space-around; align-items: center; }
+    .scene-controls { grid-area: 1 / 2; }
   }
 }
 /* From 700px: one row, name · sections and CV · language. */
 @media (min-width: 700px) {
-  .masthead { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 1.25rem; }
+  .masthead { grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 1.25rem; }
+  .masthead:has(.scene-controls[hidden]) { grid-template-columns: auto minmax(0, 1fr) auto; }
   .owner { white-space: nowrap; }
   .primary-nav { display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; min-width: 0; }
   .nav-sections { display: flex; gap: 0.25rem; }
@@ -230,8 +238,69 @@
 
 @media print {
   .masthead { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding-block: 0.5rem; }
-  .scene-host, .scene-rail, .chapter-foot, .skip-link { display: none !important; }
+  .scene-host, .scene-rail, .scene-controls, .chapter-foot, .skip-link { display: none !important; }
   .primary-nav, .nav-sections { display: flex; flex-wrap: wrap; gap: 0 1rem; }
   .chapter { display: block; min-height: 0; padding-block: 1rem; break-inside: avoid-page; }
   .action-primary { background: none; color: inherit; padding: 0; text-decoration: underline; }
 }
+
+/* Motion, stills and sound (src/narrative/scene-controls.ts): one disclosure
+   in the header. The panel opens below it, above the page (the header's
+   stacking context), and closes on Escape or a click elsewhere. */
+.scene-controls { position: relative; z-index: 1; display: flex; }
+.scene-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; padding: 0;
+  border: 1px solid transparent; border-radius: 2px; background: none; cursor: pointer;
+}
+.scene-toggle:hover, .scene-toggle[aria-expanded="true"] { border-color: color-mix(in srgb, var(--ink) 45%, transparent); }
+.scene-panel {
+  position: absolute; top: calc(100% + 0.35rem); inset-inline-end: 0;
+  width: max-content; min-width: 13rem; max-width: min(18rem, calc(100vw - 2 * var(--gutter)));
+  display: grid; gap: 0.15rem; padding: 0.45rem;
+  background: var(--paper); border: 1px solid var(--hairline); border-radius: 3px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 14%, transparent);
+  font-family: var(--sans); font-size: 0.875rem;
+}
+.scene-option {
+  display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; padding: 0.3rem 0.6rem;
+  border: 0; border-radius: 2px; background: none; text-align: start; cursor: pointer;
+}
+.scene-option:hover { background: var(--paper-deep); }
+.scene-option[aria-disabled="true"] { color: var(--muted); cursor: default; }
+.scene-option-mark {
+  flex: none; width: 1.75rem; height: 1rem; border-radius: 0.5rem; position: relative;
+  border: 1px solid color-mix(in srgb, var(--ink) 55%, transparent);
+}
+.scene-option-mark::after {
+  content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 0.6rem; height: 0.6rem; border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+.scene-option[aria-pressed="true"] .scene-option-mark { background: var(--action); border-color: var(--action); }
+.scene-option[aria-pressed="true"] .scene-option-mark::after { inset-inline-start: auto; inset-inline-end: 2px; background: var(--action-ink); }
+.scene-status { margin: 0.2rem 0.6rem 0.1rem; color: var(--muted); font-size: 0.8125rem; line-height: 1.35; }
+.scene-status:empty { display: none; }
+
+/* The live scene (src/narrative/scene-mount.ts): one stage, moved between
+   the rail and the portrait slots, laid over the host's poster. The poster
+   stays visible underneath until the stage has drawn the matching pose, then
+   the stage fades in; a lost or failed renderer hides the stage again. The
+   stage is decorative and never takes pointer input. */
+.scene-stage {
+  position: absolute; inset: 0; z-index: 1; overflow: hidden;
+  background: var(--paper); pointer-events: none;
+  opacity: 0; visibility: hidden;
+  transition: opacity 320ms var(--ease), visibility 0s linear 320ms;
+}
+.scene-stage[data-live] { opacity: 1; visibility: visible; transition: opacity 320ms var(--ease), visibility 0s; }
+.scene-stage[data-instant] { transition: none; }
+.scene-stage > * { position: absolute; inset: 0; width: 100%; height: 100%; }
+.scene-stage .scene-garden canvas { display: block; }
+.chapter .scene-host[data-scene-releasing] { transition: transform 260ms var(--ease); }
+@media (prefers-reduced-motion: reduce) {
+  .scene-stage, .scene-stage[data-live] { transition: none; }
+}
+/* Under a live stage the host's own backdrop is paper too, so no poster
+   colour shows at the rounded corners. */
+[data-scene-host]:has(> .scene-stage[data-live]) { background: var(--paper); }
+.scene-snapshot { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }

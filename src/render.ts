@@ -1,5 +1,5 @@
 import { chapters, chapter, cv, email, identity, notebook, posterAlt, timeline } from "./narrative/content.ts";
-import { nextChapterId, phaseLabels, phases, posterSrc, POSTER_SIZE, primaryNav, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
+import { fragmentAliases, nextChapterId, phaseLabels, phases, posterSrc, POSTER_SIZE, primaryNav, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const e = escapeHtml;
@@ -45,7 +45,35 @@ function sceneRail() {
   const poster = chapter("intro").scene.poster;
   return `<aside class="scene-rail" data-scene-host="rail" data-phase="${chapter("intro").scene.phase}" data-poster="${poster}" aria-hidden="true">
         <img class="scene-poster" src="${posterSrc(poster)}" width="${POSTER_SIZE.width}" height="${POSTER_SIZE.height}" alt="" decoding="async" />
-      </aside>`;
+      </aside>${railPosterScript()}`;
+}
+
+/** A deep link (`/#contact`, `?lang=fr#whisperbook`, a reload or a Return)
+ * must open on its own chapter's still, never on the opening sketch (F16).
+ * The rail is parsed before the module script runs, so this tiny synchronous
+ * script sets its poster from the fragment before the first paint. The same
+ * rule as resolveFragment: aliases, and a malformed escape lands on intro. */
+function railPosterScript() {
+  const posters = Object.fromEntries(chapters.map(c => [c.id, { src: posterSrc(c.scene.poster), poster: c.scene.poster, phase: c.scene.phase }]));
+  const aliases = Object.fromEntries(Object.entries(fragmentAliases).map(([alias, { chapter }]) => [alias, chapter]));
+  const code = `(function(){try{var p=${JSON.stringify(posters)},a=${JSON.stringify(aliases)},h=decodeURIComponent(location.hash.slice(1));h=a[h]||h;var c=Object.prototype.hasOwnProperty.call(p,h)?p[h]:null;if(!c||h==="intro")return;var r=document.querySelector('[data-scene-host="rail"]');r.querySelector("img").src=c.src;r.setAttribute("data-poster",c.poster);r.setAttribute("data-phase",c.phase)}catch(e){}})()`;
+  return `<script>${code}</script>`;
+}
+
+/** The motion, stills and sound controls (src/narrative/scene-controls.ts).
+ * Enhancement only: hidden until the scene mount shows them. One disclosure
+ * in the header, so it is available through the whole guided reading without
+ * covering text, and nothing focusable sits inside the decorative rail. */
+function sceneControls() {
+  const sliders = `<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false"><path d="M3 6h9M15 6h2M3 14h3M9 14h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><circle cx="13.5" cy="6" r="1.9" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="7.5" cy="14" r="1.9" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>`;
+  const toggle = (name: string, label: string) => `<button type="button" class="scene-option" data-scene-control="${name}" aria-pressed="false"><span class="scene-option-mark" aria-hidden="true"></span>${e(label)}</button>`;
+  return `<div class="scene-controls" data-scene-controls hidden>
+        <button type="button" class="scene-toggle" aria-expanded="false" aria-controls="scene-panel" aria-label="Motion and sound" title="Motion and sound">${sliders}</button>
+        <div class="scene-panel" id="scene-panel" role="group" aria-label="Motion and sound" hidden>
+          ${toggle("pause", "Pause motion")}${toggle("stills", "Still images")}${toggle("sound", "Sound")}
+          <p class="scene-status" data-scene-status aria-live="polite"></p>
+        </div>
+      </div>`;
 }
 
 function chapterFoot(c: Chapter) {
@@ -118,6 +146,7 @@ export function renderPortfolio() {
     <header class="masthead">
       <a class="owner" href="#intro">${e(identity.name)}</a>
       <nav class="primary-nav" aria-label="Sections"><div class="nav-sections">${nav}</div><a class="cv-link" href="${cv.en}" type="application/pdf" hreflang="en" data-href-en="${cv.en}" data-href-fr="${cv.fr}">CV</a></nav>
+      ${sceneControls()}
       <label class="language-picker"><span class="sr-only">Language</span><select data-language aria-label="Language"><option value="en" lang="en" data-no-translate>EN</option><option value="fr" lang="fr" data-no-translate>FR</option><option value="ar" lang="ar" data-no-translate>AR</option></select></label>
     </header>
     <main id="portfolio" class="narrative">${chapters.map(renderChapter).join("")}

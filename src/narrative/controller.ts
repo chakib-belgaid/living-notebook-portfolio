@@ -25,9 +25,10 @@
  *   page is scrolled away from where the visit left it; a short chapter at
  *   the end of the page cannot flip the URL to its neighbour.
  *
- * P4 subscribes with `onChapterChange` (chapter cue) and `onPosition` (once
- * per animation frame while the reading position changes; transition
- * progress is derived from `offset` near chapter boundaries).
+ * The scene mount (src/narrative/scene-mount.ts) subscribes with
+ * `onChapterChange`, `onPosition` (once per animation frame while the reading
+ * position changes) and `onVisit` (every landed visit, so an explicit jump
+ * snaps the scene to its destination even when the chapter did not change).
  */
 import { onLocaleChange } from "../i18n";
 import { activeNavHref, chapterIds, resolveFragment, type ChapterId } from "./model.ts";
@@ -61,6 +62,9 @@ export interface NarrativeController {
   onChapterChange(callback: (chapter: ChapterId, previous: ChapterId, cause: ChangeCause) => void): () => void;
   /** Called at most once per animation frame while the reading position changes. */
   onPosition(callback: (position: ReadingPosition) => void): () => void;
+  /** Called after every visit has landed (explicit, history, load or Return),
+   * even when the destination is already the active chapter. Returns an unsubscribe. */
+  onVisit(callback: (chapter: ChapterId, cause: ChangeCause) => void): () => void;
   /** Move to a chapter id or fragment ("#wattch", "workshop", …). False if it names no destination. */
   visit(target: string, options: VisitOptions): boolean;
   /** Forget measured geometry (call after a layout change the controller cannot observe). */
@@ -100,6 +104,7 @@ export function createController(root: Document = document): NarrativeController
 
   const chapterListeners = new Set<(chapter: ChapterId, previous: ChapterId, cause: ChangeCause) => void>();
   const positionListeners = new Set<(position: ReadingPosition) => void>();
+  const visitListeners = new Set<(chapter: ChapterId, cause: ChangeCause) => void>();
 
   function measure() {
     const y = scrollY;
@@ -251,6 +256,7 @@ export function createController(root: Document = document): NarrativeController
     // navigation or the visitor's own input wins. The jump is immediate in
     // every motion preference, so reduced motion needs no separate path.
     if (!shown) settle(mine, land);
+    visitListeners.forEach(listener => listener(destination.chapter, cause));
     schedule();
     return true;
   }
@@ -324,6 +330,7 @@ export function createController(root: Document = document): NarrativeController
     position: () => { geometry(); return hold === null ? positionAt(scrollY) : lastPosition; },
     onChapterChange(callback) { chapterListeners.add(callback); return () => { chapterListeners.delete(callback); }; },
     onPosition(callback) { positionListeners.add(callback); return () => { positionListeners.delete(callback); }; },
+    onVisit(callback) { visitListeners.add(callback); return () => { visitListeners.delete(callback); }; },
     visit,
     invalidate() { measured = false; schedule(); },
     destroy() {
