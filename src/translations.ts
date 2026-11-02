@@ -100,8 +100,12 @@ export const translations: Record<string, readonly [string, string]> = {
   "Co-founder and CTO": ["Cofondateur et directeur technique", "شريك مؤسس ومدير تقني"],
   "Ph.D.": ["Doctorat", "دكتوراه"],
   "Research engineer": ["Ingénieur de recherche", "مهندس أبحاث"],
-  "Rendering": ["Affichage", "الرسم"],
   "Pause motion": ["Mettre les animations en pause", "أوقف الحركة مؤقتًا"],
+  // Release-2 exploration reserves (F25a): the rendering-quality, sky,
+  // weather, season and garden-detail labels below, through "{season}.", are
+  // not rendered by the release-1 page. They are kept for the exploration
+  // mode release 2 brings back; until then nothing reads them.
+  "Rendering": ["Affichage", "الرسم"],
   "Sky": ["Ciel", "السماء"],
   "Weather": ["Météo", "الطقس"],
   "Live": ["En direct", "مباشر"],
@@ -131,7 +135,6 @@ export const translations: Record<string, readonly [string, string]> = {
   "Autumn": ["Automne", "الخريف"],
   "Winter": ["Hiver", "الشتاء"],
   "Turn": ["Faire pivoter", "أدر الحديقة"],
-  "Inside Whisperbook": ["Dans Whisperbook", "داخل Whisperbook"],
   "Back": ["Précédent", "السابق"],
   "Book": ["Le livre", "الكتاب"],
   "Audio": ["L’audio", "الصوت"],
