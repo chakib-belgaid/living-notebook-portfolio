@@ -14,7 +14,7 @@ async function open(locale, viewport) {
     await page.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
   });
 }
-for (const locale of ['en', 'fr', 'ar']) {
+for (const locale of ['en', 'fr']) {
   for (const width of [320, 390, 768, 900, 1440]) {
     test(`${locale} ${width}px: 200% text reflows controls and keeps focus landings clear`, async () => {
       const p = await open(locale, { width, height: 844 });

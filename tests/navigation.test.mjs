@@ -274,7 +274,7 @@ async function caseRoundTrip(p, { viewport, expectCase, expectReturn }) {
   const returns = await p.$$eval('a[data-return]', as => as.map(a => a.getAttribute('href')));
   assert.equal(returns.length, 2, 'Return near the top and the bottom');
   for (const href of returns) assert.equal(href, expectReturn);
-  assert.equal(await p.locator('img').count(), 0, 'text-first case');
+  assert.equal(await p.locator('figure.case-figure img').count(), 4, 'the four Whisperbook screenshots are back (decision 34)');
   await Promise.all([p.waitForURL(u => u.pathname === '/'), p.locator('a[data-return]').first().click()]);
   await p.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
   await p.evaluate(() => document.fonts.ready.then(() => true));
@@ -387,7 +387,7 @@ test('Wattch and MCQ Scan cases return to their chapters', async () => {
 });
 
 test('390×844 first viewport: role line, promise and CV link, CV inside the Sections landmark', async () => {
-  for (const lang of ['en', 'fr', 'ar']) {
+  for (const lang of ['en', 'fr']) {
     const p = await open(`/?lang=${lang}`, { viewport: phone });
     try {
       for (const sel of ['#intro .chapter-label', 'h1', '.cv-link', '.owner', '.language-picker']) {
@@ -405,7 +405,7 @@ test('390×844 first viewport: role line, promise and CV link, CV inside the Sec
 
 test('320px and 400% zoom reflow without horizontal scrolling or overlap in the header', async () => {
   for (const viewport of [{ width: 320, height: 568 }, { width: 320, height: 256 }]) {
-    for (const lang of ['en', 'fr', 'ar']) {
+    for (const lang of ['en', 'fr']) {
       const p = await open(`/?lang=${lang}`, { viewport });
       try {
         const result = await p.evaluate(() => {

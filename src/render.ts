@@ -7,8 +7,8 @@ const e = escapeHtml;
 
 const external = (href: string) => /^https?:/.test(href);
 const icon = (glyph: string) => `<span class="action-icon" aria-hidden="true">${glyph}</span>`;
-/** Locale-dependent destinations keep the English href for no-JS and
- * Arabic; src/narrative/localized-links.ts swaps in data-href-fr for French. */
+/** Locale-dependent destinations keep the English href for no-JS;
+ * src/narrative/localized-links.ts swaps in data-href-fr for French. */
 const localized = (a: { href: string; hrefFr?: string }) =>
   a.hrefFr ? ` hreflang="en" data-href-en="${e(a.href)}" data-href-fr="${e(a.hrefFr)}"` : "";
 
@@ -110,6 +110,18 @@ function ruler() {
         <button type="button" class="ruler-motion" data-scene-remote="pause" aria-pressed="false" aria-label="Pause motion" title="Pause motion">${pause}</button>
         <p class="sr-only" data-garden-status role="status" aria-live="polite"></p>
       </div>
+    </div>
+    ${exploreBar()}`;
+}
+
+/** Explore the garden (src/narrative/explore.ts): the toolbar shown only
+ * while exploring, with a button for every gesture. Hidden until then; on
+ * stacked layouts the module moves it into the exploration dialog. */
+function exploreBar() {
+  const button = (attr: string, label: string) => `<button type="button" class="chip" ${attr}>${e(label)}</button>`;
+  return `<div class="explore-bar" data-explore-bar hidden role="group" aria-label="Exploring the garden">
+      <p class="explore-help" id="explore-help" data-explore-help>Drag to turn, scroll or pinch to zoom. Escape returns to reading.</p>
+      <div class="explore-actions">${button("data-explore-exit", "Back to reading")}${button("data-explore-reset", "Reset view")}${button('data-explore-turn="left"', "Turn left")}${button('data-explore-turn="right"', "Turn right")}${button('data-explore-zoom="in"', "Zoom in")}${button('data-explore-zoom="out"', "Zoom out")}</div>
     </div>`;
 }
 
@@ -144,6 +156,7 @@ function gardenPanel() {
               <div class="chips">${chip("plant-mode", "", "Plant by clicking")}<button type="button" class="chip" data-plant-one>Plant one</button><button type="button" class="chip" data-turn>Turn</button></div>
               <p class="quality-label" id="quality-label">Drawing quality</p>
               <div class="chips" role="group" aria-labelledby="quality-label">${qualities.map(([k, label]) => chip("quality", k, label)).join("")}</div>
+              <div class="chips garden-explore"><button type="button" class="chip" data-explore>Explore the garden</button><button type="button" class="chip" data-postcard>Save a postcard</button></div>
             </section>
           </section>
         </details>`;
@@ -165,6 +178,8 @@ function tally() {
             <dl class="carbon-split"><div><dt>Data transfer</dt><dd data-carbon-transfer></dd></div><div><dt>Rendering</dt><dd data-carbon-compute></dd></div></dl>
             <p class="carbon-source" data-carbon-source></p>
             <p class="carbon-source" data-compute-source></p>
+            <button type="button" class="link-button" data-meter-open aria-expanded="false" aria-controls="render-meter">Show rendering detail</button>
+            <div class="render-meter" id="render-meter" data-render-meter hidden></div>
             <details class="carbon-details"><summary>Details</summary>${method}${link("https://sustainablewebdesign.org/estimating-digital-emissions/", "Read the transfer methodology ↗")} ${link("https://developers.thegreenwebfoundation.org/co2js/overview/", "About co2.js ↗")}</details>
           </section>
         </details>`;
@@ -176,7 +191,7 @@ function chapterFoot(c: Chapter) {
     ? `<a class="next-link" href="#${next}">${e(chapter(next).short)}<span class="action-icon" aria-hidden="true">↓</span></a>`
     : `<a class="next-link" href="#intro">Back to the top<span class="action-icon" aria-hidden="true">↑</span></a>`;
   const steps = phases.map(p => `<li${p === c.scene.phase ? ` aria-current="step"` : ""}>${phaseLabels[p]}</li>`).join("");
-  return `<footer class="chapter-foot"><ol class="phase-indicator" aria-label="Construction phase">${steps}</ol>${link}</footer>`;
+  return `<footer class="chapter-foot">${c.turn ? `<p class="chapter-turn">${e(c.turn)}</p>` : ""}<ol class="phase-indicator" aria-label="Construction phase">${steps}</ol>${link}</footer>`;
 }
 
 function workIndex() {
@@ -210,6 +225,7 @@ function renderChapter(c: Chapter) {
     c.subtitle ? `<p class="chapter-subtitle">${e(c.subtitle)}</p>` : "",
     ...paragraphs.slice(0, split).map(para),
     c.id === "intro" || c.id === "contact" ? actions(c.actions) : "",
+    c.annotation ? `<p class="chapter-annotation">${e(c.annotation)}</p>` : "",
     c.id === "work" ? workIndex() : "",
   ].join("");
   let body = paragraphs.slice(split).map(para).join("");
@@ -243,7 +259,7 @@ export function renderPortfolio() {
       <a class="owner" href="#intro">${e(identity.name)}</a>
       <nav class="primary-nav" aria-label="Sections"><div class="nav-sections">${nav}</div><a class="cv-link" href="${cv.en}" type="application/pdf" hreflang="en" data-href-en="${cv.en}" data-href-fr="${cv.fr}">CV</a></nav>
       ${sceneControls()}
-      <label class="language-picker"><span class="sr-only">Language</span><select data-language aria-label="Language"><option value="en" lang="en" data-no-translate>EN</option><option value="fr" lang="fr" data-no-translate>FR</option><option value="ar" lang="ar" data-no-translate>AR</option></select></label>
+      <label class="language-picker"><span class="sr-only">Language</span><select data-language aria-label="Language"><option value="en" lang="en" data-no-translate>EN</option><option value="fr" lang="fr" data-no-translate>FR</option></select></label>
     </header>
     <main id="portfolio" class="narrative">${chapters.map(renderChapter).join("")}
       ${sceneRail()}

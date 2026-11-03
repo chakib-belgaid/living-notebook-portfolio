@@ -17,6 +17,7 @@
  * only when a text changes, so translation work and repaints stay rare. */
 import { estimateCompute, type ComputeWork } from "../compute";
 import { createTransferEstimate, formatGrams } from "../transfer";
+import type { MeterStats } from "./render-meter";
 import { chapter as chapterContent } from "./content";
 import type { NarrativeController } from "./controller";
 import { chapterIds, type ChapterId } from "./model";
@@ -27,6 +28,8 @@ export interface RulerScene {
   work(): ComputeWork | null;
   /** The visit's total, for the register drawn in the observatory. */
   setTally(grams: number | null): void;
+  /** The live garden's frame statistics, null while no garden is live. */
+  frameStats(): MeterStats | null;
 }
 
 export interface Ruler {
@@ -136,6 +139,40 @@ export function createRuler(controller: NarrativeController, scene: RulerScene, 
   tally?.addEventListener("keydown", onKey);
   root.addEventListener("pointerdown", onPress);
 
+  /* ---------- The rendering detail ---------- */
+  // Optional and lazy: the meter's code loads on the first press, and it
+  // samples only while shown. Closing the panel stops it as well.
+  const meterButton = bar.querySelector<HTMLButtonElement>("[data-meter-open]");
+  const meterBox = bar.querySelector<HTMLElement>("[data-render-meter]");
+  let meter: { destroy(): void } | null = null;
+  let meterOpening = false;
+  function hideMeter() {
+    meter?.destroy();
+    meter = null;
+    meterOpening = false;
+    if (meterBox) meterBox.hidden = true;
+    if (meterButton) {
+      meterButton.setAttribute("aria-expanded", "false");
+      meterButton.textContent = "Show rendering detail";
+    }
+  }
+  async function showMeter() {
+    if (!meterBox || !meterButton) return;
+    meterOpening = true;
+    const { mountRenderMeter } = await import("./render-meter");
+    // Closed or destroyed while the code was loading.
+    if (!meterOpening) return;
+    meterOpening = false;
+    meter = mountRenderMeter(meterBox, scene);
+    meterBox.hidden = false;
+    meterButton.setAttribute("aria-expanded", "true");
+    meterButton.textContent = "Hide rendering detail";
+  }
+  const onMeterButton = () => { if (meter || meterOpening) hideMeter(); else void showMeter(); };
+  const onTallyToggle = () => { if (!tally?.open) hideMeter(); };
+  meterButton?.addEventListener("click", onMeterButton);
+  tally?.addEventListener("toggle", onTallyToggle);
+
   dock.hidden = false;
 
   return {
@@ -145,6 +182,9 @@ export function createRuler(controller: NarrativeController, scene: RulerScene, 
       root.removeEventListener("visibilitychange", onVisibility);
       root.removeEventListener("pointerdown", onPress);
       tally?.removeEventListener("keydown", onKey);
+      tally?.removeEventListener("toggle", onTallyToggle);
+      meterButton?.removeEventListener("click", onMeterButton);
+      hideMeter();
       scrub?.removeEventListener("input", onInput);
       removeEventListener("scroll", schedule);
       removeEventListener("resize", onResize);

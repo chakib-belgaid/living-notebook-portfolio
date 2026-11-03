@@ -1,6 +1,6 @@
-/** The homepage's English source copy, verbatim from
- * docs/handoff/sketchbook-to-house/CONTENT_AND_EVIDENCE.md §1–§2, release 1.
- * French and Arabic are in src/translations.ts, keyed by this text.
+/** The homepage's English source copy, grounded in
+ * docs/handoff/sketchbook-to-house/CONTENT_AND_EVIDENCE.md §1–§2.
+ * French is in src/translations.ts, keyed by this text.
  * Build-time safe: no browser globals. */
 import type { Action, Chapter, ChapterId } from "./model.ts";
 
@@ -20,8 +20,7 @@ export const links = {
   email: `mailto:${email}`,
 } as const;
 
-/** The current short CV. English by default and for Arabic (labelled as
- * English in Arabic, never implying an Arabic PDF); French for French. */
+/** The current short CV, in the selected English or French locale. */
 export const cv = {
   en: "/resume/chakib-belgaid-product-engineer-en.pdf",
   fr: "/resume/chakib-belgaid-product-engineer-fr.pdf",
@@ -41,7 +40,7 @@ export const identity = {
   name: owner,
   role: "Applied AI & Product Engineer · Ph.D. in Software Engineering",
   promise: "I turn AI ideas into useful products.",
-  statement: "I combine a researcher’s rigor about how they work and what they cost with the business judgment to know what to validate, what to simplify, and when to ship.",
+  statement: "I build AI products and developer tools, from the interface to the systems underneath. Research taught me to question what works; building products taught me what to simplify and when to ship.",
 } as const;
 
 export const site = {
@@ -57,6 +56,7 @@ export const chapters: Chapter[] = [
     label: identity.role,
     title: identity.promise,
     motivation: [identity.statement],
+    annotation: "A living notebook. Scroll to watch the ideas take shape.",
     actions: [
       { label: "Explore my work", type: "section", href: "#work", primary: true },
       { label: "Get in touch", type: "section", href: "#contact" },
@@ -66,66 +66,70 @@ export const chapters: Chapter[] = [
   {
     id: "work",
     short: "The work",
-    title: "From an idea to something useful.",
-    motivation: ["Three projects, and the decisions that shaped them."],
+    title: "I start with the question.",
+    motivation: ["A photo. A book. An energy trace. Each started with a question."],
     actions: [],
     scene: { phase: "blueprint", focus: null, progress: 0.4, framing: { desktop: "world", portrait: "world" }, poster: "blueprint" },
   },
   {
     id: "bplog",
     short: "BP Log",
-    label: "Selected work · Personal project",
+    label: "The heart garden · Personal project",
     title: "BP Log",
-    subtitle: "A small AI system for an everyday problem.",
-    motivation: ["A photo, a quick check, and a saved reading. BP Log reads a blood-pressure monitor and keeps the results on the phone, offline."],
-    decision: { heading: "The decision", text: "I combined image-processing rules with a 54 KB neural model in plain JavaScript. I focused on recognition failures instead of adding a heavier runtime." },
+    subtitle: "Can a photo save some typing?",
+    motivation: ["A blood-pressure reading should be easy to keep. BP Log reads the monitor from a photo, lets the user check the values, and saves them on the phone, offline."],
+    decision: { heading: "Keep the system small", text: "I combined image-processing rules with a 54 KB neural model in plain JavaScript. The useful next step was fixing recognition failures; a heavier runtime would not solve those." },
+    turn: "Another everyday friction led me to the reading pavilion.",
     evidence: { text: "Public code and evaluation. Evaluated on one monitor; users check and confirm the readings.", kinds: ["public-code", "public-evaluation"] },
     actions: [{ label: "Code & evaluation", type: "source", href: links.bpLogSource }],
-    index: { title: "BP Log", summary: "Practical AI · A small system for a specific task." },
+    index: { title: "BP Log", summary: "A photo instead of typing a reading." },
     scene: { phase: "build", focus: "bplog", progress: 0.52, framing: { desktop: "focus", portrait: "focus" }, poster: "build" },
   },
   {
     id: "whisperbook",
     short: "Whisperbook",
-    label: "Selected work · Personal project",
+    label: "The reading pavilion · Personal project",
     title: "Whisperbook",
     subtitle: "Books I could listen to, on my own terms.",
     motivation: ["I wanted to enjoy books while walking or before sleep. The options I tried felt expensive or sounded robotic."],
-    decision: { heading: "The decision", text: "I built an Android app that narrates EPUBs and PDFs on the phone, with character voices and synchronized text. Progressive preparation lets listening begin before the whole book is ready." },
+    decision: { heading: "Let listening start early", text: "I built an Android app that narrates EPUBs and PDFs on the phone, with character voices and synchronized text. It prepares audio progressively, so the opening chapter can play while the rest is still being narrated." },
+    turn: "Running software locally also raises a question: what does it cost?",
     evidence: { text: "No subscription or cloud service. No runtime network permission. Public source and Android test release.", kinds: ["public-code"] },
     actions: [
       { label: "Source", type: "source", href: links.whisperbookSource },
       { label: "Test releases", type: "source", href: links.whisperbookReleases },
       { label: "Read Android case study", type: "case", ...cases.whispbook },
     ],
-    index: { title: "Whisperbook", summary: "Product ownership · Audiobooks on my own terms." },
+    index: { title: "Whisperbook", summary: "A book that speaks without leaving the phone." },
     scene: { phase: "build", focus: "whisperbook", progress: 0.66, framing: { desktop: "focus", portrait: "focus" }, poster: "whisperbook" },
   },
   {
     id: "energy-tools",
     short: "Energy tools",
-    label: "Selected work · Research & independent tools",
+    label: "The observatory · Research & independent tools",
     title: "pyRAPL, pyJoules & Wattch",
     subtitle: "Making energy measurement usable.",
-    motivation: ["I designed pyRAPL for bounded Python experiments. GPU and other measurement sources led us to pyJoules."],
-    decision: { heading: "The decision", text: "Restricted access and macOS work later led to Wattch: separate collection, evaluation and reporting, while keeping the developer’s workflow simple." },
+    motivation: ["I designed pyRAPL to examine energy use during Python experiments. GPU and other measurement sources led us to pyJoules."],
+    decision: { heading: "Keep the measurement inspectable", text: "Restricted access and work on macOS led to Wattch: separate collection, evaluation and reporting, with a simple workflow and raw traces developers can inspect." },
+    turn: "At work, the constraints come from other people too.",
     evidence: { text: "I designed both Python libraries and developed them with the research team. Wattch’s Rust implementation is AI-assisted. Hardware readings cover device activity during an interval; they do not automatically isolate one function’s energy.", kinds: ["public-code"] },
     actions: [
       { label: "Wattch case", type: "case", ...cases.wattch },
       { label: "pyRAPL source", type: "source", href: links.pyRAPL },
       { label: "pyJoules source", type: "source", href: links.pyJoules },
     ],
-    index: { title: "pyRAPL, pyJoules & Wattch", summary: "Research discipline · Making measurement usable." },
+    index: { title: "pyRAPL, pyJoules & Wattch", summary: "Energy measurements a developer can inspect." },
     scene: { phase: "build", focus: "wattch", progress: 0.76, framing: { desktop: "focus", portrait: "focus" }, poster: "wattch" },
   },
   {
     id: "mcq-scan",
     short: "At MCQ Scan",
-    label: "Professional experience · Lead AI Engineer · 2024–present",
+    label: "The workshop · Lead AI Engineer · 2024–present",
     title: "MCQ Scan",
     subtitle: "The client’s cloud. A workable path to shipping.",
     motivation: ["The client wanted hosting in its Google Cloud environment. We wanted to deliver the application without handing over the source. The initial VM approach created security and access friction."],
-    decision: { heading: "My contribution", text: "I implemented compiled application packaging for serverless deployment, accommodating the hosting requirement without distributing the source." },
+    decision: { heading: "Find a workable delivery path", text: "I implemented compiled application packaging for serverless deployment. The client could host the application in its own environment, and we could deliver it without distributing the source." },
+    turn: "These decisions grew out of a longer path.",
     evidence: { text: "I coordinate a two-person technical team under the CTO. Company implementation and internal evaluations are not public.", kinds: ["internal-account"] },
     actions: [{ label: "More about my work at MCQ Scan", type: "case", ...cases.mcqScan }],
     index: { title: "At MCQ Scan", summary: "Shipping within business constraints.", professional: true },
@@ -134,12 +138,13 @@ export const chapters: Chapter[] = [
   {
     id: "about",
     short: "About me",
-    title: "Product building, research, and applied AI.",
+    title: "The path so far.",
     motivation: [
-      "I co-founded a serious-games startup before moving into software-engineering research and then applied AI. Across those settings, I have worked on the product people interact with, the systems underneath it, and the evidence used to judge whether it works.",
+      "First, a serious-games startup. Then software-engineering research. Now applied AI. Across those settings, I have kept returning to the same work: building something people can use, understanding the system underneath, and checking whether it delivers.",
       "Python is my strongest language. My work spans APIs, interfaces, model integration, and deployment. I use AI coding assistants and review and validate their output.",
     ],
     actions: [cvAction("Download CV"), linkedIn],
+    turn: "The next part starts with a conversation.",
     scene: { phase: "build", focus: "about", progress: 0.93, framing: { desktop: "wide", portrait: "wide" }, poster: "build" },
   },
   {

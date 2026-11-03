@@ -14,7 +14,9 @@ Heading:
 
 Supporting statement:
 
-> I combine a researcher’s rigor about how they work and what they cost with the business judgment to know what to validate, what to simplify, and when to ship.
+> I build AI products and developer tools, from the interface to the systems underneath. Research taught me to question what works; building products taught me what to simplify and when to ship.
+
+Opening annotation: **A living notebook. Scroll to watch the ideas take shape.**
 
 Primary action: **Explore my work** → `#work`.
 
@@ -22,7 +24,7 @@ The role line, the heading and the CV link are visible before any scroll on desk
 
 Secondary action: **Get in touch** → `#contact`.
 
-Primary navigation: Work, About, Contact, CV. Name returns to `#intro`. Keep a compact language control; English, French and Arabic already exist. French proficiency in professional materials is **bilingual**, not merely fluent/intermediate.
+Primary navigation: Work, About, Contact, CV. Name returns to `#intro`. Keep a compact language control with English and French. Arabic was removed from the current version at the user's request on 2 November 2026. French proficiency in professional materials is **bilingual**, not merely fluent/intermediate.
 
 Use the sketchbook as the actual opening composition, not a preview card for an optional separate tour. The visitor sees the house develop through the journey. Do not invent a personal or cultural explanation for its architecture. Existing architectural identity is preserved independently of whether explanatory biography has been provided.
 
@@ -46,28 +48,30 @@ Use `/fr/work/<slug>/` for the retained French cases. Preserve locale/view on ex
 
 ### Work index
 
-Heading: **From an idea to something useful.**
+Heading: **I start with the question.**
 
-Introduction: Three projects, and the decisions that shaped them.
+Introduction: A photo. A book. An energy trace. Each started with a question.
 
-- **BP Log** — Practical AI · A small system for a specific task.
-- **Whisperbook** — Product ownership · Audiobooks on my own terms.
-- **pyRAPL, pyJoules & Wattch** — Research discipline · Making measurement usable.
+- **BP Log** — A photo instead of typing a reading.
+- **Whisperbook** — A book that speaks without leaving the phone.
+- **pyRAPL, pyJoules & Wattch** — Energy measurements a developer can inspect.
 - Separate professional entry: **At MCQ Scan** — Shipping within business constraints.
 
 These entries navigate directly to inline homepage chapters. They are not four equally labeled personal projects.
 
 ### BP Log
 
-Label: Selected work · Personal project.
+Label: The heart garden · Personal project.
 
 Title: **BP Log**.
 
-Subtitle: **A small AI system for an everyday problem.**
+Subtitle: **Can a photo save some typing?**
 
-Motivation: A photo, a quick check, and a saved reading. BP Log reads a blood-pressure monitor and keeps the results on the phone, offline.
+Motivation: A blood-pressure reading should be easy to keep. BP Log reads the monitor from a photo, lets the user check the values, and saves them on the phone, offline.
 
-Decision: I combined image-processing rules with a 54 KB neural model in plain JavaScript. I focused on recognition failures instead of adding a heavier runtime.
+Decision — **Keep the system small**: I combined image-processing rules with a 54 KB neural model in plain JavaScript. The useful next step was fixing recognition failures; a heavier runtime would not solve those.
+
+Transition: Another everyday friction led me to the reading pavilion.
 
 Evidence note: Public code and evaluation. Evaluated on one monitor; users check and confirm the readings.
 
@@ -75,7 +79,7 @@ Actions: Release 1: Code & evaluation → canonical repository. Release 2 adds R
 
 ### Whisperbook
 
-Label: Selected work · Personal project.
+Label: The reading pavilion · Personal project.
 
 Title: **Whisperbook**.
 
@@ -83,7 +87,9 @@ Subtitle: **Books I could listen to, on my own terms.**
 
 Motivation: I wanted to enjoy books while walking or before sleep. The options I tried felt expensive or sounded robotic.
 
-Decision: I built an Android app that narrates EPUBs and PDFs on the phone, with character voices and synchronized text. Progressive preparation lets listening begin before the whole book is ready.
+Decision — **Let listening start early**: I built an Android app that narrates EPUBs and PDFs on the phone, with character voices and synchronized text. It prepares audio progressively, so the opening chapter can play while the rest is still being narrated.
+
+Transition: Running software locally also raises a question: what does it cost?
 
 Evidence note: No subscription or cloud service. No runtime network permission. Public source and Android test release.
 
@@ -91,15 +97,17 @@ Actions: Release 1: Source, Test releases and Existing Android case → destinat
 
 ### Measurement tools
 
-Label: Selected work · Research & independent tools.
+Label: The observatory · Research & independent tools.
 
 Title: **pyRAPL, pyJoules & Wattch**.
 
 Subtitle: **Making energy measurement usable.**
 
-Motivation: I designed pyRAPL for bounded Python experiments. GPU and other measurement sources led us to pyJoules.
+Motivation: I designed pyRAPL to examine energy use during Python experiments. GPU and other measurement sources led us to pyJoules.
 
-Decision: Restricted access and macOS work later led to Wattch: separate collection, evaluation and reporting, while keeping the developer’s workflow simple.
+Decision — **Keep the measurement inspectable**: Restricted access and work on macOS led to Wattch: separate collection, evaluation and reporting, with a simple workflow and raw traces developers can inspect.
+
+Transition: At work, the constraints come from other people too.
 
 Evidence note: I designed both Python libraries and developed them with the research team. Wattch’s Rust implementation is AI-assisted. Hardware readings cover device activity during an interval; they do not automatically isolate one function’s energy.
 
@@ -107,7 +115,7 @@ Actions: Release 1: Wattch case → `/work/wattch/`, plus pyRAPL and pyJoules so
 
 ### MCQ Scan
 
-Label: Professional experience · Lead AI Engineer · 2024–present.
+Label: The workshop · Lead AI Engineer · 2024–present.
 
 Title: **MCQ Scan**.
 
@@ -115,7 +123,9 @@ Subtitle: **The client’s cloud. A workable path to shipping.**
 
 Context: The client wanted hosting in its Google Cloud environment. We wanted to deliver the application without handing over the source. The initial VM approach created security and access friction.
 
-Contribution: I implemented compiled application packaging for serverless deployment, accommodating the hosting requirement without distributing the source.
+Contribution — **Find a workable delivery path**: I implemented compiled application packaging for serverless deployment. The client could host the application in its own environment, and we could deliver it without distributing the source.
+
+Transition: These decisions grew out of a longer path.
 
 Evidence note: I coordinate a two-person technical team under the CTO. Company implementation and internal evaluations are not public.
 
@@ -123,9 +133,11 @@ Action: More about my work at MCQ Scan → `/work/mcq-scan/`.
 
 ### About
 
-Title: **Product building, research, and applied AI.**
+Title: **The path so far.**
 
-Introduction: I co-founded a serious-games startup before moving into software-engineering research and then applied AI. Across those settings, I have worked on the product people interact with, the systems underneath it, and the evidence used to judge whether it works.
+Introduction: First, a serious-games startup. Then software-engineering research. Now applied AI. Across those settings, I have kept returning to the same work: building something people can use, understanding the system underneath, and checking whether it delivers.
+
+Transition after the timeline and notebook: The next part starts with a conversation.
 
 Practice: Python is my strongest language. My work spans APIs, interfaces, model integration, and deployment. I use AI coding assistants and review and validate their output.
 
@@ -238,6 +250,7 @@ For each production visual, record: file path, project, source/build SHA or rele
 | MCQ Scan visuals | Client/private material not authorized for publication | Use text or a clearly illustrative high-level diagram without private details. |
 | EN/FR short CVs | HTML/PDF files exist in `public/resume`; both HTML sources retain the 300× PowerAPI claim excluded above without clarified attribution. PDF content/rendering not audited by this handoff review. | Release 1: P0 audits both formats, P2 corrects/rebuilds as needed and inspects every rendered PDF page. Preserve URLs, align HTML/PDF claims and record validation. Do not defer to P5. |
 | `public/assets/garden-preview.png` / `.webp` | Social `og:image` and reading-page preview of the finished garden | Re-capture to match the new opening or an agreed pose; keep the file names if external links use them. |
+| `public/assets/social/<slug>-<lang>.png` (six) | Added 3 November 2026 (product decision 66): one self-hosted 1200×630 PNG share card per retained case and language (`whispbook`, `wattch`, `mcq-scan` × `en`, `fr`), referenced by each case page's `og:image` and `twitter:image`. Built by `npm run share-cards` (`scripts/build-share-cards.mjs`) from each page's own section label, `<h1>` and summary, in the navy page identity with self-hosted Newsreader; Whisperbook and Wattch cards show their own screenshots whole, MCQ Scan sits on the site's rendered night still. No generated imagery, logos or device frames | Rebuild after changing a case's hero wording; `npm run share-cards -- --check` validates dimensions and size budget; `scripts/verify-case-dependencies.mjs` requires all six in a clean build. |
 
 ### Retained-case assets missing from this checkout
 
@@ -245,12 +258,12 @@ Confirmed absent locally on 1 November 2026 at the inspected SHA. These are refe
 
 | Expected repository path | Referencing case routes | Current status |
 | --- | --- | --- |
-| `public/assets/projects/whisperbook/now-playing.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
-| `public/assets/projects/whisperbook/read-along.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
-| `public/assets/projects/whisperbook/voice-cast.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
-| `public/assets/projects/whisperbook/library.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
-| `public/assets/projects/wattch/deterministic-trace.png` | `/work/wattch/`, `/fr/work/wattch/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
-| `public/assets/projects/wattch/energy-tests.png` | `/work/wattch/`, `/fr/work/wattch/` | Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026; see PROGRESS.md) |
+| `public/assets/projects/whisperbook/now-playing.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | ~~Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026)~~ **Checked in 3 November 2026** from the Pages repository, figure and caption restored in EN/FR (table below) |
+| `public/assets/projects/whisperbook/read-along.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | ~~Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026)~~ **Checked in 3 November 2026** from the Pages repository, figure and caption restored in EN/FR (table below) |
+| `public/assets/projects/whisperbook/voice-cast.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | ~~Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026)~~ **Checked in 3 November 2026** from the Pages repository, figure and caption restored in EN/FR (table below) |
+| `public/assets/projects/whisperbook/library.webp` | `/work/whispbook/`, `/fr/work/whispbook/` | ~~Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026)~~ **Checked in 3 November 2026** from the Pages repository, figure and caption restored in EN/FR (table below) |
+| `public/assets/projects/wattch/deterministic-trace.png` | `/work/wattch/`, `/fr/work/wattch/` | ~~Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026)~~ **Checked in 3 November 2026** from the Pages repository, figure, caption and synthetic label restored in EN/FR (table below) |
+| `public/assets/projects/wattch/energy-tests.png` | `/work/wattch/`, `/fr/work/wattch/` | ~~Missing; provenance unresolved → text-first in EN/FR (P3, 2 November 2026)~~ **Checked in 3 November 2026** from the Pages repository, figure, caption and synthetic label restored in EN/FR (table below) |
 
 Release-1 resolution protocol (P0 inventory, P3 repair, P7/P8 verification):
 
@@ -258,6 +271,19 @@ Release-1 resolution protocol (P0 inventory, P3 repair, P7/P8 verification):
 2. If the asset is verified and appropriate, include it at the expected path in `public/` so a clean build has it. Keep Wattch synthetic/protocol evidence labeled; do not promote it to hardware measurements.
 3. If provenance or recovery remains unresolved, retain a useful text-first case with source/evaluation links. Remove the unavailable image, associated preload, image-specific caption and metadata in **both** languages; do not ship broken images, invented substitutes or review placeholders. Retain the case URL and project identity. Record the resolution per asset in PROGRESS.md. This fallback does not authorize deleting unrelated assets from the deployed Pages repository.
 4. Verify all remaining local image/style dependencies in a clean `dist/` and production preview, including image decoding rather than accepting an HTML fallback response as an image. Check both EN/FR routes. Release 1 must work without borrowing files that only survive in an old deployment.
+
+**Resolution, 3 November 2026.** In the decision table of that date the user chose to restore the six screenshots, superseding the P3 text-first resolutions. The files were checked into `public/assets/projects/` from the published Pages repository (`chakib-belgaid.github.io`); their SHA-256 sums equal the candidates recorded in P0 (PROGRESS.md asset table), so they are the files the case pages always referenced. Each figure is back in both languages with its original caption and alt text, width and height attributes matching the files, the hero eager and the others `loading="lazy"`, and a plain link to the file; `public/assets/case-evidence.js` adds the enlargement dialog. The root `public/assets/whisperbook.webp` and `wattch.png` are still not used as case evidence. Wattch's two images stay labelled as deterministic protocol output and synthetic values, not hardware measurements. The build behind the Whisperbook captures is still not separately confirmed; the case presents them with the captions they had on the published site.
+
+| Path | Pixels | Bytes | SHA-256 | Loading | English caption |
+| --- | --- | ---: | --- | --- | --- |
+| `whisperbook/now-playing.webp` | 941×1672 | 177008 | `ec740fea1fc7baf6d9bd68ce1ccbba4a7c8f396dfe36d92ef3f2cdb1e5c2bff8` | hero, eager | Now Playing keeps the active speaker, chapter controls and offline state visible on the production Compose surface. |
+| `whisperbook/read-along.webp` | 941×1672 | 109716 | `0b025fe3cc5c4d86187e305c200ab2f2185bd6dc83ec0402baf3d9d5593f4847` | lazy | Read Along follows the active passage and keeps manual speaker correction available. |
+| `whisperbook/voice-cast.webp` | 941×1672 | 123552 | `02d48dced381230837d06c88405744a78aa5a60d6fff29eed63e1ccf2a2dbf14` | lazy | Voice Cast manages per-book language and previewable local voices without leaving the device. |
+| `whisperbook/library.webp` | 941×1672 | 114764 | `2729d3f51837340d374da3bda27c8dc9709bd842a872c8f68bd8c9821b083f84` | lazy | The Library restores each book's own listening position and preparation state. |
+| `wattch/deterministic-trace.png` | 1600×1000 | 219565 | `ec0b3208215371f1278817e2dfcbfa7eff63c6152d0c6f2eae215a105ab4de1b` | hero, eager | Real dry-run output from the checked-in deterministic laptop scenario; it is protocol evidence, not a hardware-energy claim. |
+| `wattch/energy-tests.png` | 1440×900 | 95452 | `7dfbd30b07b7f860221b18251d5fafcd3be1e0b4710d489aa25070971d1c45d9` | lazy | The shipped Energy Tests surface rendered from an actual deterministic demo run; synthetic values verify the workflow, not physical hardware. |
+
+`scripts/verify-case-dependencies.mjs` now requires these six files and the six share cards in a clean build and checks that each decodes.
 
 Recovering these six legacy images is distinct from confirming `public/assets/whisperbook.webp` for possible release-2 reuse. Neither missing set blocks a text-first case once its unsupported image references are repaired.
 

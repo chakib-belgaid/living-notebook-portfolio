@@ -1,6 +1,6 @@
 // P3 slice captures: intro → work → Whisperbook → /work/whispbook/ (EN, FR)
 // → Return → #whisperbook → contact, at 1440×900 and 390×844, plus 320px and
-// ?lang=ar first viewports and the other retained cases' tops. Build, serve
+// first viewports and the other retained cases' tops. Build, serve
 // dist with `npx vite preview --host 127.0.0.1 --port 4317 --strictPort`,
 // then `node scripts/capture-p3-slice.mjs` (BASE overrides the URL).
 // Writes .qa/p3/ (git-ignored) and prints the state behind each capture.
@@ -73,14 +73,9 @@ for (const [label, viewport] of Object.entries(sizes)) {
   await shot(fr.page, `${label}-8-after-return-fr`);
   await fr.ctx.close();
 
-  const ar = await context(viewport);
-  await ar.page.goto(BASE + "/?lang=ar");
-  await enhanced(ar.page);
-  await shot(ar.page, `${label}-9-ar-first`);
-  await ar.ctx.close();
 }
 
-for (const lang of ["en", "fr", "ar"]) {
+for (const lang of ["en", "fr"]) {
   const { ctx, page } = await context({ width: 320, height: 568 });
   await page.goto(`${BASE}/?lang=${lang}`);
   await enhanced(page);

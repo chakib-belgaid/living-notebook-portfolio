@@ -15,7 +15,8 @@
     "test:performance:budgets": "node tests/run-performance-budgets.mjs",
     "stills": "node scripts/capture-stills.mjs",
     "still:loading": "node scripts/capture-loading-still.mjs",
-    "resume:pdf": "node scripts/build-resume-pdfs.mjs"
+    "resume:pdf": "node scripts/build-resume-pdfs.mjs",
+    "share-cards": "node scripts/build-share-cards.mjs"
   },
   "dependencies": {
     "@tgwf/co2": "^0.19.0",

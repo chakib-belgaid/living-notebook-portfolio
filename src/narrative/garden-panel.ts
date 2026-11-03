@@ -217,12 +217,43 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
   };
   qualityChips.forEach(b => b.addEventListener("click", onQualityClick));
 
+  /* ---------- Exploring and the postcard ---------- */
+  // Both load their code only when pressed (src/narrative/explore.ts,
+  // postcard.ts). Exploring asks for the live drawing if stills are shown;
+  // it never turns sound on.
+  const exploreButton = $<HTMLButtonElement>("[data-explore]");
+  const postcardButton = $<HTMLButtonElement>("[data-postcard]");
+  let making = false;
+  const failed = () => document.documentElement.dataset.renderer === "failed";
+  const onExplore = async () => {
+    if (failed()) { announce("The garden can’t be explored here. Still images are shown instead."); return; }
+    if (exploreButton) exploreButton.disabled = true;
+    try {
+      await scene.explore();
+    } finally {
+      sync();
+    }
+    if (!scene.exploring()) announce("The garden can’t be explored here. Still images are shown instead.");
+  };
+  const onPostcard = async () => {
+    if (making || !scene.live()) return;
+    making = true;
+    sync();
+    let saved = false;
+    try { saved = await scene.postcard(); } finally { making = false; sync(); }
+    announce(saved ? "Your garden postcard is saved." : "The postcard couldn’t be made in this browser. The garden is unchanged.");
+  };
+  exploreButton?.addEventListener("click", onExplore);
+  postcardButton?.addEventListener("click", onPostcard);
+
   /* ---------- The scene's state ---------- */
   function sync() {
     const live = scene.live();
     press(qualityChips, "quality", scene.quality());
     counted(scene.trees(), false);
     turn.disabled = !live;
+    if (postcardButton) postcardButton.disabled = !live || making;
+    if (exploreButton) exploreButton.disabled = failed() || scene.exploring();
     if (!live && plantingOn) setPlanting(false);
   }
   const offState = scene.onState(sync);
@@ -255,6 +286,8 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
       plantMode.removeEventListener("click", onPlantMode);
       plantOne.removeEventListener("click", onPlantOne);
       turn.removeEventListener("click", onTurn);
+      exploreButton?.removeEventListener("click", onExplore);
+      postcardButton?.removeEventListener("click", onPostcard);
       root.removeEventListener("keydown", onKey);
       root.removeEventListener("pointerdown", onOutside, true);
       clearInterval(refresh);

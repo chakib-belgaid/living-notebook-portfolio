@@ -32,10 +32,10 @@
   const record = own || parse(read("notebook:return:last"));
 
   // The homepage's parameters, with the language of this page: a French case
-  // returns in French; an English case keeps English or Arabic.
+  // returns in French; an English case returns in English.
   const params = new URLSearchParams(record ? record.query : "");
   if (french) params.set("lang", "fr");
-  else if (params.get("lang") === "fr") params.set("lang", "en");
+  else if (params.has("lang")) params.set("lang", "en");
   const search = params.toString();
   const home = hash => `/${search ? `?${search}` : ""}${hash}`;
 

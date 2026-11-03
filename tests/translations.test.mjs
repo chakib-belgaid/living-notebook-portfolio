@@ -1,11 +1,12 @@
 // Every text the homepage renders, and every translated attribute (aria-label,
-// alt, title, placeholder), has a French and Arabic entry in
+// alt, title, placeholder), has a French entry in
 // src/translations.ts, unless it is a name, an address, a date range or a
 // product identifier listed below. Run: node --test tests/translations.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderPortfolio } from '../src/render.ts';
-import { translate } from '../src/i18n.ts';
+import { isLocale, resolveLocale, translate } from '../src/i18n.ts';
+import { translations } from '../src/translations.ts';
 
 /** Kept as written in every language. */
 const untranslated = new Set([
@@ -68,13 +69,31 @@ function translatable(html) {
 
 test('every rendered label and translated attribute has a translation', () => {
   const missing = [];
+  const known = new Set(Object.keys(translations).map(key => key.toLowerCase()));
   for (const { kind, value } of translatable(renderPortfolio())) {
     if (isUntranslated(value)) continue;
-    // Arabic never coincides with the English source, so an unchanged
-    // result means no entry (exact, case-insensitive or template) exists.
-    if (translate(value, 'ar') === value) missing.push(`${kind}: ${value}`);
+    // French can match English (CV, Contact); templates can also translate
+    // complete rendered messages that are not literal catalog keys.
+    if (!known.has(value.toLowerCase()) && translate(value, 'fr') === value) missing.push(`${kind}: ${value}`);
   }
   assert.deepEqual([...new Set(missing)], []);
+});
+
+test('removed Arabic links and saved choices fall back to a supported language', () => {
+  assert.equal(isLocale('ar'), false);
+  assert.equal(resolveLocale('https://example.test/?lang=ar', 'ar', ['ar-DZ', 'fr-FR']), 'fr');
+  assert.equal(resolveLocale('https://example.test/?lang=ar', 'ar', ['ar-DZ']), 'en');
+  assert.equal(resolveLocale('https://example.test/?lang=ar', 'fr', ['en-US']), 'fr');
+  assert.equal(resolveLocale('https://example.test/?lang=en', 'fr', ['fr-FR']), 'en');
+  assert.equal(resolveLocale('https://example.test/?lang=fr', 'ar', ['en-US']), 'fr');
+  assert.doesNotMatch(renderPortfolio(), /<option[^>]+value="ar"/);
+});
+
+test('French translations retain the live messages’ placeholders', () => {
+  const placeholders = value => [...value.matchAll(/\{\w+\}/g)].map(match => match[0]).sort();
+  for (const [source, french] of Object.entries(translations)) {
+    assert.deepEqual(placeholders(french), placeholders(source), source);
+  }
 });
 
 test('the extractor sees text, attributes and opt-outs', () => {

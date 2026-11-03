@@ -37,8 +37,6 @@
   -webkit-font-smoothing: antialiased;
   text-size-adjust: 100%;
 }
-:root[lang="ar"] { font-family: Tahoma, "Geeza Pro", "Noto Naskh Arabic", Arial, sans-serif; }
-:root[lang="ar"] :is(h1, h2, h3, h4) { line-height: 1.5; }
 
 *,
 *::before,

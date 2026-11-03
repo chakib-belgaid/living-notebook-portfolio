@@ -22,7 +22,7 @@ for (const [label, viewport] of Object.entries(sizes)) {
   const order =await page.$$eval("main > section.chapter", s => s.map(x => x.id));
   check(`${label} no-JS: eight chapters in order`, JSON.stringify(order) === JSON.stringify(ids), order.join(","));
   const text = await page.locator("main").innerText();
-  const anchors = ["I turn AI ideas into useful products.", "From an idea to something useful.", "A small AI system for an everyday problem.", "Books I could listen to, on my own terms.", "Making energy measurement usable.", "The client’s cloud. A workable path to shipping.", "Product building, research, and applied AI.", "Let’s talk about what you’re building."];
+  const anchors = ["I turn AI ideas into useful products.", "I start with the question.", "Can a photo save some typing?", "Books I could listen to, on my own terms.", "Making energy measurement usable.", "The client’s cloud. A workable path to shipping.", "The path so far.", "Let’s talk about what you’re building."];
   let last = -1, inOrder = true;
   for (const a of anchors) { const i = text.indexOf(a); if (i <= last) inOrder = false; last = i; }
   check(`${label} no-JS: chapter copy visible in order`, inOrder);
@@ -130,7 +130,7 @@ let englishTexts;
   await ctx.close();
 }
 for (const [label, viewport] of Object.entries(sizes)) {
-  for (const lang of ["fr", "ar"]) {
+  for (const lang of ["fr"]) {
     const ctx = await browser.newContext({ viewport });
     const page = await ctx.newPage();
     const errors = [];
@@ -142,11 +142,11 @@ for (const [label, viewport] of Object.entries(sizes)) {
     const dir = await page.evaluate(() => document.documentElement.dir);
     const cv = await page.locator(".cv-link").evaluate(a => `${a.textContent} ${a.getAttribute("href")} ${a.hreflang}`);
     const title = await page.title();
-    const expectH1 = lang === "fr" ? "Je transforme des idées d’IA en produits utiles." : "أحوّل أفكار الذكاء الاصطناعي إلى منتجات مفيدة.";
+    const expectH1 = "Je transforme des idées d’IA en produits utiles.";
     check(`${label} ?lang=${lang} h1 translated`, h1 === expectH1, h1);
-    check(`${label} ?lang=${lang} nav translated`, lang === "fr" ? nav === "Projets|Parcours|Contact" : nav === "الأعمال|نبذة عني|تواصل", nav);
-    check(`${label} ?lang=${lang} dir`, dir === (lang === "ar" ? "rtl" : "ltr"), dir);
-    check(`${label} ?lang=${lang} CV link`, lang === "fr" ? cv.includes("-fr.pdf fr") : cv.includes("-en.pdf en") && cv.includes("بالإنجليزية"), cv);
+    check(`${label} ?lang=${lang} nav translated`, nav === "Projets|Parcours|Contact", nav);
+    check(`${label} ?lang=${lang} dir`, dir === "ltr", dir);
+    check(`${label} ?lang=${lang} CV link`, cv.includes("-fr.pdf fr"), cv);
     check(`${label} ?lang=${lang} title translated`, !title.includes("Applied AI"), title);
     check(`${label} ?lang=${lang} no page errors`, errors.length === 0, errors.join("; "));
     const caseHref = await page.locator("#whisperbook a.action-case").getAttribute("href");

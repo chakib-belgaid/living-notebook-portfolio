@@ -11,11 +11,14 @@ Use this table for both the slice and the release candidates. Record each check 
 | V1–V11; F1–F7, F9, F11–F22; A1–A12 | Required for shipped homepage, retained cases, CVs and available controls; no new-case or exploration requirement is implied | Retain coverage and extend to new cases/exploration where relevant |
 | F8a, F10: retained routes, dependencies and case return | Required for MCQ Scan, Wattch and legacy Android cases, EN/FR copies, and `/live/` redirects | Must still pass; extend F10 to the new case routes |
 | F8b: four main case destinations | Deferred; no links to unbuilt new routes | Required: three new cases plus expanded MCQ Scan, with specified locale pairing |
-| F23–F24: exploration entry/exit and input | Deferred; release 1 has no Explore action or exploration input handlers | Required |
-| F25a: removed features | Required: no planting, postcard or fennec visits/controls | Required; do not reintroduce them |
-| F25b: retained exploration features | Deferred; their UI is absent in release 1 | Required |
+| F23–F24: exploration entry/exit and input | Deferred; release 1 has no Explore action or exploration input handlers. **Superseded 3 November 2026:** the user restored exploration in the current product, so F23–F24 and F28–F30 are required now | Required |
+| F25a: planting, postcard, fennec visits | Until 3 November 2026: required absent (no planting, postcard or fennec visits/controls). **Reversed 3 November 2026:** restored by the user; required present under F25a's conditions and F31–F32 | Required, as restored |
+| F25b: retained exploration features | Deferred; their UI is absent in release 1. **Superseded 3 November 2026:** the garden panel and exploration ship now, so F25b and F33–F34 are required | Required |
 | F26–F27: weather permission and impact methodology | Required for any retained services/instrumentation; no exploration UI is required. If dormant, verify no unsolicited permission request or misleading claim | Required for the exposed exploration features as well |
 | Performance, build-output checks and release gate | Required for all release-1 scenarios, including verified CVs and repaired retained-case assets | Repeat for changed behavior and the expanded journey; retain release-1 guarantees |
+| F35–F38: case evidence, demos, share cards, on-request loading | Required from 3 November 2026 (restored by the user) | Must still pass |
+
+**3 November 2026 reversal.** In the 78-item decision table of 3 November 2026 the user restored, from `main`, the explicit "Explore the garden" state, its place labels, planting with the fennec's visit, "Save a postcard", the quality rebuild, the optional rendering detail, and the six case screenshots with Inside Whisperbook and Listen. They ship in focused modules loaded on request, not in the old `main.ts`. The rows above keep their earlier wording so the history stays visible; the rewritten F25a and the new F28–F38 below are the current criteria. Decision 75 asks that the documentation follow the chosen behaviour.
 
 Only named release-2 features are deferred. No-JS content, URL identity, sound opt-in, motion preferences, translation policy, CV verification and retained-case asset completeness are release-1 requirements. Apply overlay-specific accessibility checks only where an overlay ships; record an absent optional surface explicitly rather than claiming it was exercised.
 
@@ -72,12 +75,28 @@ The supplied review boards are references for hierarchy and intent. They are not
 
 ### Exploration and preserved features
 
-- [ ] F23 Release 2: exploration is explicitly entered and exited; exit restores reading position and focus.
-- [ ] F24 Release 2: orbit/pinch/drag handlers capture input only in that mode. Ordinary reading retains native scrolling and browser zoom in both releases.
-- [ ] F25a Both releases: planting, the postcard and the fennec visits are removed by decision, with no dead controls or translations left behind.
-- [ ] F25b Release 2: quality, sky with time/weather/season, the carbon tally, rotate and zoom are retained in exploration. Release 1 may retain dormant reusable code, but exposes no exploration controls.
+- [ ] F23 Release 2 (required now, 3 November 2026): exploration is explicitly entered and exited; exit restores reading position and focus.
+- [ ] F24 Release 2 (required now, 3 November 2026): orbit/pinch/drag handlers capture input only in that mode. Ordinary reading retains native scrolling and browser zoom in both releases.
+- [ ] F25a Both releases: planting, the postcard and the fennec visits are present, as restored by the user on 3 November 2026 (until then this item required them removed, by the earlier decision). Planting is a deliberate choice in the garden panel (Plant one, Plant by clicking; at most 24 trees, kept across rebuilt gardens); the postcard is made only on request and sends nothing; a fennec visits only after deliberate planting while motion is allowed. Every control works or is disabled with a reason, and every string is translated.
+- [ ] F25b Release 2 (required now, 3 November 2026): quality, sky with time/weather/season, the carbon tally, rotate and zoom are retained in exploration. ~~Release 1 may retain dormant reusable code, but exposes no exploration controls.~~ Superseded: the garden panel and exploration are part of the current product.
 - [ ] F26 Missing weather/location permission does not block the page. Exact location remains an explicit request.
 - [ ] F27 Impact data retains measured-versus-estimated distinctions, unknown transfer sizes and unavailable GPU timers. It is not called a hardware Wattch measurement.
+
+### Restored on 3 November 2026
+
+The user's decision table of 3 November 2026 brought these back from `main`, in focused modules. All are unchecked until exercised against a production preview.
+
+- [ ] F28 "Explore the garden" (garden panel) is the only way in. Entering keeps the reading position, shows the toolbar and the place labels, turns ambient life on and moves focus to "Back to reading". Back to reading and Escape restore the reading position, focus (the Explore button) and the chapter's pose, and the reading hold returns to 0 recurring frames. A layout change or a lost renderer also exits safely. Stacked layouts explore in a full-screen dialog; the rest of the page is inert and does not scroll until exit.
+- [ ] F29 Gestures act only on the stage and only while exploring: drag turns, wheel or trackpad pinch zooms about the pointer, two fingers zoom and pan. Outside the mode, wheel, touch and browser zoom behave natively. Each gesture has an equivalent control (Turn left/right, Zoom in/out, Reset view; arrow keys in the toolbar). Under pause or reduced motion each change is drawn at once.
+- [ ] F30 Place labels exist only while exploring, are keyboard-reachable buttons, and name the current chapters: BP Log, Whisperbook, pyRAPL, pyJoules & Wattch, MCQ Scan, The path so far. Pointer or focus highlights the place; activating one leaves exploration and performs an explicit visit (history entry, heading focus) to its chapter.
+- [ ] F31 "Save a postcard" downloads a PNG of the scene as arranged (sky, trees, turn, weather, season) with a caption and the portfolio's address. Its module is fetched on the first request; no network request carries the image; the control is disabled while only stills are shown.
+- [ ] F32 Fennec visit: after deliberate planting, with motion allowed, the nearest fennec on that level completes one visit (notice, approach by a valid route, settle, return); a held garden keeps drawing until the visit ends, then sleeps again. Pause or reduced motion brings none. Fennecs are drawn only by day, in dry weather and in the full build, so at the default 22:00 night a visit is visible only after the visitor moves the hour into daylight; record the user's decision on fennecs at night.
+- [ ] F33 A Light/Full choice that changes the geometry tier rebuilds the garden in place, preserving chapter, trees, atmosphere, camera (turn, zoom, pan) and the carbon tally; the old garden stays on screen until the new one has drawn; a failed build falls back to stills. A choice that does not change the tier only changes how it is drawn.
+- [ ] F34 "Show rendering detail" in the tally panel is optional: fetched on the first press, sampling (CPU/GPU ms sparkline, triangles, draw calls) only while open and the tab is visible, stopping when closed; labelled as this page's estimated rendering cost, not a Wattch hardware measurement.
+- [ ] F35 Case screenshots: the four Whisperbook and two Wattch images ship in `public/assets/projects/` in a clean build, in EN and FR, with their original captions and Wattch's synthetic/protocol labels, width and height attributes, the hero eager and the rest lazy below the fold, and a plain file link that works without JavaScript. With JavaScript the enlargement dialog offers Actual size / Fit image / Close, closes on Escape and returns focus to the opening link. `scripts/verify-case-dependencies.mjs` decodes every image.
+- [ ] F36 Whisperbook case demos: "Inside Whisperbook" steps through four steps (Step inside, Next, Back, Close, a polite count) and is one list with reduced motion or without JavaScript. "Listen" uses only voices on the device, in the page's language, never a network voice; it starts only on request, has Stop, stops when the page is left or hidden, says so when no voice exists, and is labelled as not the Android narration engine.
+- [ ] F37 Share cards: six self-hosted 1200×630 PNGs at `public/assets/social/<slug>-<lang>.png` for the three cases in EN and FR, referenced by each page's `og:image` and `twitter:image`, built by `npm run share-cards` and validated by `npm run share-cards -- --check`.
+- [ ] F38 On-request loading: exploration, postcard and rendering-detail code is not fetched until asked for; reduced motion, data saver and `?view=read|stills` load no renderer until asked; sound starts only from its control; no third-party request is made by default (Open-Meteo only from Live or exact location). Record entry and scene chunk sizes as measurements, not promises (3 November 2026: entry 101.44 kB JS / 27.22 kB CSS minified, against 92.37 / 24.34 before; scene chunk 605.14 kB).
 
 ## 3. Accessibility and localization
 
@@ -154,17 +173,19 @@ Some existing tests assert the old design. Update them to the new contract with 
 | `portfolio.test.mjs` | Semantic/no-JS/blocked-module/print, deep links, reflow, context failure, local voice fallback | Essential details in sheets, wheel chaining from nested notes, first-gesture autoplay, idle fade, duplicate stage/navigation UI |
 | `presentation.test.mjs` | View compatibility, viewport/resize behavior, no-live-renderer stills mode | Old exclusive garden-vs-reader DOM trees and automatic phone overlay mode |
 | `journey.test.mjs` | Chapter/phase sequence, real still availability and byte budgets | Old fixed stop count and stage-to-content coupling |
-| `interaction.test.mjs` | Keyboard/pointer responses, interrupted navigation, focus restoration; exploration entry/exit and equivalent controls in release 2 | Planting/chime, postcard and fennec-visit tests are obsolete because those features are removed; replace essential-evidence hotspot/Inside-sheet expectations with direct chapter/case navigation |
+| `interaction.test.mjs` | Keyboard/pointer responses, interrupted navigation, focus restoration; exploration entry/exit and equivalent controls (now required, 3 November 2026) | Until 3 November 2026 its planting/chime, postcard and fennec-visit cases were obsolete because those features were removed. **Reversed 3 November 2026:** the features are restored and their cases were written fresh for the current page in `exploration.test.mjs`, `postcard.test.mjs`, `fennec-visit.test.mjs` and `garden-panel.test.mjs` rather than ported from this file. The chime is not restored. Essential-evidence hotspot and Inside-sheet expectations stay replaced: places now link to chapters, and Inside Whisperbook lives on the case page (`case-evidence.test.mjs`) |
 | `lifecycle.test.mjs` | Hidden/paused/offscreen wake/sleep and disposal | Extend holds to guided built-house reading, not just the opening/paused state |
 | `localization.test.mjs` | Locale precedence, placeholders, switching, RTL, local narration | Sheet-specific assertions; expand current chapter/case vocabulary |
-| `quality.test.mjs` | Quality persistence and state-preserving rebuilds | Any assumption that resizing restarts the narrative |
+| `quality.test.mjs` | Quality persistence and state-preserving rebuilds (written fresh in `quality-rebuild.test.mjs`, 3 November 2026) | Any assumption that resizing restarts the narrative |
 | `sound.test.mjs` | Mix bounds, daytime/seasonal behavior and suspension | UI consent belongs in browser tests; assert explicit opt-in rather than default-on |
 | `transfer.test.mjs` | Unknown/cached/resource distinctions and estimate semantics | Keep estimates distinct from actual hardware measurement |
 | `browser-fixture.test.mjs` | Failed setup resource cleanup | No redesign-specific replacement needed |
 
 Add focused tests for chapter/alias resolution, navigation cancellation/history, renderer host handoff, separate motion/audio state, case-return restoration and build-output case routing. Test observable behavior; avoid brittle assertions of exact internal module layouts or generated class names.
 
-Apply the release table to test selection: release-1 validation must exercise retained-case return and asset completeness without requiring new case routes or exploration. In release 2 add those scenarios and retain regression coverage. Remove obsolete planting/postcard/fennec test cases and update any named hardware-budget selection that includes them; keep independent sound, lifecycle and performance coverage for features that remain. Removed-feature tests are not deferred exploration work.
+Apply the release table to test selection: release-1 validation must exercise retained-case return and asset completeness without requiring new case routes (exploration became required on 3 November 2026). In release 2 add those scenarios and retain regression coverage. ~~Remove obsolete planting/postcard/fennec test cases and update any named hardware-budget selection that includes them.~~ Superseded 3 November 2026: those features are restored, and their cases are new files in `tests/` (above); the instruction to drop them from the named hardware-budget selection no longer applies. Keep independent sound, lifecycle and performance coverage. The seven old suites stay in `tests/retired/`, whose README remains the migration ledger.
+
+The current `npm test` set (3 November 2026): `browser-fixture`, `case-evidence`, `exploration`, `fennec-visit`, `garden-panel`, `narrative-model`, `navigation`, `postcard`, `quality-rebuild`, `render-meter`, `scene-lifecycle`, `sound`, `transfer`, `translations` and `ux-regressions` (`tests/*.test.mjs`, run serially against `TEST_URL`). `tests/performance.mjs`, `tests/run-performance-budgets.mjs` and `tests/visuals.mjs` (the exploration and reading-hold performance harness and a visual capture aid) are being migrated to the current page.
 
 ## 6. Execution commands
 
@@ -192,7 +213,7 @@ Use Chromium automation for repeatable checks and actual Safari/iOS/Android brow
 
 ## 7. Release gate and final report
 
-- [ ] Release 1: all eight chapters complete on both sizes with the transformation, retained cases repaired and linked to the correct projects, source/release links working, verified EN/FR CVs, no Explore action, within the twenty-day cap or with recorded descopes. Release 2: four main cases and exploration complete. Neither ships a vertical slice as if complete. Release-specific check results and deferred items are explicit.
+- [ ] Release 1: all eight chapters complete on both sizes with the transformation, retained cases repaired and linked to the correct projects, source/release links working, verified EN/FR CVs, ~~no Explore action~~ exploration and the restored features meeting F28–F38 (3 November 2026 reversal), within the twenty-day cap or with recorded descopes. Release 2: four main cases and exploration complete. Neither ships a vertical slice as if complete. Release-specific check results and deferred items are explicit.
 - [ ] Latest visual review captures are from the production build and actual scene.
 - [ ] P1 motion results and final transition checks are available.
 - [ ] Required functional/localization/accessibility checks pass; missing physical-device/screen-reader coverage is explicitly stated.
@@ -202,7 +223,7 @@ Use Chromium automation for repeatable checks and actual Safari/iOS/Android brow
 - [ ] README, metadata, `/llms.txt`, `/llm.txt`, evidence and validation docs match the final experience and corrected authorship.
 - [ ] Diff contains only authorized work; branch names and commit subjects/bodies follow the active chat/repository instructions, not an inferred convention from mixed git history.
 - [ ] `public/sitemap.xml` lists every public route in the build; `public/sw.js` still ships unchanged at `/sw.js`; `og:image` and `og:description` describe the new site.
-- [ ] Release 1 has no Explore the finished house action anywhere, rather than a disabled or broken one.
+- [ ] ~~Release 1 has no Explore the finished house action anywhere, rather than a disabled or broken one.~~ Reversed 3 November 2026: "Explore the garden" ships in the garden panel and must meet F28–F30, never as a disabled or broken control.
 - [ ] Every new French and Arabic string is listed in PROGRESS.md by release and review status, including post-G2 additions. French is reviewed before publication. Only Arabic may ship visibly marked as a draft under the recorded descoping order; an English-only new-case exception is separately recorded with correct links and `hreflang`.
 - [ ] Publication is gated on functional validation; pushing main is recognized as deployment-triggering.
 - [ ] If publication is authorized, Pages workflow and `version.txt` confirm the intended source SHA, followed by live browser checks. Otherwise report “release candidate prepared; not deployed.”

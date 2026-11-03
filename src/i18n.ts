@@ -1,8 +1,8 @@
 import { translations } from "./translations.ts";
 
-export type Locale = "en" | "fr" | "ar";
+export type Locale = "en" | "fr";
 export const LOCALE_STORAGE_KEY = "notebook:locale";
-export const isLocale = (value: unknown): value is Locale => value === "en" || value === "fr" || value === "ar";
+export const isLocale = (value: unknown): value is Locale => value === "en" || value === "fr";
 
 export function resolveLocale(url: string, saved: string | null, languages: readonly string[]): Locale {
   const requested = new URL(url).searchParams.get("lang");
@@ -45,13 +45,13 @@ export function translate(source: string, target: Locale = locale): string {
   if (target === "en" || !source.trim()) return source;
   const text = source.trim();
   const key = translations[text] ? text : normalized.get(text.toLowerCase());
-  let result = key ? translations[key][target === "fr" ? 0 : 1] : undefined;
+  let result = key ? translations[key] : undefined;
   if (!result) {
     for (const template of templates) {
       const match = text.match(template.pattern);
       if (!match) continue;
       const values = Object.fromEntries(template.names.map((name, i) => [name, translate(match[i + 1], target)]));
-      result = template.values[target === "fr" ? 0 : 1].replace(/\{(\w+)\}/g, (_, name: string) => values[name]);
+      result = template.values.replace(/\{(\w+)\}/g, (_, name: string) => values[name]);
       break;
     }
   }
@@ -69,6 +69,10 @@ export function initLocalization() {
   let saved: string | null = null;
   try { saved = localStorage.getItem(LOCALE_STORAGE_KEY); } catch { /* Storage is optional. */ }
   locale = resolveLocale(location.href, saved, navigator.languages);
+  // Migrate the removed choice without overriding a supported preference.
+  if (saved === "ar") {
+    try { localStorage.setItem(LOCALE_STORAGE_KEY, locale); } catch { /* Storage is optional. */ }
+  }
   const initialLocale = locale;
   const sources = new WeakMap<Node, Map<string, Binding>>();
   const ignored = "script, style, textarea, [data-no-translate]";
@@ -110,7 +114,12 @@ export function initLocalization() {
   }
   function refresh() {
     document.documentElement.lang = locale;
-    document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+    document.documentElement.dir = "ltr";
+    const current = new URL(location.href);
+    if (current.searchParams.get("lang") === "ar") {
+      current.searchParams.set("lang", locale);
+      history.replaceState(history.state, "", current);
+    }
     controls.forEach(control => { control.value = locale; });
     document.querySelectorAll<HTMLAnchorElement>("a[data-view]").forEach(link => {
       const url = new URL(link.href);

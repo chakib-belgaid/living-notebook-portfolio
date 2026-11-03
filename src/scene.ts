@@ -63,7 +63,7 @@ export interface Garden {
   /** Back to the framed garden: no zoom or pan of the visitor's own. */
   resetView: () => void;
   /** `ms` is the smoothed CPU time to submit a frame; the totals cover every frame drawn so far. `gpuMs` is null without GPU timers. */
-  stats: () => { triangles: number; calls: number; ms: number; gpuFrameMs: number | null; cpuMs: number; gpuMs: number | null; frames: number };
+  stats: () => { triangles: number; calls: number; ms: number; gpuFrameMs: number | null; cpuMs: number; gpuMs: number | null; frames: number; visiting: boolean };
   /** Recolours foliage, flowers, fallen leaves, and drifting petals for the season. */
   setSeason: (season: Season) => void;
   /** 0–1 mist that hides the far side of the garden, in the page's paper colour. */
@@ -2982,6 +2982,166 @@ async function buildGarden(
     r.userData.t = 0;
   }
 
+  /* A tree planted on purpose (plant, plantAt) is noticed by the nearest
+     fennec on its level: it looks up, trots over by a clear route, settles
+     beneath the tree for a while, then goes back to its day (decision 42).
+     One visit at a time, not again for a while, and never on its own;
+     nothing starts while motion is paused or reduced. A visit counts as
+     moving (see moving()), so a held garden (ambient off) keeps drawing
+     until the visit ends, then settles once and sleeps. It runs on the
+     loop's own dt, not the ambient clock: during a hold only the visitor
+     moves, and the rest of the garden stays where it stopped. */
+  type Visit = {
+    fennec: T.Group;
+    route: T.Vector3[];
+    leg: number;
+    t: number;
+    phase: "notice" | "approach" | "settle";
+    time: number;
+    tree: T.Vector3;
+  };
+  let visit: Visit | null = null,
+    // When the next visit may start, in seconds of wall time: the ambient
+    // clock (elapsed) stands still during a hold.
+    nextVisit = 0;
+  const probe = new T.Vector3(),
+    down = new T.Vector3(0, -1, 0);
+  // Every point along the way must be open ground on the fennec's own level:
+  // no water, bridge, building or step in between.
+  function clearWay(a: T.Vector3, b: T.Vector3) {
+    world.updateMatrixWorld();
+    const samples = Math.max(1, Math.ceil(a.distanceTo(b) / 0.15));
+    for (let i = 1; i <= samples; i++) {
+      probe.lerpVectors(a, b, i / samples);
+      if (inWater(probe) || onBridge(probe)) return false;
+      probe.y = 12;
+      world.localToWorld(probe);
+      raycaster.set(probe, down);
+      const hit = raycaster.intersectObjects(solidMeshes, false)[0];
+      if (!hit?.face || hit.face.normal.y < 0.7) return false;
+      if (Math.abs(world.worldToLocal(hit.point).y - a.y) > 0.03) return false;
+    }
+    return true;
+  }
+  function visitTree(tree: T.Vector3) {
+    const now = performance.now() / 1000;
+    if (!fennecs.length || visit || paused || reduced || now < nextVisit) return;
+    // Only a fennec that can be seen: not at night, in the rain, or unbuilt.
+    if (fennecFur.opacity < 0.5) return;
+    // A tree on its own level, or up to a planter's or curb's height above it.
+    const near = fennecs
+      .filter((f) => tree.y - f.position.y > -0.05 && tree.y - f.position.y < 0.25 && f.position.distanceTo(tree) < 3.5)
+      .sort((a, b) => a.position.distanceTo(tree) - b.position.distanceTo(tree))[0];
+    if (!near) return;
+    const from = near.position.clone();
+    // A fennec caught mid-stride stands on its own level, not on its bob.
+    from.y = (near.userData.to as T.Vector3).y;
+    // At the foot of the tree, on open ground on the fennec's level: its own
+    // side of the trunk first, then around it.
+    const toward = Math.atan2(from.x - tree.x, from.z - tree.z);
+    const goal = new T.Vector3();
+    const open = [0, 0.8, -0.8, 1.6, -1.6].some((turn) => {
+      goal.set(tree.x + Math.sin(toward + turn) * 0.3, from.y, tree.z + Math.cos(toward + turn) * 0.3);
+      return !inWater(goal) && !onBridge(goal) && clearWay(goal, goal);
+    });
+    if (!open) return;
+    let route: T.Vector3[] | null = clearWay(from, goal) ? [from, goal] : null;
+    if (!route) {
+      // One turn by way of a known ground spot, the shortest that is clear.
+      // Few are tried, so a visit costs a few dozen short raycasts at most.
+      const turns = groundSpots
+        .filter((p) => Math.abs(p.y - from.y) < 0.03)
+        .sort((a, b) => a.distanceTo(from) + a.distanceTo(goal) - b.distanceTo(from) - b.distanceTo(goal))
+        .slice(0, 6);
+      const turn = turns.find((p) => clearWay(from, p) && clearWay(p, goal));
+      if (turn) route = [from, turn.clone(), goal];
+    }
+    if (!route) return;
+    visit = { fennec: near, route, leg: 0, t: 0, phase: "notice", time: 0, tree: tree.clone() };
+    nextVisit = now + 20;
+    show("visitor", "notice");
+    invalidate();
+  }
+  // The visit is over: the fennec picks up its own day from where it is.
+  function endVisit() {
+    if (!visit) return;
+    const f = visit.fennec,
+      u = f.userData;
+    f.position.y = visit.route[Math.min(visit.leg, visit.route.length - 1)].y;
+    (u.legs as T.Mesh[]).forEach((l) => (l.rotation.x = 0));
+    (u.tail as T.Group).rotation.set(-2.1, 0, 0);
+    (u.ear as T.Mesh).rotation.x = -0.15;
+    u.from = f.position.clone();
+    u.to = f.position.clone();
+    u.t = 1;
+    u.rest = 1 + random() * 2;
+    visit = null;
+    show("visitor", "none");
+  }
+  function updateVisitor(dt: number) {
+    if (!visit) return;
+    /* Motion paused (the visitor's pause or reduced motion) mid-visit: the
+       visit ends where the fennec stands. Freezing it would keep a held loop
+       awake for good, since a visit counts as moving, and finishing it by
+       placing the fennec at the tree would be a jump the visitor asked not to
+       see. Its legs straighten and it sits; nothing else changes. */
+    if (paused || reduced) {
+      endVisit();
+      return;
+    }
+    const v = visit,
+      f = v.fennec,
+      u = f.userData;
+    const legs = u.legs as T.Mesh[],
+      tail = u.tail as T.Group,
+      ear = u.ear as T.Mesh;
+    v.time += dt;
+    const facing = Math.atan2(v.tree.x - f.position.x, v.tree.z - f.position.z);
+    if (v.phase === "notice") {
+      // Ears up, legs still, and a turn toward the new tree.
+      f.position.y = v.route[0].y;
+      f.rotation.y = turnToward(f.rotation.y, facing, dt * 5);
+      ear.rotation.x = -0.45;
+      legs.forEach((l) => (l.rotation.x = 0));
+      if (v.time > 0.7) {
+        v.phase = "approach";
+        v.time = 0;
+        show("visitor", "approach");
+      }
+    } else if (v.phase === "approach") {
+      const a = v.route[v.leg],
+        b = v.route[v.leg + 1];
+      const distance = a.distanceTo(b);
+      const strides = Math.max(1, Math.round(distance / 0.2));
+      v.t = Math.min(1, v.t + dt / (strides * 0.26));
+      const k = v.t * strides,
+        frac = k - Math.floor(k);
+      f.position.lerpVectors(a, b, v.t);
+      f.position.y = a.y + Math.abs(Math.sin(Math.PI * 2 * frac)) * 0.02;
+      f.rotation.y = turnToward(f.rotation.y, Math.atan2(b.x - a.x, b.z - a.z), dt * 8);
+      const swing = Math.sin(Math.PI * 2 * frac) * 0.6;
+      legs.forEach((l, i) => (l.rotation.x = i === 0 || i === 3 ? swing : -swing));
+      tail.rotation.set(-1.75, 0, 0);
+      if (v.t >= 1) {
+        v.t = 0;
+        if (++v.leg >= v.route.length - 1) {
+          v.phase = "settle";
+          v.time = 0;
+          show("visitor", "settle");
+        }
+      }
+    } else {
+      // Sits beneath the tree: an ear twitch and a slow tail, on the visit's
+      // own clock (the ambient one stands still during a hold).
+      f.position.y = v.route[v.route.length - 1].y;
+      f.rotation.y = turnToward(f.rotation.y, facing, dt * 3);
+      legs.forEach((l) => (l.rotation.x = 0));
+      ear.rotation.x = -0.15 + Math.max(0, Math.sin(v.time * 2)) * 0.1;
+      tail.rotation.set(-2.1, Math.sin(v.time * 0.6) * 0.3, 0);
+      if (v.time > 6) endVisit();
+    }
+  }
+
 
   // A ginger cat asleep on the terrace bench.
   const catFur = mat(0xd38b4c, 0.85);
@@ -3374,6 +3534,8 @@ async function buildGarden(
       d.rotation.z = Math.sin(t * 1.7 + i) * 0.05;
     });
     fennecs.forEach((r) => {
+      // A fennec visiting a new tree follows its own steps (updateVisitor).
+      if (visit?.fennec === r) return;
       const u = r.userData;
       const legs = u.legs as T.Mesh[],
         tail = u.tail as T.Group;
@@ -3784,7 +3946,9 @@ async function buildGarden(
       pan.distanceTo(panGoal) > 0.0005 ||
       Math.abs(snowGoal - snowCover) > 0.001 ||
       roomsSettling() ||
-      planted.some((p) => p.age < 1)
+      planted.some((p) => p.age < 1) ||
+      // A fennec's visit to a new tree: a held garden draws it to its end.
+      visit !== null
     );
   }
   function render(now: number) {
@@ -3968,6 +4132,8 @@ async function buildGarden(
     updateLife(resting || reduced ? 0 : dt, life);
     // The gardener is only drawn with the life of the garden.
     if (!lite && life > 0.01) updateGardener(resting || reduced ? 0 : dt, resting || reduced);
+    // The visit keeps the loop's own dt through a hold; a pause ends it.
+    updateVisitor(dt);
     if (butterflyMaterial.visible)
       butterflies.forEach((b, i) => {
         b.position.set(
@@ -4253,9 +4419,11 @@ async function buildGarden(
       if (planted.length >= MAX_TREES) return MAX_TREES;
       // Keyboard planting fills the front terrace from left to right.
       const i = planted.length % 12;
-      return makeTree(
-        new T.Vector3(-4.3 + i * 0.78 + (random() - 0.5) * 0.2, 0.36, 3.95),
-      );
+      const at = new T.Vector3(-4.3 + i * 0.78 + (random() - 0.5) * 0.2, 0.36, 3.95);
+      const count = makeTree(at);
+      // Deliberate planting only: a restored garden's trees bring no visit.
+      visitTree(at);
+      return count;
     },
     plantAt(x, y) {
       if (planted.length >= MAX_TREES) return MAX_TREES;
@@ -4263,7 +4431,10 @@ async function buildGarden(
       raycaster.setFromCamera(pointer, camera);
       const hit = raycaster.intersectObjects(solidMeshes, false)[0];
       if (!hit?.face || hit.face.normal.y < 0.7) return -1;
-      return makeTree(world.worldToLocal(hit.point.clone()));
+      const at = world.worldToLocal(hit.point.clone());
+      const count = makeTree(at);
+      visitTree(at);
+      return count;
     },
     trees() {
       return planted.length;
@@ -4351,6 +4522,8 @@ async function buildGarden(
         cpuMs: workMs,
         gpuMs: gpuTimer ? (gpuSamples ? (gpuSum / gpuSamples) * framesDrawn : 0) : null,
         frames: framesDrawn,
+        // A fennec is on its way to, or sitting under, a newly planted tree.
+        visiting: visit !== null,
       };
     },
     setQuality(value) {

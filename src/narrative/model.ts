@@ -63,7 +63,7 @@ export interface Action {
   /** English source label. */
   label: string;
   type: ActionType;
-  /** Destination for English (and Arabic, which has no localized cases). */
+  /** Destination for English. */
   href: string;
   /** French destination where one exists (/fr/work/…, the French CV). */
   hrefFr?: string;
@@ -94,6 +94,10 @@ export interface Chapter {
   label?: string;
   title: string;
   subtitle?: string;
+  /** A quiet invitation into the sketchbook, after the opening actions. */
+  annotation?: string;
+  /** Connects this chapter's decision to the next part of the story. */
+  turn?: string;
   /** Motivation, or the context for professional work. */
   motivation?: string[];
   decision?: { heading: string; text: string };
@@ -155,3 +159,14 @@ export interface ReadingState {
 /** How many trees the visitor may plant in the garden (src/scene.ts
  * `plant`; the panel in src/narrative/garden-panel.ts). */
 export const MAX_TREES = 24;
+
+/** Explore the garden (src/narrative/explore.ts): the labelled places shown
+ * while exploring, each opening the chapter about it (decision 29). The
+ * labels are the chapters' own titles (src/narrative/content.ts). */
+export const exploreSpots: readonly { spot: SceneSpot; chapter: ChapterId }[] = [
+  { spot: "bplog", chapter: "bplog" },
+  { spot: "whisperbook", chapter: "whisperbook" },
+  { spot: "wattch", chapter: "energy-tools" },
+  { spot: "workshop", chapter: "mcq-scan" },
+  { spot: "about", chapter: "about" },
+];

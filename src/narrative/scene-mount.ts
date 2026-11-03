@@ -5,7 +5,7 @@
  * State, tracked independently (model.ts `ReadingState`):
  * - chapter + transition: the chapter the scene is posed for, and 0 while it
  *   moves toward that pose, 1 once settled;
- * - mode: guided | stills (exploration is release 2);
+ * - mode: guided | stills, and exploring (./explore.ts) on top of guided;
  * - motion: normal | user-paused | system-reduced;
  * - renderer: not-requested → loading → ready | failed, ready ⇄ context-lost;
  * - sound: false until its own control turns it on;
@@ -57,19 +57,20 @@ import type { Sky } from "../sky";
 import type { Soundscape } from "../soundscape";
 import { chapter as chapterContent } from "./content";
 import type { ChangeCause, NarrativeController } from "./controller";
-import { chapterIds, posterSrc, resolveFragment, WIDE_LAYOUT_QUERY, type ChapterId, type MotionPreference, type RendererLifecycle } from "./model";
+import { chapterIds, exploreSpots, posterSrc, resolveFragment, WIDE_LAYOUT_QUERY, type ChapterId, type MotionPreference, type RendererLifecycle } from "./model";
 import {
   COMPACT_QUERY, LIVE_KEY, PAUSE_KEY, QUALITY_KEY, REDUCED_MOTION_QUERY,
   detailFor, liveByDefault, motionPreference, qualityChoice, qualityFor, read, saveDataOn, viewMode, write,
-  type Quality, type QualityChoice, type ViewMode,
+  type Detail, type Quality, type QualityChoice, type ViewMode,
 } from "./preferences";
 import type { HostKind, SceneAdapter } from "./scene-adapter";
 import { createSceneControls, type ControlName } from "./scene-controls";
+import type { ExitReason, Explorer } from "./explore";
 
 export interface SceneState {
   chapter: ChapterId;
   transition: number;
-  /** Exploration (the model's third mode) is release 2. */
+  /** Guided or stills; exploring is tracked apart (`exploring` in the test hook). */
   mode: ViewMode;
   motion: MotionPreference;
   renderer: RendererLifecycle;
@@ -128,6 +129,23 @@ export interface GardenScene {
   onPlanted(listener: (count: number) => void): () => void;
   /** The scene's state was published (renderer, live, quality, …). */
   onState(listener: () => void): () => void;
+  /** Explore the garden (src/narrative/explore.ts, loaded on the first
+   * call). Without a live scene it asks for one, as turning "Still images"
+   * off does, and enters once it is ready; where the renderer failed it
+   * resolves without entering. */
+  explore(): Promise<void>;
+  exitExplore(reason?: "escape" | "button" | "hotspot" | "layout"): void;
+  exploring(): boolean;
+  /** Exploring began (true) or ended (false). Returns an unsubscribe. */
+  onExplore(listener: (on: boolean) => void): () => void;
+  /** Saves a postcard of the live garden (src/narrative/postcard.ts, loaded
+   * on the first call). False when none could be made. */
+  postcard(): Promise<boolean>;
+  /** The visitor's own view of the live garden (drawn at once under a still preference). */
+  rotateBy(radians: number): void;
+  zoomBy(factor: number, x?: number, y?: number): void;
+  panBy(dx: number, dy: number): void;
+  resetView(): void;
 }
 
 const statusText = {
@@ -207,6 +225,42 @@ export function createSceneMount(controller: NarrativeController) {
   let stageOnScreen = true;
   let stageObserver: IntersectionObserver | null = null;
   let offSettled: (() => void) | null = null;
+  /** The detail the live garden was built with (preferences.ts detailFor). */
+  let builtDetail: Detail | null = null;
+  /** Gardens rebuilt for a new detail tier this visit (a test hook). */
+  let rebuilds = 0;
+  let rebuilding: Promise<void> | null = null;
+  /** The garden a rebuild replaces, kept on screen until its successor has drawn. */
+  let retiring: Garden | null = null;
+  /** The visit's carbon so far, carried into a rebuilt garden's register. */
+  let tallyGrams: number | null = null;
+  /* Explore the garden (./explore.ts, loaded on request). The labelled
+     places are made once and moved into each stage built; the garden
+     positions them every frame, and they are shown only while exploring. */
+  let explorer: Explorer | null = null;
+  let explorerLoading: Promise<typeof import("./explore")> | null = null;
+  let exploring = false;
+  let exploreFrom: { y: number; chapter: ChapterId } | null = null;
+  const exploreListeners = new Set<(on: boolean) => void>();
+  let spotLayer: HTMLElement | null = null;
+  const hotspots: HTMLButtonElement[] = [];
+  function hotspotLayer() {
+    if (spotLayer) return spotLayer;
+    spotLayer = document.createElement("div");
+    spotLayer.className = "scene-hotspots";
+    for (const { spot, chapter: id } of exploreSpots) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "hotspot";
+      button.dataset.spot = spot;
+      button.dataset.chapter = id;
+      button.hidden = true;
+      button.textContent = chapterContent(id).title.replace(/\.$/, "");
+      hotspots.push(button);
+      spotLayer.append(button);
+    }
+    return spotLayer;
+  }
 
   /* ---------- Geometry: read in one batch, cached until layout changes ---------- */
   type Geometry = { tops: number[]; slotTops: number[]; slotHeights: number[]; header: number; viewport: number; maxScroll: number };
@@ -331,6 +385,7 @@ export function createSceneMount(controller: NarrativeController) {
    * where it meets a terrace. */
   function onStageClick(event: MouseEvent) {
     if (!planting || !garden || !gardenBox) return;
+    if ((event.target as HTMLElement).closest?.(".hotspot")) return;
     const box = gardenBox.getBoundingClientRect();
     const count = garden.plantAt(event.clientX - box.left, event.clientY - box.top);
     if (count > 0) soundscape?.planted();
@@ -370,13 +425,15 @@ export function createSceneMount(controller: NarrativeController) {
   function moveStage(to: HTMLElement) {
     if (!stage || stage.parentElement === to) return;
     const from = stage.parentElement as HTMLElement | null;
-    if (from && from !== rail && to !== rail && state.live) keepPose(from);
+    // The exploration dialog keeps no copy; the slot it was opened from does.
+    const dialog = (el: HTMLElement | null) => el?.dataset.sceneHost === "explore";
+    if (from && from !== rail && to !== rail && !dialog(from) && state.live) keepPose(from);
     // Moving keeps the canvas, the geometry and the drawing; a host of
     // another size is redrawn in the same frame by the garden's resize.
     to.append(stage);
     state.host = hostName(to);
     to.querySelector(".scene-snapshot")?.remove();
-    dropFarSnapshots(to);
+    if (!dialog(to)) dropFarSnapshots(to);
   }
   /** A portrait slot the stage leaves keeps a copy of the pose it showed
    * (sky and house, on paper), so a slot still on screen, or scrolled back
@@ -430,6 +487,9 @@ export function createSceneMount(controller: NarrativeController) {
   }
 
   function update(cause: "scroll" | "layout" | "visibility") {
+    // Exploring holds the scene where the visitor put it; the reading
+    // position is kept and resumed when exploring ends (decision 28).
+    if (exploring) return;
     if (pin) {
       const moved = Math.abs(scrollY - pin.y);
       const g = geo();
@@ -456,6 +516,8 @@ export function createSceneMount(controller: NarrativeController) {
     if (cause === "scroll" && pin && pin.chapter !== _chapter) pin = null;
   });
   const offVisit = controller.onVisit((id) => {
+    // A jump from the header (or history) while exploring ends it there.
+    if (exploring) leaveExplore("navigation");
     pin = { chapter: id, y: scrollY, armedAt: null };
     if (stage) moveStage(hostFor(id));
     pose(id, "snap");
@@ -475,6 +537,9 @@ export function createSceneMount(controller: NarrativeController) {
   const offLocale = onLocaleChange(() => { state.locale = getLocale(); invalidate(); publish(); });
 
   const onLayout = () => {
+    // Wide ⇄ stacked: exploring ends, so the stage is never left in a host
+    // of the other layout.
+    if (exploring) leaveExplore("layout");
     invalidate();
     if (stage && adapter) {
       moveStage(hostFor(state.chapter));
@@ -487,8 +552,9 @@ export function createSceneMount(controller: NarrativeController) {
   const onVisibility = () => {
     syncSky();
     syncSound();
-    // Back in view: pose the latest chapter before the first frame, at once.
-    if (!document.hidden && adapter) {
+    // Back in view: pose the latest chapter before the first frame, at once
+    // (while exploring, the garden stays as the visitor left it).
+    if (!document.hidden && adapter && !exploring) {
       invalidate();
       const target = pin ? pin.chapter : leadChapter(state.chapter);
       if (hostKind() === "portrait") moveStage(slots.get(target)!);
@@ -502,9 +568,15 @@ export function createSceneMount(controller: NarrativeController) {
     state.motion = motionPreference(reducedQuery.matches, userPaused);
     adapter?.setMotionPreference(state.motion);
     if (stage) stage.toggleAttribute("data-instant", state.motion !== "normal");
-    // Still: settled poses are held; a moving one lands at once.
-    if (adapter && state.motion !== "normal") { held = true; adapter.go(state.chapter, { immediate: true }); state.transition = 1; }
-    if (adapter && state.motion === "normal") { held = true; adapter.hold(); }
+    // Still: settled poses are held; a moving one lands at once. Exploring
+    // keeps its pose: still, it lands at once; moving, its life goes on.
+    if (adapter && exploring) {
+      if (state.motion !== "normal") garden?.snap();
+      else adapter.release();
+    } else {
+      if (adapter && state.motion !== "normal") { held = true; adapter.go(state.chapter, { immediate: true }); state.transition = 1; }
+      if (adapter && state.motion === "normal") { held = true; adapter.hold(); }
+    }
     syncSky();
     syncSound();
     publish();
@@ -516,8 +588,10 @@ export function createSceneMount(controller: NarrativeController) {
   reducedQuery.addEventListener("change", onReduced);
   const onCompact = () => {
     state.quality = qualityFor(choice, compactQuery.matches);
-    // What was built stays; only how it is drawn follows the screen.
+    // How it is drawn follows the screen; growing out of compact rebuilds
+    // the lighter garden at full detail (decision 48).
     garden?.setQuality(state.quality);
+    rebuildIfNeeded(true);
     publish();
   };
   compactQuery.addEventListener("change", onCompact);
@@ -552,19 +626,25 @@ export function createSceneMount(controller: NarrativeController) {
       el.toggleAttribute("data-instant", true);
       const back = document.createElement("canvas");
       back.className = "scene-sky";
+      back.setAttribute("aria-hidden", "true");
       const box = document.createElement("div");
       box.className = "scene-garden";
       const front = document.createElement("canvas");
       front.className = "scene-sky scene-sky-front";
-      el.append(back, box, front);
+      front.setAttribute("aria-hidden", "true");
+      // The labelled places, above the sky; hidden unless exploring.
+      el.append(back, box, front, hotspotLayer());
       el.addEventListener("click", onStageClick);
       stage = el;
       gardenBox = box;
       hostFor(target).append(el);
       state.host = hostName(hostFor(target));
-      const built = await createGarden(box, [], detailFor(state.quality, compactQuery.matches, href()), state.quality);
+      const detail = detailFor(state.quality, compactQuery.matches, href());
+      const built = await createGarden(box, hotspots, detail, state.quality);
       if (mine !== generation) { built.dispose(); return; }
       garden = built;
+      builtDetail = detail;
+      if (tallyGrams !== null) garden.setTally(tallyGrams);
       // The navy night (the user's G2 decision): the garden's dark ink set
       // and a night sky, as the previous page drew them, unless the visitor
       // has set another hour or weather in the garden panel.
@@ -624,7 +704,8 @@ export function createSceneMount(controller: NarrativeController) {
   function settled() {
     settles++;
     state.transition = 1;
-    if (state.mode === "guided" && adapter && !held) {
+    // Exploring keeps its ambient life until it ends (decision 46).
+    if (state.mode === "guided" && adapter && !held && !exploring) {
       held = true;
       adapter.hold();
     }
@@ -633,6 +714,7 @@ export function createSceneMount(controller: NarrativeController) {
   }
 
   function lost() {
+    if (exploring) leaveExplore("lost");
     state.renderer = "context-lost";
     state.live = false;
     if (stage) {
@@ -660,7 +742,17 @@ export function createSceneMount(controller: NarrativeController) {
   }
 
   function teardown() {
+    if (exploring) leaveExplore("lost");
     generation++;
+    rebuilding = null;
+    if (retiring) {
+      const r = retiring.stats();
+      retired.cpuMs += r.cpuMs;
+      retired.gpuMs += r.gpuMs ?? 0;
+      retired.any = true;
+      retiring.dispose();
+      retiring = null;
+    }
     // A load still on its way belongs to the scene torn down: forget it, so
     // asking for the live drawing again starts a new one.
     loading = null;
@@ -683,6 +775,7 @@ export function createSceneMount(controller: NarrativeController) {
     stage?.remove();
     document.querySelectorAll(".scene-snapshot").forEach(copy => copy.remove());
     garden = null;
+    builtDetail = null;
     sky = null;
     adapter = null;
     stage = null;
@@ -692,6 +785,230 @@ export function createSceneMount(controller: NarrativeController) {
     stageOnScreen = true;
     skyStill = null;
     if (state.renderer !== "failed") state.renderer = "not-requested";
+  }
+
+  /* ---------- Quality: a new detail tier is a rebuilt garden (decision 48) ---------- */
+  /** Light on a compact screen (or `?quality=low`) builds the lighter
+   * garden; any other choice the full one. When the tier the live garden was
+   * built with no longer matches, a new garden is built into the same box,
+   * its canvas laid over the old one's (transparent until it draws). The old
+   * garden stays on screen, held, until the new one has drawn its first
+   * frame with the visitor's trees, turn, zoom and pan, the atmosphere, the
+   * tally and the chapter's pose (or the exploration view); then it is
+   * disposed. So the stage is never empty. A build that fails falls back to
+   * the stills, as a failed first build does.
+   * `upgradeOnly`: a window that becomes compact keeps the full garden it
+   * has (drawn light); one that grows out of compact gets the full build. */
+  function rebuildIfNeeded(upgradeOnly = false) {
+    if (!garden || !gardenBox || state.renderer !== "ready" || rebuilding) return;
+    const want = detailFor(state.quality, compactQuery.matches, href());
+    if (want === builtDetail || (upgradeOnly && want !== "full")) return;
+    const mine = generation;
+    const attempt: Promise<void> = rebuild(want, mine).finally(() => {
+      if (rebuilding !== attempt) return;
+      rebuilding = null;
+      // The choice may have changed again while this one was built.
+      if (mine === generation) rebuildIfNeeded(upgradeOnly);
+    });
+    rebuilding = attempt;
+  }
+  async function rebuild(detail: Detail, mine: number) {
+    const old = garden!, box = gardenBox!;
+    let built: Garden;
+    let createAdapter: typeof import("./scene-adapter").createSceneAdapter;
+    try {
+      const [{ createGarden }, { createSceneAdapter }] = await Promise.all([import("../scene"), import("./scene-adapter")]);
+      createAdapter = createSceneAdapter;
+      if (mine !== generation) return;
+      built = await createGarden(box, hotspots, detail, state.quality);
+    } catch (error) {
+      if (mine !== generation) return;
+      console.warn("The garden could not be rebuilt.", error);
+      teardown();
+      state.renderer = "failed";
+      publish();
+      return;
+    }
+    // Torn down, replaced or lost while building: this garden is not needed.
+    if (mine !== generation || garden !== old || state.renderer !== "ready") { built.dispose(); return; }
+    // The old garden stops its own life and stays on screen underneath.
+    old.setAmbient(false);
+    retiring = old;
+    const view = old.snapshot();
+    garden = built;
+    builtDetail = detail;
+    built.setTheme(true);
+    applyAtmosphere();
+    if (tallyGrams !== null) built.setTally(tallyGrams);
+    built.skipDrawIn();
+    built.restore(view);
+    const next = createAdapter(built, hostKind());
+    next.setMotionPreference(state.motion);
+    offSettled?.();
+    adapter = next;
+    if (exploring) poseExplore(next, true);
+    else {
+      held = true;
+      next.hold();
+      next.go(state.chapter, { immediate: true });
+      sky?.setGrowth(chapterContent(state.chapter).scene.progress, true);
+      state.transition = 1;
+      syncSky();
+    }
+    offSettled = next.onSettled(settled);
+    // The box carries the context events of whichever garden is in it.
+    box.removeEventListener("garden-context-lost", lost);
+    box.removeEventListener("garden-context-restored", restored);
+    box.addEventListener("garden-context-lost", lost);
+    box.addEventListener("garden-context-restored", restored);
+    rebuilds++;
+    publish();
+    await built.nextFrame();
+    if (retiring !== old) return;
+    const s = old.stats();
+    retired.cpuMs += s.cpuMs;
+    retired.gpuMs += s.gpuMs ?? 0;
+    retired.any = true;
+    old.dispose();
+    retiring = null;
+    publish();
+  }
+
+  /* ---------- Explore the garden (./explore.ts) ---------- */
+  /** The whole garden complete, its life on (decision 46). */
+  function poseExplore(a: SceneAdapter, immediate: boolean) {
+    held = false;
+    a.release();
+    a.setPhase(1);
+    a.focus(null);
+    // The dialog's toolbar covers the foot of the screen: the garden is
+    // framed in the band above it.
+    if (state.host === "explore") a.frame(0.04, 0.8);
+    const snap = immediate || state.motion !== "normal";
+    if (snap) garden?.snap();
+    sky?.setGrowth(1, snap);
+    syncSky();
+  }
+  /** The explorer has shown its toolbar: the stage takes the pointer (CSS
+   * on `data-explore`), its places are exposed, and on stacked layouts it
+   * moves into the exploration dialog. */
+  function beginExplore(host: HTMLElement | null) {
+    if (!stage || !adapter || !garden) return;
+    exploring = true;
+    exploreFrom = { y: scrollY, chapter: state.chapter };
+    root.dataset.explore = "true";
+    stage.removeAttribute("aria-hidden");
+    if (stage.parentElement === rail) rail.removeAttribute("aria-hidden");
+    if (host) moveStage(host);
+    poseExplore(adapter, false);
+    publish();
+    exploreListeners.forEach(listener => listener(true));
+  }
+  /** Back to reading: the stage in its reading host, the reading position
+   * as it was (unless a link is taking the visitor elsewhere), the chapter's
+   * pose drawn at once and held (decision 28). The visitor's turn stays, as
+   * the panel's Turn keeps it; their zoom and pan give way to the framing. */
+  function endExplore(reason: ExitReason) {
+    if (!exploring) return;
+    exploring = false;
+    delete root.dataset.explore;
+    stage?.setAttribute("aria-hidden", "true");
+    rail.setAttribute("aria-hidden", "true");
+    const from = exploreFrom ?? { y: scrollY, chapter: state.chapter };
+    exploreFrom = null;
+    const navigating = reason === "hotspot" || reason === "navigation";
+    if (!navigating && Math.abs(scrollY - from.y) > 1) scrollTo({ top: from.y, left: scrollX, behavior: "instant" });
+    invalidate();
+    if (stage && (stage.parentElement as HTMLElement | null)?.dataset.sceneHost === "explore") moveStage(hostFor(from.chapter));
+    if (garden && adapter) {
+      garden.resetView();
+      adapter.frame(0, 1);
+      garden.snap();
+      held = true;
+      adapter.hold();
+      state.chapter = from.chapter;
+      showRailPoster(from.chapter);
+      adapter.go(from.chapter, { immediate: true });
+      sky?.setGrowth(chapterContent(from.chapter).scene.progress, true);
+      state.transition = 1;
+    }
+    syncSky();
+    publish();
+    exploreListeners.forEach(listener => listener(false));
+    if (!navigating) update("layout");
+  }
+  function leaveExplore(reason: ExitReason) {
+    if (explorer?.active()) explorer.exit(reason);
+    else endExplore(reason);
+  }
+  /** Resolves true once a live garden is ready, false if none will be. */
+  function whenReady(): Promise<boolean> {
+    return new Promise(resolve => {
+      const check = () => {
+        let result: boolean | null = null;
+        if (garden && state.renderer === "ready") result = true;
+        else if (state.renderer === "failed" || state.renderer === "context-lost" || (!loading && !garden)) result = false;
+        if (result === null) return;
+        stateListeners.delete(check);
+        resolve(result);
+      };
+      stateListeners.add(check);
+      check();
+    });
+  }
+  async function startExplore() {
+    if (exploring || state.renderer === "failed" || state.renderer === "context-lost") return;
+    try {
+      const module = explorerLoading ??= import("./explore");
+      if (!garden) {
+        // Asked for explicitly: the live drawing, as "Still images" off asks for it.
+        if (showingStills()) {
+          asked = true;
+          write(session, LIVE_KEY, "1");
+          setView("guided");
+          publish();
+        }
+        void load();
+      }
+      const [{ createExplorer }, ok] = await Promise.all([module, whenReady()]);
+      if (!ok || exploring || !garden || !stage) return;
+      explorer ??= createExplorer({
+        garden: () => garden,
+        stage: () => stage,
+        hotspots: () => hotspots,
+        kind: hostKind,
+        still: () => state.motion !== "normal",
+        begin: beginExplore,
+        end: endExplore,
+        visit: id => { controller.visit(id, { push: true, focus: true, cause: "navigation" }); },
+      });
+      explorer.enter();
+    } catch (error) {
+      // The module did not load (offline): the panel says so.
+      explorerLoading = null;
+      console.warn("The garden could not be explored.", error);
+    }
+  }
+  let postcardLoading: Promise<typeof import("./postcard")> | null = null;
+  async function makePostcard() {
+    if (!garden || !stage || state.renderer !== "ready") return false;
+    try {
+      const [{ savePostcard }, { HOST_SHIFT }] = await Promise.all([postcardLoading ??= import("./postcard"), import("./scene-adapter")]);
+      if (!garden || !stage || state.renderer !== "ready") return false;
+      // Wide: the garden is drawn right of the card; the postcard is centred on it.
+      const crop = stage.parentElement === rail ? 2 * HOST_SHIFT.wide[0] : 0;
+      return await savePostcard(stage, garden, crop);
+    } catch (error) {
+      postcardLoading = null;
+      console.warn("The postcard could not be made.", error);
+      return false;
+    }
+  }
+  /** The visitor's own view; drawn at once under a still preference. */
+  function view(f: (g: Garden) => void) {
+    if (!garden) return;
+    f(garden);
+    if (state.motion !== "normal") garden.snap();
   }
 
   /* ---------- Controls ---------- */
@@ -794,9 +1111,11 @@ export function createSceneMount(controller: NarrativeController) {
   /* ---------- Hooks for tests and tools ---------- */
   // tests/performance.mjs and tests/scene-lifecycle.test.mjs read the drawing totals.
   Object.assign(window, {
-    __notebookStats: () => ({ garden: garden?.stats() ?? null, sky: sky?.stats() ?? null }),
+    __notebookStats: () => ({ garden: garden?.stats() ?? null, sky: sky?.stats() ?? null, rebuilds }),
     __notebookScene: {
-      state: () => ({ ...state, held, settles, settled: adapter?.isSettled() ?? null, pose: adapter?.state() ?? null }),
+      state: () => ({ ...state, held, settles, settled: adapter?.isSettled() ?? null, pose: adapter?.state() ?? null, exploring, rebuilds, rebuilding: !!rebuilding || !!retiring, detail: builtDetail }),
+      /** The visitor's own view of the live garden (goals): zoom 1–4, rotation in radians. */
+      view: () => { const s = garden?.snapshot(); return s ? { zoom: s.zoom, rotation: s.rotation, pan: s.pan } : null; },
     },
   });
   // scripts/capture-stills.mjs drives the scene through this, in development only.
@@ -834,6 +1153,7 @@ export function createSceneMount(controller: NarrativeController) {
       write(local, QUALITY_KEY, value === "auto" ? null : value);
       state.quality = qualityFor(choice, compactQuery.matches);
       garden?.setQuality(state.quality);
+      rebuildIfNeeded();
       publish();
     },
     live: () => state.renderer === "ready" && !!garden,
@@ -851,19 +1171,33 @@ export function createSceneMount(controller: NarrativeController) {
     rotate() { garden?.rotate(); },
     onPlanted(listener) { plantedListeners.add(listener); return () => { plantedListeners.delete(listener); }; },
     onState(listener) { stateListeners.add(listener); return () => { stateListeners.delete(listener); }; },
+    explore: startExplore,
+    exitExplore(reason = "button") { if (exploring) leaveExplore(reason); },
+    exploring: () => exploring,
+    onExplore(listener) { exploreListeners.add(listener); return () => { exploreListeners.delete(listener); }; },
+    postcard: makePostcard,
+    rotateBy(radians) { view(g => g.rotateBy(radians)); },
+    zoomBy(factor, x, y) { view(g => g.zoomBy(factor, x, y)); },
+    panBy(dx, dy) { view(g => g.panBy(dx, dy)); },
+    resetView() { view(g => g.resetView()); },
   };
 
   return {
     state: () => ({ ...state }),
     work,
     /** The visit's total, drawn on the register in the observatory. */
-    setTally(grams: number | null) { garden?.setTally(grams); },
+    setTally(grams: number | null) { tallyGrams = grams; garden?.setTally(grams); },
+    /** The live garden's per-frame figures (src/scene.ts `stats`), for the
+     * optional rendering-cost view (src/narrative/render-meter.ts): null
+     * while no garden is live. Not a Wattch hardware measurement. */
+    frameStats: () => (state.renderer === "ready" && garden ? garden.stats() : null),
     garden: gardenScene,
     destroy() {
       gardenScene.setPlanting(false);
       plantedListeners.clear();
       stateListeners.clear();
       teardown();
+      exploreListeners.clear();
       soundscape?.dispose();
       offPosition();
       offChange();
