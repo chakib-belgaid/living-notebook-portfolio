@@ -114,7 +114,7 @@ export async function assertRuler(page, wide) {
       hour: document.querySelector('[data-hour-readout]').textContent, trees: document.querySelector('[data-tree-count]').textContent };
   });
   assert.ok(garden.open && within(garden), JSON.stringify({ garden, layout }));
-  assert.equal(garden.chips, 20, 'live + six weathers, now + four seasons, three garden actions, three qualities, explore and postcard');
+  assert.equal(garden.chips, 19, 'live + six weathers, now + four seasons, three garden actions, three qualities and explore');
   assert.deepEqual([garden.weather, garden.season, garden.quality], ['clear', 'summer', 'auto'], JSON.stringify(garden));
   assert.ok(garden.hour.trim() && /24/.test(garden.trees), `the hour and the tree count are written: ${JSON.stringify(garden)}`);
   await page.keyboard.press('Escape');

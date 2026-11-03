@@ -247,10 +247,9 @@ Object.assign(translations, {
   "Drawing the garden this visit: {figure}.": "Dessin du jardin pendant cette visite : {figure}.",
   "This page’s estimated rendering cost, measured in your browser: CPU time per frame and, where the browser exposes GPU timers, GPU time, with assumed wattages and co2.js grid data. It is not a Wattch hardware measurement.": "Coût de rendu estimé de cette page, mesuré dans votre navigateur : temps CPU par image et, lorsque le navigateur expose des minuteries GPU, temps GPU, avec des puissances supposées et les données de réseau électrique de co2.js. Ce n’est pas une mesure matérielle de Wattch.",
 });
-// Appended: exploring the garden and its postcard (src/narrative/explore.ts, postcard.ts).
+// Appended: exploring the garden (src/narrative/explore.ts).
 Object.assign(translations, {
   "Explore the garden": "Explorer le jardin",
-  "Save a postcard": "Enregistrer une carte postale",
   "Exploring the garden": "Exploration du jardin",
   "Back to reading": "Retour à la lecture",
   "Reset view": "Réinitialiser la vue",
@@ -258,11 +257,14 @@ Object.assign(translations, {
   "Turn right": "Tourner à droite",
   "Zoom in": "Zoomer",
   "Zoom out": "Dézoomer",
-  "Drag to turn, scroll or pinch to zoom. Escape returns to reading.": "Faites glisser pour tourner, faites défiler ou pincez pour zoomer. Échap ramène à la lecture.",
+  "Drag to turn, scroll or pinch to zoom, two fingers to move.": "Faites glisser pour tourner, faites défiler ou pincez pour zoomer, deux doigts pour déplacer.",
+  "Arrow keys turn and zoom, Shift and an arrow moves. Escape returns to reading.": "Les flèches tournent et zooment, Maj et une flèche déplacent. Échap ramène à la lecture.",
+  "Move the garden": "Déplacer le jardin",
+  "Move left": "Déplacer à gauche",
+  "Move up": "Déplacer vers le haut",
+  "Move down": "Déplacer vers le bas",
+  "Move right": "Déplacer à droite",
   "Exploring the garden. Escape returns to reading.": "Exploration du jardin. Échap ramène à la lecture.",
   "The garden can’t be explored here. Still images are shown instead.": "Le jardin ne peut pas être exploré ici. Des images fixes le remplacent.",
   "The path so far": "Le chemin parcouru",
-  "Your garden postcard is saved.": "La carte postale de votre jardin est enregistrée.",
-  "The postcard couldn’t be made in this browser. The garden is unchanged.": "La carte postale n’a pas pu être créée dans ce navigateur. Le jardin est inchangé.",
-  "A garden I tended in Chakib Belgaid’s living notebook": "Un jardin que j’ai cultivé dans le carnet vivant de Chakib Belgaid",
 });

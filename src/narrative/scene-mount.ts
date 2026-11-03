@@ -138,9 +138,6 @@ export interface GardenScene {
   exploring(): boolean;
   /** Exploring began (true) or ended (false). Returns an unsubscribe. */
   onExplore(listener: (on: boolean) => void): () => void;
-  /** Saves a postcard of the live garden (src/narrative/postcard.ts, loaded
-   * on the first call). False when none could be made. */
-  postcard(): Promise<boolean>;
   /** The visitor's own view of the live garden (drawn at once under a still preference). */
   rotateBy(radians: number): void;
   zoomBy(factor: number, x?: number, y?: number): void;
@@ -989,21 +986,6 @@ export function createSceneMount(controller: NarrativeController) {
       console.warn("The garden could not be explored.", error);
     }
   }
-  let postcardLoading: Promise<typeof import("./postcard")> | null = null;
-  async function makePostcard() {
-    if (!garden || !stage || state.renderer !== "ready") return false;
-    try {
-      const [{ savePostcard }, { HOST_SHIFT }] = await Promise.all([postcardLoading ??= import("./postcard"), import("./scene-adapter")]);
-      if (!garden || !stage || state.renderer !== "ready") return false;
-      // Wide: the garden is drawn right of the card; the postcard is centred on it.
-      const crop = stage.parentElement === rail ? 2 * HOST_SHIFT.wide[0] : 0;
-      return await savePostcard(stage, garden, crop);
-    } catch (error) {
-      postcardLoading = null;
-      console.warn("The postcard could not be made.", error);
-      return false;
-    }
-  }
   /** The visitor's own view; drawn at once under a still preference. */
   function view(f: (g: Garden) => void) {
     if (!garden) return;
@@ -1175,7 +1157,6 @@ export function createSceneMount(controller: NarrativeController) {
     exitExplore(reason = "button") { if (exploring) leaveExplore(reason); },
     exploring: () => exploring,
     onExplore(listener) { exploreListeners.add(listener); return () => { exploreListeners.delete(listener); }; },
-    postcard: makePostcard,
     rotateBy(radians) { view(g => g.rotateBy(radians)); },
     zoomBy(factor, x, y) { view(g => g.zoomBy(factor, x, y)); },
     panBy(dx, dy) { view(g => g.panBy(dx, dy)); },

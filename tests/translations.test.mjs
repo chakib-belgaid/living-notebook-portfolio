@@ -25,7 +25,7 @@ const untranslated = new Set([
 const isUntranslated = text =>
   untranslated.has(text)
   || /^\d{4}\s*[–-]\s*(\d{4}|present|today)?$/i.test(text) // year ranges
-  || /^[↓↑→↗·]$/.test(text) // glyphs (aria-hidden icons)
+  || /^[↓↑←→↗·]$/.test(text) // glyphs (aria-hidden icons)
   || /^https?:\/\//.test(text);
 
 const decode = s => s.replace(/&(amp|lt|gt|quot|#39);/g, (_, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" }[e]));

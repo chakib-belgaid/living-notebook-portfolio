@@ -151,6 +151,43 @@ for (const [label, options] of [['desktop', desktop], ['phone', phone]]) {
     } finally { await p.context().close(); }
   });
 
+  test(`${label}: the move buttons and Shift with an arrow move the garden; the labels stay clear of the edges, the toolbar and each other`, async () => {
+    const p = await live(options, '#work');
+    try {
+      await enter(p);
+      const pan = async () => (await view(p)).pan;
+      await p.locator('[data-explore-move="left"]').click();
+      assert.ok((await pan()).x < 0, 'Move left moves the garden left');
+      await p.locator('[data-explore-move="down"]').click();
+      assert.ok((await pan()).y > 0, 'Move down moves it down');
+      await p.locator('[data-explore-reset]').click();
+      await p.keyboard.press('Shift+ArrowRight');
+      assert.ok((await pan()).x > 0, 'Shift+ArrowRight moves it right');
+      const turned = (await view(p)).rotation;
+      await p.keyboard.press('ArrowRight');
+      assert.ok((await view(p)).rotation > turned, 'an arrow alone still turns');
+      // Zoomed in and moved, every label is still fully on the stage, above
+      // the toolbar, right of the chapter card and clear of its neighbours.
+      for (const step of ['in', 'in']) await p.locator(`[data-explore-zoom="${step}"]`).click();
+      await p.keyboard.press('Shift+ArrowLeft');
+      // Ambient life keeps drawing while exploring; the view eases in well under this.
+      await p.waitForTimeout(1500);
+      const layout = await p.evaluate(() => {
+        const box = el => el.getBoundingClientRect();
+        const bar = box(document.querySelector('[data-explore-bar]'));
+        const card = document.querySelector('[data-scene-host="explore"]:not([hidden])') ? null : box(document.querySelector('.chapter-card'));
+        const spots = [...document.querySelectorAll('.hotspot')].map(h => ({ spot: h.dataset.spot, r: box(h) }));
+        const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        return {
+          outside: spots.filter(({ r }) => r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > bar.top || (card && r.left < card.right)).map(s => s.spot),
+          overlapping: spots.flatMap((a, i) => spots.slice(i + 1).filter(b => hit(a.r, b.r)).map(b => `${a.spot}/${b.spot}`)),
+        };
+      });
+      assert.deepEqual(layout, { outside: [], overlapping: [] });
+      assert.deepEqual(p.errors, []);
+    } finally { await p.context().close(); }
+  });
+
   test(`${label}: a place opens its chapter, focuses its heading and ends exploring`, async () => {
     const p = await live(options, '#bplog');
     try {

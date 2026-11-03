@@ -14,8 +14,14 @@
  *   page inert and lock its scrolling until exploring ends.
  * Gestures act only on the stage, only while exploring: a drag turns the
  * garden, the wheel (or a trackpad pinch) zooms about the pointer, two
- * fingers zoom and move it. Every gesture has a button. Under pause or
- * reduced motion each change is drawn at once (`Garden.snap`).
+ * fingers zoom and move it. Every gesture has a button and a key: the
+ * arrows turn and zoom, Shift and an arrow moves the garden, wherever focus
+ * is while exploring (except in a field or slider). Under pause or reduced
+ * motion each change is drawn at once (`Garden.snap`).
+ *
+ * The places' labels are kept clear of what covers the stage (the masthead
+ * and the chapter card on wide layouts, the toolbar on every layout): the
+ * garden is told that fence on entering and on every resize.
  *
  * Leaving (the button, Escape, a place's link, a layout change, a lost
  * renderer) detaches everything and the mount (`end`) puts the stage back
@@ -47,9 +53,11 @@ export interface Explorer {
   active(): boolean;
 }
 
-/** One toolbar step: a twelfth of a turn, a quarter more or less zoom. */
+/** One toolbar step: a twelfth of a turn, a quarter more or less zoom, a
+ * tenth of the stage's width or height moved. */
 const TURN = Math.PI / 6;
 const ZOOM = 1.25;
+const MOVE = 0.1;
 /** Radians of turn per pixel dragged (the previous page's). */
 const DRAG = 0.008;
 const TEXT = { entered: "Exploring the garden. Escape returns to reading." } as const;
@@ -82,21 +90,32 @@ export function createExplorer(deps: ExploreDeps, root: Document = document): Ex
     else if (button.hasAttribute("data-explore-reset")) act(g => g.resetView());
     else if (button.dataset.exploreTurn) act(g => g.rotateBy(button.dataset.exploreTurn === "left" ? -TURN : TURN));
     else if (button.dataset.exploreZoom) act(g => g.zoomBy(button.dataset.exploreZoom === "in" ? ZOOM : 1 / ZOOM));
+    else if (button.dataset.exploreMove) act(moves[button.dataset.exploreMove]);
   }
-  /** Arrow keys inside the toolbar turn and zoom too. */
-  function onBarKey(event: KeyboardEvent) {
-    const step: Record<string, (g: Garden) => void> = {
-      ArrowLeft: g => g.rotateBy(-TURN), ArrowRight: g => g.rotateBy(TURN),
-      ArrowUp: g => g.zoomBy(ZOOM), ArrowDown: g => g.zoomBy(1 / ZOOM),
-      "+": g => g.zoomBy(ZOOM), "=": g => g.zoomBy(ZOOM), "-": g => g.zoomBy(1 / ZOOM),
-    };
-    const f = step[event.key];
-    if (!f || event.altKey || event.ctrlKey || event.metaKey) return;
+  /** Moves the garden itself, as two fingers would. */
+  const by = (x: number, y: number) => (g: Garden) => {
+    const el = stage ?? deps.stage();
+    g.panBy(x * MOVE * (el?.clientWidth ?? 0), y * MOVE * (el?.clientHeight ?? 0));
+  };
+  const moves: Record<string, (g: Garden) => void> = { left: by(-1, 0), right: by(1, 0), up: by(0, -1), down: by(0, 1) };
+  const turns: Record<string, (g: Garden) => void> = {
+    ArrowLeft: g => g.rotateBy(-TURN), ArrowRight: g => g.rotateBy(TURN),
+    ArrowUp: g => g.zoomBy(ZOOM), ArrowDown: g => g.zoomBy(1 / ZOOM),
+    "+": g => g.zoomBy(ZOOM), "=": g => g.zoomBy(ZOOM), "-": g => g.zoomBy(1 / ZOOM),
+  };
+  const shifted: Record<string, (g: Garden) => void> = {
+    ArrowLeft: moves.left, ArrowRight: moves.right, ArrowUp: moves.up, ArrowDown: moves.down,
+  };
+  /** The arrows, wherever focus is while exploring, but not in a field or a slider. */
+  function onStepKey(event: KeyboardEvent) {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const f = (event.shiftKey ? shifted : turns)[event.key];
+    const target = event.target as HTMLElement | null;
+    if (!f || target?.closest?.("input, select, textarea, [contenteditable], [role='slider']")) return;
     event.preventDefault();
     act(f);
   }
   bar.addEventListener("click", onBar);
-  bar.addEventListener("keydown", onBarKey);
 
   /* ---------- The places ---------- */
   const spots = deps.hotspots();
@@ -223,11 +242,31 @@ export function createExplorer(deps: ExploreDeps, root: Document = document): Ex
 
   /* ---------- Escape, from anywhere while exploring ---------- */
   function onKey(event: KeyboardEvent) {
-    if (event.key !== "Escape" || !active) return;
+    if (!active) return;
+    if (event.key !== "Escape") { onStepKey(event); return; }
     // Ours alone: the garden panel's own Escape would close it again.
     event.stopImmediatePropagation();
     event.preventDefault();
     exit("escape");
+  }
+
+  /* ---------- The labels' fence: what covers the stage ---------- */
+  function fence() {
+    const g = deps.garden();
+    if (!active || !g || !stage) return;
+    const s = stage.getBoundingClientRect();
+    const toolbar = bar.getBoundingClientRect();
+    const inPlace = !host || host.hidden;
+    // Wide layouts: the masthead above and the chapter card on the left.
+    const masthead = inPlace ? root.querySelector(".masthead")?.getBoundingClientRect() : undefined;
+    const card = inPlace ? root.querySelector(".chapter-card")?.getBoundingClientRect() : undefined;
+    g.fenceLabels({
+      top: Math.max(0, (masthead?.bottom ?? s.top) - s.top),
+      right: 0,
+      bottom: toolbar.height ? Math.max(0, s.bottom - toolbar.top) : 0,
+      left: card?.width ? Math.max(0, card.right - s.left) : 0,
+    });
+    settle();
   }
 
   /* ---------- Stacked layouts: the exploration dialog ---------- */
@@ -278,6 +317,8 @@ export function createExplorer(deps: ExploreDeps, root: Document = document): Ex
     for (const h of spots) { h.hidden = false; h.tabIndex = 0; }
     attach(el);
     addEventListener("keydown", onKey, true);
+    addEventListener("resize", fence);
+    fence();
     announce(TEXT.entered);
     exitButton.focus({ preventScroll: true });
   }
@@ -288,6 +329,8 @@ export function createExplorer(deps: ExploreDeps, root: Document = document): Ex
     const focusWasOurs = !root.activeElement || root.activeElement === root.body || bar.contains(root.activeElement) || spots.includes(root.activeElement as HTMLButtonElement);
     detach();
     removeEventListener("keydown", onKey, true);
+    removeEventListener("resize", fence);
+    deps.garden()?.fenceLabels({ top: 0, right: 0, bottom: 0, left: 0 });
     hover(null);
     bar.hidden = true;
     for (const h of spots) h.hidden = true;

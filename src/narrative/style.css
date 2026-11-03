@@ -520,14 +520,16 @@
    the toolbar sits above the ruler, right of the chapter card, which stays
    where it is; on stacked layouts the stage and the toolbar move into a
    full-viewport dialog and the page behind it stops scrolling. A rebuilt
-   garden's canvas is laid over the old one's until it has drawn. */
+   garden's canvas is laid over the old one's until it has drawn. The garden
+   places each label by its top left corner (src/scene.ts `placeLabels`),
+   inside what the toolbar, the card and the masthead leave clear. */
 .scene-stage .scene-garden canvas { position: absolute; left: 0; top: 0; }
 :root[data-explore="true"] .scene-stage { pointer-events: auto; touch-action: none; cursor: grab; }
 :root[data-explore="true"].turning .scene-stage { cursor: grabbing; }
 :root[data-explore="true"].planting .scene-stage { cursor: crosshair; }
 .scene-stage > .scene-hotspots { z-index: 2; pointer-events: none; }
 .hotspot {
-  position: absolute; transform: translate(-50%, calc(-100% - 0.4rem));
+  position: absolute;
   min-height: 2rem; padding: 0.2rem 0.75rem; white-space: nowrap;
   background: color-mix(in srgb, var(--paper) 88%, transparent); color: var(--ink);
   border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent); border-radius: 999px;
@@ -548,8 +550,12 @@
 }
 .explore-bar[hidden] { display: none; }
 .explore-help { margin: 0; font-size: 0.8125rem; color: var(--muted); text-align: center; }
+/* Touch screens without a keyboard: the gestures alone. */
+@media (hover: none) and (pointer: coarse) { .explore-keys { display: none; } }
 .explore-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.3rem; }
 .explore-actions [data-explore-exit] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.explore-pad { display: inline-flex; gap: 0.3rem; }
+.explore-move { min-width: 2.25rem; padding-inline: 0; font-size: 1rem; }
 .explore-host {
   position: fixed; inset: 0; z-index: 40;
   background: var(--paper); overscroll-behavior: contain;
@@ -575,7 +581,4 @@ html.explore-locked, html.explore-locked body { overflow: hidden; }
 /* Stacked layouts: smaller labels, so neighbouring places overlap less. */
 @media (max-width: 699.98px) {
   .hotspot { min-height: 1.75rem; padding: 0.1rem 0.55rem; font-size: 0.75rem; }
-  /* The tower's label and the pavilion's project on neighbouring points in the
-     whole-world pose; on a narrow stage the tower's is lifted clear of it. */
-  .hotspot[data-spot="about"] { transform: translate(-50%, calc(-100% - 2.2rem)); }
 }

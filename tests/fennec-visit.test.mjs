@@ -31,9 +31,9 @@ async function asleep(p, tries = 60) {
   }
   throw new Error('the garden kept drawing');
 }
-/* The garden opens at night (the navy night set), when the fennecs are not
-   out: they fade with the daylight, and an unseen fennec makes no visit. The
-   panel's hour slider brings the day back, as a visitor would; then the held
+/* The garden opens at night (the navy night set). Fennecs are night animals:
+   they are out then too, so a visit needs no change of hour. One test also
+   plants by day, through the panel's hour slider as a visitor would; the held
    garden sleeps again before anything is planted. */
 async function daytime(p) {
   await p.locator('[data-hour]').evaluate(input => { input.value = '13'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -45,13 +45,13 @@ const VISIT_TIMEOUT = 240000;
 const DESKTOP = { width: 1440, height: 900 };
 const ambientClock = p => p.evaluate(() => document.querySelector('[data-animation-time]').dataset.animationTime);
 
-test('desktop: planting brings a fennec to the new tree, then the held garden sleeps again', { timeout: 420000 }, async () => {
+test('desktop: planting in the default night brings a fennec to the new tree, then the held garden sleeps again', { timeout: 420000 }, async () => {
   const p = await live(DESKTOP, '#contact');
   try {
     await asleep(p);
     assert.equal((await garden(p)).visiting, false, 'no visit before planting');
     await p.locator('.garden > summary').click();
-    await daytime(p);
+    assert.ok(Number(await p.locator('[data-hour]').inputValue()) >= 21, 'the garden opens at night');
     const clock = await ambientClock(p);
     await p.locator('[data-plant-one]').click();
     await p.waitForFunction(() => window.__notebookStats().garden.visiting === true, null, { timeout: 20000 });

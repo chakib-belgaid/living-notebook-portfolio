@@ -267,6 +267,13 @@ Use the [release applicability table](ACCEPTANCE.md#release-applicability). Link
 - Caveat: fennecs fade out at night (and in wet weather, and are absent from the lighter phone build), and the page's default scene is the 22:00 night, so a visit after planting is seen only once the visitor moves the hour into daylight. `tests/fennec-visit.test.mjs` exercises the visit by day.
 - Open items: performance budgets on hardware-accelerated rendering (SwiftShader results are not acceptance); French review of every new string (exploration toolbar and places, postcard, rendering detail, case-page dialog, Inside Whisperbook and Listen), to be added to the review table above; the user's decision on whether fennecs should appear at night; the case pages still declare `theme-color` `#020b0e`, not the navy `#0e2b48` of the homepage; the "Acceptance evidence by release" table above still lists F23–F24 and F25b as release-2 deferrals; P8 (release candidate, PR, deployment) not started.
 
+#### 3 November 2026 — four fixes after the restoration
+
+- The user removed "Save a postcard" entirely: `src/narrative/postcard.ts`, `tests/postcard.test.mjs`, its button, panel wiring, mount API (`GardenScene.postcard`) and translations are gone. ACCEPTANCE F31 and the postcard part of F25a/F38 no longer apply.
+- Place labels no longer clip or hide on small screens: the explorer tells the garden what covers the stage (masthead and chapter card on wide layouts, the toolbar everywhere; `Garden.fenceLabels`), and `placeLabels` in `src/scene.ts` keeps every label inside that area and clear of its neighbours. The narrow-screen CSS lift for the tower's label is gone.
+- Panning has controls: four Move buttons in the exploring toolbar, and Shift with an arrow key while exploring (arrows alone still turn and zoom, now from anywhere while exploring, not only inside the toolbar).
+- Open item resolved (the user's decision on fennecs at night): fennecs are out at night too, with a faint warm sheen after dark, and in the light build as well, so planting in the default night brings a visit. `tests/fennec-visit.test.mjs` now plants at night.
+
 ### P7 / P8 — Release 2 closure and publication
 
 - Status: not started

@@ -119,9 +119,11 @@ function ruler() {
  * stacked layouts the module moves it into the exploration dialog. */
 function exploreBar() {
   const button = (attr: string, label: string) => `<button type="button" class="chip" ${attr}>${e(label)}</button>`;
+  const move = (way: string, label: string, glyph: string) =>
+    `<button type="button" class="chip explore-move" data-explore-move="${way}" aria-label="${e(label)}" title="${e(label)}"><span aria-hidden="true">${glyph}</span></button>`;
   return `<div class="explore-bar" data-explore-bar hidden role="group" aria-label="Exploring the garden">
-      <p class="explore-help" id="explore-help" data-explore-help>Drag to turn, scroll or pinch to zoom. Escape returns to reading.</p>
-      <div class="explore-actions">${button("data-explore-exit", "Back to reading")}${button("data-explore-reset", "Reset view")}${button('data-explore-turn="left"', "Turn left")}${button('data-explore-turn="right"', "Turn right")}${button('data-explore-zoom="in"', "Zoom in")}${button('data-explore-zoom="out"', "Zoom out")}</div>
+      <p class="explore-help" id="explore-help" data-explore-help>Drag to turn, scroll or pinch to zoom, two fingers to move. <span class="explore-keys">Arrow keys turn and zoom, Shift and an arrow moves. Escape returns to reading.</span></p>
+      <div class="explore-actions">${button("data-explore-exit", "Back to reading")}${button("data-explore-reset", "Reset view")}${button('data-explore-turn="left"', "Turn left")}${button('data-explore-turn="right"', "Turn right")}${button('data-explore-zoom="in"', "Zoom in")}${button('data-explore-zoom="out"', "Zoom out")}<span class="explore-pad" role="group" aria-label="Move the garden">${move("left", "Move left", "←")}${move("up", "Move up", "↑")}${move("down", "Move down", "↓")}${move("right", "Move right", "→")}</span></div>
     </div>`;
 }
 
@@ -156,7 +158,7 @@ function gardenPanel() {
               <div class="chips">${chip("plant-mode", "", "Plant by clicking")}<button type="button" class="chip" data-plant-one>Plant one</button><button type="button" class="chip" data-turn>Turn</button></div>
               <p class="quality-label" id="quality-label">Drawing quality</p>
               <div class="chips" role="group" aria-labelledby="quality-label">${qualities.map(([k, label]) => chip("quality", k, label)).join("")}</div>
-              <div class="chips garden-explore"><button type="button" class="chip" data-explore>Explore the garden</button><button type="button" class="chip" data-postcard>Save a postcard</button></div>
+              <div class="chips garden-explore"><button type="button" class="chip" data-explore>Explore the garden</button></div>
             </section>
           </section>
         </details>`;

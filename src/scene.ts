@@ -62,6 +62,10 @@ export interface Garden {
   panBy: (dx: number, dy: number) => void;
   /** Back to the framed garden: no zoom or pan of the visitor's own. */
   resetView: () => void;
+  /** The part of the view the places' labels must stay in: insets in
+      pixels from each edge, for what covers the garden there (the masthead,
+      the chapter card, the exploring toolbar). */
+  fenceLabels: (fence: LabelFence) => void;
   /** `ms` is the smoothed CPU time to submit a frame; the totals cover every frame drawn so far. `gpuMs` is null without GPU timers. */
   stats: () => { triangles: number; calls: number; ms: number; gpuFrameMs: number | null; cpuMs: number; gpuMs: number | null; frames: number; visiting: boolean };
   /** Recolours foliage, flowers, fallen leaves, and drifting petals for the season. */
@@ -117,6 +121,51 @@ function random() {
 }
 
 export type Quality = "full" | "light";
+
+export type LabelFence = { top: number; right: number; bottom: number; left: number };
+
+/* The places' labels stand just above their buildings, kept inside the
+   fence and clear of one another: a label that would run off the stage or
+   under what covers it slides back in, and one that would cover a
+   neighbour moves just above or below it, whichever is the shorter move.
+   Hidden labels keep their anchor; they are placed again once shown. */
+const LABEL_GAP = 6;
+function placeLabels(labels: HTMLElement[], anchors: Map<HTMLElement, [number, number]>, width: number, height: number, fence: LabelFence) {
+  const minX = fence.left + LABEL_GAP,
+    maxX = width - fence.right - LABEL_GAP,
+    minY = fence.top + LABEL_GAP,
+    maxY = height - fence.bottom - LABEL_GAP;
+  const boxes = labels.map((h) => {
+    const [x, y] = anchors.get(h)!;
+    const w = h.hidden ? 0 : h.offsetWidth,
+      ht = h.hidden ? 0 : h.offsetHeight;
+    return { h, w, ht, left: x - w / 2, top: y - LABEL_GAP - ht };
+  });
+  const shown = boxes.filter((b) => b.w > 0);
+  for (const b of shown) {
+    b.left = T.MathUtils.clamp(b.left, minX, Math.max(minX, maxX - b.w));
+    b.top = T.MathUtils.clamp(b.top, minY, Math.max(minY, maxY - b.ht));
+  }
+  const fits = (top: number, b: { ht: number }) => top >= minY && top + b.ht <= maxY;
+  const placed: typeof shown = [];
+  for (const b of shown.sort((a, c) => a.top - c.top)) {
+    for (let tries = 0; tries <= placed.length; tries++) {
+      const hit = placed.find(
+        (p) => b.left < p.left + p.w + 2 && p.left < b.left + b.w + 2 && b.top < p.top + p.ht + 2 && p.top < b.top + b.ht + 2,
+      );
+      if (!hit) break;
+      const up = hit.top - b.ht - 2,
+        down = hit.top + hit.ht + 2;
+      const [near, far] = b.top - up <= down - b.top ? [up, down] : [down, up];
+      b.top = fits(near, b) || !fits(far, b) ? near : far;
+    }
+    placed.push(b);
+  }
+  for (const b of boxes) {
+    b.h.style.left = `${b.left}px`;
+    b.h.style.top = `${b.top}px`;
+  }
+}
 
 export async function createGarden(
   container: HTMLElement,
@@ -2898,11 +2947,15 @@ async function buildGarden(
   });
 
   // Fennecs trot between spots on the same terrace, then sit for a while.
+  // They are night animals: out after dark too, with a faint moonlit sheen
+  // so they read against the night garden, and kept in the light drawing.
   const fennecFur = mat(0xd9b98a),
     fennecPale = mat(0xf3e6cf),
     fennecDark = mat(0x4a3426);
-  const groundSpots = lite ? [] : await surfaceSpots(70, onGround);
-  const fennecs = Array.from({ length: lite ? 0 : 3 }, () => {
+  fennecFur.emissive.setHex(0x8a6c48);
+  fennecPale.emissive.setHex(0x8a6c48);
+  const groundSpots = await surfaceSpots(lite ? 40 : 70, onGround);
+  const fennecs = Array.from({ length: 3 }, () => {
     const fennec = new T.Group();
     const body = new T.Mesh(
       new T.SphereGeometry(0.09, 10, 8).scale(0.7, 0.7, 1.3),
@@ -3026,7 +3079,7 @@ async function buildGarden(
   function visitTree(tree: T.Vector3) {
     const now = performance.now() / 1000;
     if (!fennecs.length || visit || paused || reduced || now < nextVisit) return;
-    // Only a fennec that can be seen: not at night, in the rain, or unbuilt.
+    // Only a fennec that can be seen: not in the rain, or unbuilt.
     if (fennecFur.opacity < 0.5) return;
     // A tree on its own level, or up to a planter's or curb's height above it.
     const near = fennecs
@@ -3502,7 +3555,8 @@ async function buildGarden(
     berryMaterial.opacity = life * flowerAmount[season] * (season === "autumn" ? 2 : 1);
     birdMaterial.opacity =
       life * day * dry * (season === "winter" ? 0.6 : 1) * (1 - fogAmount * 0.7);
-    fennecFur.opacity = fennecPale.opacity = fennecDark.opacity = life * day * dry;
+    fennecFur.opacity = fennecPale.opacity = fennecDark.opacity = life * dry;
+    fennecFur.emissiveIntensity = fennecPale.emissiveIntensity = night * 0.3;
     lifeMaterials.forEach((m) => (m.visible = m.opacity > 0.01));
     // Nothing alive is drawn yet: the animals wait where they are.
     if (life <= 0.01) return;
@@ -3787,6 +3841,8 @@ async function buildGarden(
     blueColor = new T.Color(0x447cba),
     finalColor = new T.Color(0x7b8277);
   const projected = new T.Vector3();
+  const anchors = new Map<HTMLElement, [number, number]>();
+  let labelFence: LabelFence = { top: 0, right: 0, bottom: 0, left: 0 };
   const points: Record<string, T.Vector3> = {
     wattch: new T.Vector3(-3.65, 2.65, 0.2),
     whisperbook: new T.Vector3(3.35, 3.55, -0.65),
@@ -4190,9 +4246,9 @@ async function buildGarden(
           .copy(points[h.dataset.spot!])
           .applyMatrix4(world.matrixWorld)
           .project(camera);
-        h.style.left = `${(projected.x * 0.5 + 0.5) * width}px`;
-        h.style.top = `${(-projected.y * 0.5 + 0.5) * height}px`;
+        anchors.set(h, [(projected.x * 0.5 + 0.5) * width, (-projected.y * 0.5 + 0.5) * height]);
       }
+      placeLabels(hotspots, anchors, width, height, labelFence);
     }
     readGpuTimers();
     const query = gpuTimer && gpuPending.length < 4 ? gl.createQuery() : null;
@@ -4493,6 +4549,12 @@ async function buildGarden(
     resetView() {
       userZoomGoal = 1;
       panGoal.set(0, 0);
+      invalidate();
+    },
+    fenceLabels(fence) {
+      labelFence = fence;
+      // Placed again on the next frame, even with the camera still.
+      framed.fill(NaN);
       invalidate();
     },
     focus(spot, shiftX = 0, shiftY = 0, roomX = 1) {
