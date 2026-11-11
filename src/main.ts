@@ -7,11 +7,14 @@
  * motion, stills and sound controls; the ruler (src/narrative/ruler.ts)
  * shows the reading position and the visit's carbon tally; the garden
  * panel (src/narrative/garden-panel.ts) lets the visitor set the sky, the
- * season and the quality, and plant trees. */
+ * season and the quality, and plant trees; card motion
+ * (src/narrative/card-motion.ts) gives each chapter card its stop and its
+ * fade as the page scrolls. */
 import { initHeader } from "./narrative/header";
 import { initLocalization } from "./i18n";
 import { initEvidence } from "./evidence";
 import { initLocalizedLinks } from "./narrative/localized-links";
+import { initCardMotion } from "./narrative/card-motion";
 import { createController } from "./narrative/controller";
 import { createNavigation } from "./navigation";
 import { createSceneMount } from "./narrative/scene-mount";
@@ -23,6 +26,8 @@ initLocalizedLinks();
 initEvidence();
 document.documentElement.classList.add("enhanced");
 initHeader();
+// Before the controller: the stops change chapter heights, which it measures.
+initCardMotion();
 const controller = createController();
 createNavigation(controller);
 const scene = createSceneMount(controller);

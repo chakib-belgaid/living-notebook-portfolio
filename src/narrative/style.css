@@ -269,6 +269,38 @@
   .chapter h1 { font-size: clamp(2.15rem, 1rem + 2.05vw, 2.9rem); }
 }
 
+/* Card motion (src/narrative/card-motion.ts), only under :root.card-motion,
+   which the module sets when motion is allowed. The module writes each
+   card's fade and rise inline; a card that holds keyboard focus is always
+   fully shown, and print ignores both.
+   The landmark stop, wide layouts: a stopping card ([data-dwell], with its
+   height in --card-h) is sticky at --stop, and its chapter is taller by
+   --dwell, so the card lingers for that much scroll before the chapter's end
+   carries it away; the module draws it drifting through that stretch and
+   easing in and out of it, so the stop is never a dead one. A card that fits the viewport stops where it lands,
+   under the header; a taller one is read through first and stops once its
+   last line is on screen (a stop above the viewport's top). The opening
+   card keeps its centred place: its stop is where centring put it. */
+.card-motion :is(.chapter-card, .chapter-lead):has(:focus-visible) { opacity: 1 !important; transform: none !important; }
+@media screen and (min-width: 900px) and (min-height: 500px) {
+  .card-motion { --dwell: 75vh; --dwell: 75svh; }
+  .card-motion .chapter { --stop: min(calc(var(--header-clearance) + 2.5rem), calc(100vh - var(--card-h, 0px) - 2.5rem)); }
+  .card-motion .chapter-intro {
+    --stop: calc(var(--header-clearance) + 2.5rem + max(0px, (100vh - var(--header-clearance) - 5rem - var(--card-h, 0px)) / 2));
+    justify-content: flex-start; padding-top: calc(var(--stop) - var(--header-clearance));
+  }
+  .card-motion .chapter[data-dwell] {
+    min-height: max(calc(100vh - var(--header-clearance)), calc(5rem + var(--card-h) + var(--dwell)));
+  }
+  .card-motion .chapter-intro[data-dwell] {
+    min-height: max(calc(100vh - var(--header-clearance)), calc(var(--stop) - var(--header-clearance) + var(--card-h) + 2.5rem + var(--dwell)));
+  }
+  .card-motion .chapter[data-dwell] .chapter-card { position: sticky; top: var(--stop); }
+}
+@media print {
+  .chapter-card, .chapter-lead { opacity: 1 !important; transform: none !important; }
+}
+
 /* The reading ruler (src/narrative/ruler.ts; markup in src/render.ts
    ruler()): the previous page's bottom bar reduced to its scale. Enhancement
    only: hidden until the module shows it. Stacked layouts show only the
