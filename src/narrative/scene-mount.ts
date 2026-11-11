@@ -630,6 +630,13 @@ export function createSceneMount(controller: NarrativeController) {
       const detail = detailFor(state.quality, compactQuery.matches, href());
       const built = await createGarden(box, hotspots, detail, state.quality);
       if (mine !== generation) { built.dispose(); return; }
+      // The build yields between batches, so the visitor may have jumped or
+      // read on meanwhile: those visits moved the stage and the poster but
+      // had no garden to pose. The first pose is for where they are now.
+      const destination = pin ? pin.chapter : leadChapter(state.chapter);
+      state.chapter = destination;
+      showRailPoster(destination);
+      moveStage(hostFor(destination));
       garden = built;
       builtDetail = detail;
       if (tallyGrams !== null) garden.setTally(tallyGrams);
@@ -649,8 +656,8 @@ export function createSceneMount(controller: NarrativeController) {
       // it with the matching pose, never with a half-drawn (at first, empty)
       // page. The pencil draw-in is not used on the release-1 page.
       garden.skipDrawIn();
-      adapter.go(target, { immediate: true });
-      sky.setGrowth(chapterContent(target).scene.progress, true);
+      adapter.go(destination, { immediate: true });
+      sky.setGrowth(chapterContent(destination).scene.progress, true);
       offSettled = adapter.onSettled(settled);
       box.addEventListener("garden-context-lost", lost);
       box.addEventListener("garden-context-restored", restored);

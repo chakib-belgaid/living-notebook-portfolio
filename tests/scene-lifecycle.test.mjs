@@ -215,6 +215,32 @@ test('a reload of /#contact restores Contact: bloom poster first, only Contact d
   } finally { await close(p); }
 });
 
+test('a jump made while the garden is still building is the first pose drawn', async () => {
+  // The stage is in the document just before the garden's build starts, and
+  // the build yields between batches: this click lands in its first yield.
+  const p = await open('/', { init: () => {
+    new MutationObserver((_records, observer) => {
+      if (!document.querySelector('.scene-stage')) return;
+      observer.disconnect();
+      document.querySelector('.nav-sections a[href="#contact"]').click();
+    }).observe(document, { subtree: true, childList: true });
+  } });
+  try {
+    await settledOn(p, 'contact');
+    const pr = await probe(p);
+    assert.equal(pr.liveAt.chapter, 'contact', 'the garden is posed for the chapter jumped to');
+    assert.ok(pr.liveAt.progress > 0.99, `the first visible frame is Contact's: ${pr.liveAt.progress}`);
+    assert.ok(pr.progress.every(v => v > 0.99), `only Contact is drawn: ${[...new Set(pr.progress)].join(', ')}`);
+    const rail = await p.evaluate(() => {
+      const el = document.querySelector('[data-scene-host="rail"]');
+      return { poster: el.querySelector('img').getAttribute('src'), stage: !!el.querySelector('.scene-stage[data-live]') };
+    });
+    assert.match(rail.poster, /bloom\.webp$/);
+    assert.ok(rail.stage, 'the live stage is in the rail');
+    assert.deepEqual(p.errors, []);
+  } finally { await close(p); }
+});
+
 test('a fragment reload left at the top (no scroll restored) ends on the opening', async () => {
   const p = await open('/#contact', { init: () => { history.scrollRestoration = 'manual'; } });
   try {
