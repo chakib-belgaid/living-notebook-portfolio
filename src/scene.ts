@@ -1654,6 +1654,49 @@ async function buildGarden(
   beam(lampKnee, lampHead, 0.008, "dark");
   add(new T.ConeGeometry(0.05, 0.07, 10, 1, true), lampHead.x, lampHead.y - 0.02, lampHead.z, "ochre", [0, 0, 0.6]);
 
+  // The work at MCQ Scan, which the workshop also stands for. Symbols only:
+  // company work is never shown. Fixed values, no random().
+  // AgentDiet, at the doorway: a permission is checked where the tool runs.
+  // A barrier across the gap in the front wall, a reader post outside it with
+  // a seal on its panel, and three biscuit-coloured tokens hung from the
+  // gatepost, each smaller than the last: a delegation can only narrow.
+  const gateL = x0 + 0.5,
+    gateR = x0 + 0.94;
+  box(gateL, siteY + 0.3, z1, 0.06, 0.6, 0.06, "dark");
+  box(gateR, siteY + 0.5, z1, 0.06, 1.0, 0.06, "dark");
+  box((gateL + gateR) / 2, siteY + 0.42, z1 + 0.05, gateR - gateL + 0.06, 0.035, 0.035, "ochre");
+  if (!lite)
+    for (let i = 0; i < 3; i++)
+      box(gateL + 0.09 + i * 0.13, siteY + 0.42, z1 + 0.05, 0.05, 0.04, 0.04, "dark", false);
+  const readerX = gateL - 0.2,
+    readerZ = z1 + 0.2;
+  box(readerX, 0.36, readerZ, 0.08, 0.4, 0.08, "trim");
+  add(new T.BoxGeometry(0.14, 0.02, 0.11), readerX, 0.58, readerZ, "dark", [0.5, 0, 0]);
+  add(new T.CylinderGeometry(0.04, 0.04, 0.015, 12), readerX, 0.596, readerZ + 0.009, "terracotta", [0.5, 0, 0], false);
+  const armY = siteY + 0.97;
+  box(gateR + 0.21, armY, z1, 0.48, 0.03, 0.03, "dark");
+  ([[0.1, 0.085], [0.25, 0.06], [0.37, 0.04]] as const).forEach(([dx, r]) => {
+    const tokenY = armY - 0.07 - r;
+    add(new T.CylinderGeometry(r, r, 0.022, 14), gateR + dx, tokenY, z1, "ochre", [Math.PI / 2, 0, 0]);
+    if (!lite)
+      beam(new T.Vector3(gateR + dx, armY, z1), new T.Vector3(gateR + dx, tokenY + r, z1), 0.004, "dark", false);
+  });
+  // Store Chat, a clothing-shopping assistant: a rail of three garments inside
+  // the front wall, under a speech bubble.
+  const railX = x0 + 0.27,
+    railZ = z1 - 0.21,
+    railY = siteY + 0.56;
+  box(railX - 0.16, siteY + 0.45, railZ, 0.025, 0.9, 0.025, "dark");
+  box(railX + 0.16, siteY + 0.28, railZ, 0.025, 0.56, 0.025, "dark");
+  box(railX, railY, railZ, 0.34, 0.02, 0.02, "dark");
+  (["terracotta", "glass", "ochre"] as const).forEach((c, i) =>
+    box(railX - 0.1 + i * 0.1, railY - 0.13, railZ, 0.085, 0.2, 0.03, c));
+  box(railX - 0.03, siteY + 0.82, railZ + 0.02, 0.22, 0.13, 0.03, "light");
+  add(new T.BoxGeometry(0.05, 0.05, 0.03), railX - 0.08, siteY + 0.75, railZ + 0.02, "light", [0, 0, Math.PI / 4], false);
+  if (!lite)
+    for (let i = 0; i < 3; i++)
+      box(railX - 0.08 + i * 0.05, siteY + 0.82, railZ + 0.037, 0.02, 0.02, 0.005, "dark", false);
+
   // The heart garden, on the plot that was left empty: BP Log, which reads a
   // blood-pressure monitor's display from a photo. A heart stands on a low
   // plinth, turned to the garden, and a pulse trace runs across the tile in

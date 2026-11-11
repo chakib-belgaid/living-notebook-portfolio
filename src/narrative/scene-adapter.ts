@@ -91,8 +91,10 @@ export const sceneCues: Readonly<Record<ChapterId, ScenePoseCue>> = {
   whisperbook: cue("whisperbook", "build", { progress: 0.66, focus: "whisperbook", shift: [0, -0.06], room: 0.5 }, { shift: [0, -0.04], room: 0.56 }, { shift: [0, -0.08], room: 0.4 }),
   // The observatory ring gains presence.
   "energy-tools": cue("energy-tools", "build", { progress: 0.76, focus: "wattch", shift: [0.02, -0.06], room: 0.46 }, { shift: [0.02, -0.04], room: 0.5 }, { shift: [0, -0.02], room: 0.34 }),
-  // The workshop as the setting for delivery.
-  "mcq-scan": cue("mcq-scan", "build", { progress: 0.84, focus: "workshop", shift: [0.02, -0.06], room: 0.43 }, { shift: [0.02, -0.04], room: 0.46 }, { shift: [0.12, -0.12], room: 0.3 }),
+  // The workshop as the setting for the work at MCQ Scan: its gate (AgentDiet)
+  // and its clothes rail (Store Chat) are small, so it is drawn as close as
+  // the heart garden and marked with the hover ring.
+  "mcq-scan": cue("mcq-scan", "build", { progress: 0.84, focus: "workshop", shift: [0.02, -0.1], room: 0.7, mark: "workshop" }, { shift: [0.02, -0.12], room: 0.7 }, { shift: [0.08, -0.1], room: 0.36 }),
   // The tower and terraces, framed wider (about has no room: 1.4x focus).
   // Still Build: the final foliage and light (Bloom) are held back for Contact.
   about: cue("about", "build", { progress: 0.93, focus: "about", shift: [0.08, 0], room: 0.78 }, { shift: [0.06, 0], room: 0.78 }, { shift: [0.12, -0.04], room: 0.5 }),
