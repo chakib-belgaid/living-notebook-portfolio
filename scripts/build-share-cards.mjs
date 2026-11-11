@@ -16,7 +16,8 @@
 //
 // The visual identity is the current page's (decisions 63 and 64): the fixed
 // navy paper, ink and muted tokens of src/style.css, Newsreader from
-// public/fonts (embedded as data URLs, no network), a system sans for the
+// fonts-src (the upstream files, since the served ones are trimmed to the
+// page's own sizes; embedded as data URLs, no network), a system sans for the
 // small label line as the page's controls use. Evidence images are the
 // project's own screenshots, shown whole; MCQ Scan has none (internal client
 // work), so its card sits on the site's own rendered night still. No
@@ -314,8 +315,8 @@ function pngSize(bytes) {
 async function render(browser) {
   await mkdir(out, { recursive: true });
   const fonts = {
-    normal: await dataUrl('public/fonts/newsreader-normal.woff2', 'font/woff2'),
-    italic: await dataUrl('public/fonts/newsreader-italic.woff2', 'font/woff2'),
+    normal: await dataUrl('fonts-src/newsreader-normal.woff2', 'font/woff2'),
+    italic: await dataUrl('fonts-src/newsreader-italic.woff2', 'font/woff2'),
   };
   const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
   const page = await context.newPage();

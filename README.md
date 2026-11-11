@@ -115,6 +115,8 @@ The ruler's tally shows **Estimated impact of this visit so far**; its panel spl
 
 By default the page makes no third-party request: fonts, images and share cards are self-hosted, and Open-Meteo is called only from Live or Use my exact location.
 
+The two Newsreader files in `public/fonts` are trimmed copies of the upstream ones in `fonts-src`: `scripts/trim-fonts.sh` (needs `uv`) keeps only the weights and optical sizes the pages ask for, which takes them from 279 KB to 144 KB without changing a pixel of the text. The ranges are declared in `src/fonts.css`; if a page needs a lighter weight, a bold italic or an italic above 18px, widen them in both places and rerun the script. The share-card builder reads `fonts-src`, since it sets larger italics.
+
 The homepage has a descriptive title, description, social metadata, the captured garden preview as its share image, and the navy `#0e2b48` theme color. Each case page points `og:image` and `twitter:image` at its own share card. To generate canonical and absolute social URLs, supply the actual deployment origin when building:
 
 ```sh
@@ -158,7 +160,7 @@ npm run preview -- --port 5199 --strictPort
 TEST_URL=http://127.0.0.1:5199 npm test
 ```
 
-`npm test` runs `tests/*.test.mjs` one file at a time, so their WebGL scenes do not compete for the same software renderer: `browser-fixture`, `card-motion` (the landmark stop, its curve, reduced motion, stacked layouts, keyboard focus), `case-evidence` (screenshots, the enlargement dialog, Inside Whisperbook, Listen), `exploration`, `fennec-visit`, `garden-panel`, `narrative-model`, `navigation`, `quality-rebuild`, `render-meter`, `scene-lifecycle` (one renderer, continuous visible animation, hidden tab, pause, stills, context loss, sound consent), `sound`, `transfer`, `translations` and `ux-regressions`. Failed fixture setup closes its browser context before reporting the error.
+`npm test` runs `tests/*.test.mjs` one file at a time, so their WebGL scenes do not compete for the same software renderer: `browser-fixture`, `card-motion` (the landmark stop, its curve, reduced motion, stacked layouts, keyboard focus), `case-evidence` (screenshots, the enlargement dialog, Inside Whisperbook, Listen), `exploration`, `fennec-visit`, `fonts` (the trimmed font files hold every weight, style and size the pages ask for, and stay small), `garden-panel`, `narrative-model`, `navigation`, `quality-rebuild`, `render-meter`, `scene-lifecycle` (one renderer, continuous visible animation, hidden tab, pause, stills, context loss, sound consent), `sound`, `transfer`, `translations` and `ux-regressions`. Failed fixture setup closes its browser context before reporting the error.
 
 `scripts/verify-case-dependencies.mjs` builds a clean output directory (`DIST`, default `dist`), serves it and checks the six case routes and both `/live/` redirects: every local dependency answers with the right type and decodes, the EN/FR pairs match, and the six case screenshots and six share cards are built and referenced. `scripts/verify-narrative-shell.mjs` checks the static page (no JavaScript, first viewport, fragments, French) against a preview.
 
