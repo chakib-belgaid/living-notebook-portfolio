@@ -11,3 +11,10 @@ export async function setupPage(browser, options, setup) {
     throw error;
   }
 }
+
+/** Wait for camera, construction and one-off actions, while ambient life runs. */
+export const waitForSceneSettled = page => page.waitForFunction(
+  () => window.__notebookScene.state().settled,
+  null,
+  { timeout: 60000 },
+);

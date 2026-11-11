@@ -1,293 +1,485 @@
-/* Reproducible performance baseline for the notebook (OPTIMIZATION-PLAN.md, item 1).
+/* Performance harness for the current page (product decisions 50, 72, 73),
+   against a production preview:
+     npx vite build --outDir <dir> && npx vite preview --outDir <dir> --host 127.0.0.1 --port <port> --strictPort
+     TEST_URL=http://127.0.0.1:<port> node tests/performance.mjs
+   PERFORMANCE_BUDGETS=1 makes a failed budget (or a scenario that could not
+   be measured) exit non-zero; otherwise the run only reports. SCENARIOS
+   limits the set, e.g. SCENARIOS=place-response,exploring. TRIALS (default
+   5) is the number of hover and focus trials per place-response mode.
 
-   Scenarios follow the current presentation modes:
-     desktop-garden   1440×900 @1.6, the scroll story, then Bloom, a project,
-                      planting, a storm, pause and a hidden/resumed tab.
-     phone-journey    390×844 @3 portrait touch phone: the live-garden journey
-                      through every stop, then settled, paused and hidden.
-     phone-stills     the same phone with ?view=stills: stills only, no scene.
-     reading          1440×900 reading page: no scene.
+   Scenarios and budgets (desktop 1440×900 unless stated):
+     place-response  (a) a place label (button.hotspot) while exploring,
+                     reached by the pointer (hover()), from script (focus())
+                     and by the keyboard (Tab from the previous place): from
+                     the input event's timestamp to the end of the first
+                     garden frame drawn with that place's highlight (the
+                     garden's data-hover attribute), in normal and in reduced
+                     motion. Budget: every trial < 100 ms.
+     exploring       (b) garden frames per second while exploring (ambient
+                     life on), and again after pause and resume: > 20 fps.
+                     (c) garden frames in the 0.8 s after a hidden tab is
+                     shown while exploring: > 10.
+                     (d) longest main-thread task during a drag turn while
+                     exploring: < 100 ms.
+                     (e) ambient motion continues after leaving exploration:
+                     garden frames continue over 3 s.
+     fennec-visit    (d) longest main-thread task from planting a tree at
+                     #contact in daylight (hour 13) to the end of the fennec's
+                     visit: < 100 ms.
+     first-pose      (f) deep links /#whisperbook and /#contact on desktop and
+                     phone: navigation to scene request, construction, first
+                     render, the reveal of the live stage and the end of the
+                     task it happened in (when that frame can reach the
+                     screen). Report only.
 
-   Rendering is measured from the page, not from a scheduling probe: every
-   WebGL draw call is counted and grouped by animation frame, so `draws` is
-   the frames the garden actually drew. `rafCallbacks` counts every
-   requestAnimationFrame request made by the page (the harness's own probe is
-   excluded). Hidden is simulated by overriding document.hidden and firing
-   visibilitychange, which measures what the page schedules; a really hidden
-   tab is throttled by the browser regardless.
+   Frames are the garden's own drawing totals (window.__notebookStats), with
+   WebGL draw calls on the garden canvas grouped by animation frame for the
+   intervals. Long tasks come from the Long Tasks API (tasks of 50 ms or
+   more). A hidden tab is simulated (document.hidden overridden and
+   visibilitychange fired), which measures what the page schedules. Live
+   weather (Open-Meteo) is blocked. The report names the browser, its
+   version, navigator.hardwareConcurrency, the unmasked WebGL renderer (a
+   SwiftShader or other software renderer is flagged) and the viewports, so a
+   run is a documented profile (decision 72). No battery or energy claim is
+   made from these numbers (decision 50).
 
-   RUNS (default 5) matched runs per scenario; SCENARIOS limits the set,
-   e.g. SCENARIOS=desktop-garden,reading. Output: $QA_OUTPUT/performance.json
-   with every run and medians/p95 per metric, and a one-line summary per run. */
+   Output: the JSON report on stdout and in .qa/performance/report.json;
+   progress lines on stderr. */
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import os from 'node:os';
+import { waitForSceneSettled } from './browser-fixture.mjs';
 
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
-const output = process.env.QA_OUTPUT || '/private/tmp/notebook-qa';
-const RUNS = Number(process.env.RUNS || 5);
-const only = process.env.SCENARIOS?.split(',');
-await mkdir(output, { recursive: true });
+const enforce = process.env.PERFORMANCE_BUDGETS === '1';
+const only = process.env.SCENARIOS?.split(',').map(s => s.trim()).filter(Boolean);
+const TRIALS = Number(process.env.TRIALS || 5);
+const outDir = fileURLToPath(new URL('../.qa/performance/', import.meta.url));
+const READY_TIMEOUT = 90000;
+// SwiftShader draws slowly and the scene's step is capped per frame, so a
+// visit of about ten simulated seconds can take minutes of wall time.
+const VISIT_TIMEOUT = 240000;
+
+const desktop = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 };
+const phone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
+const log = (...a) => console.error('[performance]', ...a);
 const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
 
-/* Installed before any page script. */
+/* Installed before any page script: garden draw frames (WebGL draw calls on
+   the garden's canvas, grouped by animation frame), long tasks, place input
+   timestamps, the garden's hover highlight as drawn, the reveal of the live
+   stage, and a controllable document.hidden. */
 function instrument() {
   const raf = window.requestAnimationFrame.bind(window);
-  const p = window.__perf = { raf: 0, draws: 0, drawFrames: 0, drawTimes: [], probe: [], tick: 0, tickSeen: -1, longtasks: [], sampling: false };
-  window.requestAnimationFrame = (cb) => { p.raf++; return raf(cb); };
-  // A probe on the original requestAnimationFrame numbers the frames.
-  const probe = (t) => { p.tick++; if (p.sampling) p.probe.push(t); raf(probe); };
-  raf(probe);
+  const p = window.__perf = { tick: 0, seen: -1, gardenFrames: 0, frameTimes: [], sampling: false, longtasks: [], inputs: [], hovers: [], liveAt: null };
+  const tick = () => { p.tick++; raf(tick); };
+  raf(tick);
   for (const proto of [window.WebGL2RenderingContext?.prototype, window.WebGLRenderingContext?.prototype]) {
     if (!proto) continue;
     for (const name of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced']) {
       const f = proto[name];
       if (!f) continue;
-      proto[name] = function (...args) {
-        p.draws++;
-        if (p.tickSeen !== p.tick) { p.tickSeen = p.tick; p.drawFrames++; if (p.sampling) p.drawTimes.push(performance.now()); }
-        return f.apply(this, args);
+      proto[name] = function (...a) {
+        if (this.__garden !== true) this.__garden = !!this.canvas?.closest?.('.scene-garden');
+        if (this.__garden && p.seen !== p.tick) {
+          p.seen = p.tick; p.gardenFrames++;
+          if (p.sampling) p.frameTimes.push(performance.now());
+        }
+        return f.apply(this, a);
       };
     }
   }
-  new PerformanceObserver((l) => p.longtasks.push(...l.getEntries().map((e) => ({ start: e.startTime, ms: e.duration })))).observe({ type: 'longtask', buffered: true });
+  try {
+    new PerformanceObserver(l => { for (const e of l.getEntries()) p.longtasks.push({ start: e.startTime, ms: e.duration }); }).observe({ type: 'longtask', buffered: true });
+  } catch { p.longtasks = null; }
+  const spotOf = e => e.target?.closest?.('.hotspot[data-spot]')?.dataset.spot ?? null;
+  document.addEventListener('pointerover', e => { const s = spotOf(e); if (s) p.inputs.push({ kind: 'pointer', spot: s, t: e.timeStamp }); }, true);
+  document.addEventListener('focusin', e => { const s = spotOf(e); if (s) p.inputs.push({ kind: 'focus', spot: s, t: e.timeStamp }); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Tab') p.inputs.push({ kind: 'key', spot: null, t: e.timeStamp }); }, true);
+  new MutationObserver(records => {
+    const t = performance.now();
+    for (const r of records) {
+      const el = r.target;
+      if (r.attributeName === 'data-hover') p.hovers.push({ t, value: el.dataset.hover });
+      if (r.attributeName === 'data-live' && el.hasAttribute('data-live') && p.liveAt === null) {
+        const pose = window.__notebookScene?.state().pose;
+        p.liveAt = { t, chapter: pose?.chapter ?? null, progress: pose?.progress ?? null, frames: window.__notebookStats?.().garden?.frames ?? null };
+      }
+    }
+  }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-hover', 'data-live'] });
   let hidden = false;
   Object.defineProperty(Document.prototype, 'hidden', { configurable: true, get: () => hidden });
   Object.defineProperty(Document.prototype, 'visibilityState', { configurable: true, get: () => (hidden ? 'hidden' : 'visible') });
-  window.__setHidden = (h) => { hidden = h; document.dispatchEvent(new Event('visibilitychange')); };
+  window.__setHidden = h => { hidden = h; document.dispatchEvent(new Event('visibilitychange')); };
 }
 
-const sorted = (xs) => [...xs].sort((a, b) => a - b);
-const quantile = (xs, q) => { const s = sorted(xs); return s.length ? s[Math.min(s.length - 1, Math.floor(s.length * q))] : null; };
-const round = (n, d = 2) => (n === null || n === undefined ? null : Math.round(n * 10 ** d) / 10 ** d);
-const intervals = (ts) => ts.slice(1).map((t, i) => t - ts[i]);
+const round = (n, d = 1) => (n === null || n === undefined || !Number.isFinite(n) ? null : Math.round(n * 10 ** d) / 10 ** d);
+const quantile = (xs, q) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.floor(s.length * q))] : null; };
 
-/* One measured window: what the page scheduled, drew and blocked on. */
-async function window_(page, name, ms, act) {
-  await page.evaluate(() => { const p = window.__perf; p.sampling = true; p.mark = { raf: p.raf, draws: p.draws, drawFrames: p.drawFrames, t: performance.now(), tasks: p.longtasks.length, stats: window.__notebookStats?.() ?? null }; p.drawTimes = []; p.probe = []; });
-  if (act) await act();
-  await page.waitForTimeout(ms);
-  const r = await page.evaluate(() => {
-    const p = window.__perf; p.sampling = false;
-    const seconds = (performance.now() - p.mark.t) / 1000;
-    // Main-thread and GPU time per garden frame, from the page's own totals.
-    const a = p.mark.stats?.garden, b = window.__notebookStats?.()?.garden;
-    const frames = a && b ? b.frames - a.frames : 0;
-    const work = frames ? { cpuMsPerFrame: (b.cpuMs - a.cpuMs) / frames, gpuMsPerFrame: b.gpuMs === null ? null : (b.gpuMs - a.gpuMs) / frames } : { cpuMsPerFrame: null, gpuMsPerFrame: null };
-    return { seconds, raf: p.raf - p.mark.raf, drawCalls: p.draws - p.mark.draws, drawFrames: p.drawFrames - p.mark.drawFrames, drawTimes: p.drawTimes, probe: p.probe, tasks: p.longtasks.slice(p.mark.tasks), work };
-  });
-  const draw = intervals(r.drawTimes), probe = intervals(r.probe);
-  return {
-    name,
-    seconds: round(r.seconds),
-    rafPerSecond: round(r.raf / r.seconds, 1),
-    drawFramesPerSecond: round(r.drawFrames / r.seconds, 1),
-    drawCallsPerFrame: r.drawFrames ? round(r.drawCalls / r.drawFrames, 1) : 0,
-    drawIntervalP50: round(quantile(draw, 0.5)), drawIntervalP95: round(quantile(draw, 0.95)),
-    drawMissed33: draw.length ? round(draw.filter((d) => d > 34).length / draw.length, 4) : null,
-    probeIntervalP95: round(quantile(probe, 0.95)),
-    maxTaskMs: round(Math.max(0, ...r.tasks.map((t) => t.ms))), tasksOver50: r.tasks.length,
-    cpuMsPerFrame: round(r.work.cpuMsPerFrame, 3), gpuMsPerFrame: round(r.work.gpuMsPerFrame, 3),
-  };
-}
-
-async function sceneInfo(page) {
-  return page.evaluate(() => {
-    const scene = document.querySelector('#scene');
-    const m = (n) => performance.getEntriesByName(`notebook:${n}`, 'measure')[0]?.duration ?? null;
-    const stats = window.__notebookStats?.() ?? null;
-    return {
-      canvas: !!scene?.querySelector('canvas'),
-      quality: scene?.dataset.quality ?? null,
-      drawCalls: Number(scene?.dataset.drawCalls ?? NaN) || null,
-      triangles: Number(scene?.dataset.triangles ?? NaN) || null,
-      geometries: Number(scene?.dataset.geometries ?? NaN) || null,
-      textures: Number(scene?.dataset.textures ?? NaN) || null,
-      constructionMs: m('scene-construction'), sceneToFirstRenderMs: m('scene-to-first-render'), shaderWarmupMs: m('shader-warmup'),
-      stats,
-      hour: document.querySelector('#hour')?.value ?? null,
-      season: document.documentElement.dataset.season ?? null,
-      fcp: performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? null,
-    };
-  });
-}
-
-/* Bytes by kind from Resource Timing. Cross-origin sizes may be hidden (0). */
-async function transferReport(page) {
-  return page.evaluate(() => {
-    const out = {};
-    const kind = (e) => /\.(webp|png|jpe?g|svg|avif)(\?|$)/.test(e.name) ? 'image' : /\.(woff2?|ttf)(\?|$)/.test(e.name) ? 'font' : /\.css(\?|$)/.test(e.name) ? 'css' : /\.js(\?|$)/.test(e.name) ? (/scene-/.test(e.name) ? 'scene-js' : 'js') : e.initiatorType;
-    const entries = [performance.getEntriesByType('navigation')[0], ...performance.getEntriesByType('resource')].filter(Boolean);
-    for (const e of entries) {
-      const k = e.entryType === 'navigation' ? 'document' : kind(e);
-      out[k] ??= { requests: 0, transfer: 0, decoded: 0 };
-      out[k].requests++; out[k].transfer += e.transferSize; out[k].decoded += e.decodedBodySize;
-    }
-    const total = Object.values(out).reduce((a, b) => ({ requests: a.requests + b.requests, transfer: a.transfer + b.transfer, decoded: a.decoded + b.decoded }), { requests: 0, transfer: 0, decoded: 0 });
-    const images = entries.filter((e) => /\.(webp|png|jpe?g)/.test(e.name)).map((e) => ({ url: new URL(e.name).pathname, transfer: e.transferSize, decoded: e.decodedBodySize }));
-    return { byKind: out, total, images };
-  });
-}
-
-async function newPage(options, url) {
+async function open(options, path) {
   const context = await browser.newContext(options);
   const page = await context.newPage();
   page.errors = [];
-  page.on('pageerror', (e) => page.errors.push(e.message));
-  await page.route('**/*open-meteo.com/**', (r) => r.abort());
+  page.on('pageerror', e => page.errors.push(e.message));
+  await page.route('**/*open-meteo.com/**', r => r.abort());
   await page.addInitScript(instrument);
-  await page.goto(base + url);
+  await page.goto(base + path);
   await page.waitForFunction(() => document.documentElement.classList.contains('enhanced'));
   return page;
 }
-const settledShaders = (page) => page.waitForFunction(() => performance.getEntriesByName('notebook:shader-first-use-complete').length > 0, {}, { timeout: 30000 });
-
-const desktop = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.6 };
-const phone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true };
-
-const scenarios = {
-  'desktop-garden': () => desktopGarden('/?view=garden'),
-  // The same journey drawn Light (OPTIMIZATION-PLAN.md, item 4).
-  'desktop-garden-light': () => desktopGarden('/?view=garden&quality=light'),
-  ...phoneScenarios(),
-};
-async function desktopGarden(url) {
-    const page = await newPage(desktop, url);
-    await page.waitForFunction(() => document.querySelector('#scene')?.dataset.progress);
-    await settledShaders(page);
-    const cold = { ...(await sceneInfo(page)), tasks: await page.evaluate(() => window.__perf.longtasks) };
-    const windows = [];
-    windows.push(await window_(page, 'opening-sketch', 2000));
-    // The scroll story: every note in turn through the ruler.
-    windows.push(await window_(page, 'stage-transitions', 400, async () => {
-      const positions = await page.locator('.chapter').evaluateAll((es) => es.map((e) => Math.min(e.offsetTop, document.documentElement.scrollHeight - innerHeight)));
-      const max = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
-      for (const y of positions) { await page.locator('#scrub').fill(String(Math.ceil((y / max) * 1000))); await page.waitForTimeout(220); }
-    }));
-    await page.locator('.masthead a[href="#contact"]').click();
-    await page.waitForTimeout(3500);
-    windows.push(await window_(page, 'bloom-settled', 3000));
-    windows.push(await window_(page, 'project-focus', 2500, () => page.evaluate(() => { location.hash = 'whisperbook'; })));
-    await page.locator('.masthead a[href="#contact"]').click();
-    await page.waitForTimeout(3000);
-    await page.locator('.dock > summary').click();
-    windows.push(await window_(page, 'planting', 2500, async () => { for (let i = 0; i < 3; i++) await page.locator('#plant-one').click(); }));
-    windows.push(await window_(page, 'heavy-weather', 3000, () => page.getByRole('button', { name: 'Storm', exact: true }).click()));
-    await page.getByRole('button', { name: 'Clear', exact: true }).click();
-    await page.locator('.dock > summary').click();
-    await page.waitForTimeout(1500);
-    await page.locator('#motion-toggle').click();
-    await page.waitForTimeout(1200);
-    windows.push(await window_(page, 'paused-settled', 3000));
-    windows.push(await window_(page, 'paused-hidden', 3000, () => page.evaluate(() => window.__setHidden(true))));
-    await page.evaluate(() => window.__setHidden(false));
-    await page.locator('#motion-toggle').click();
-    windows.push(await window_(page, 'resumed', 2000));
-    windows.push(await window_(page, 'hidden', 3000, () => page.evaluate(() => window.__setHidden(true))));
-    windows.push(await window_(page, 'visible-again', 2000, () => page.evaluate(() => window.__setHidden(false))));
-    // A garden full of planted trees (OPTIMIZATION-PLAN.md, item 5).
-    await page.locator('.dock > summary').click();
-    for (let i = 0; i < 21; i++) await page.locator('#plant-one').click();
-    await page.locator('.dock > summary').click();
-    await page.waitForTimeout(1500);
-    windows.push(await window_(page, 'full-garden', 3000));
-    const after = await sceneInfo(page);
-    const transfer = await transferReport(page);
-    return { page, cold, windows, after, transfer };
+const close = p => p.context().close();
+const ready = (p, timeout = READY_TIMEOUT) => p.waitForFunction(() => document.documentElement.dataset.renderer === 'ready' && window.__notebookScene.state().live, null, { timeout });
+const frames = p => p.evaluate(() => window.__notebookStats().garden.frames);
+const sceneState = p => p.evaluate(() => {
+  const s = window.__notebookScene.state();
+  return { chapter: s.chapter, quality: s.quality, detail: s.detail, motion: s.motion, exploring: s.exploring, settled: s.settled, host: s.host };
+});
+/** Waits until the garden has drawn nothing for 500 ms; false if it never does. */
+async function asleep(p, tries = 40) {
+  for (let i = 0; i < tries; i++) {
+    const a = await frames(p);
+    await p.waitForTimeout(500);
+    if (await frames(p) === a) return true;
+  }
+  return false;
 }
-function phoneScenarios() { return {
-  async 'phone-journey'() {
-    const page = await newPage(phone, '/?view=garden');
-    await page.waitForFunction(() => document.querySelector('#scene')?.dataset.progress, {}, { timeout: 30000 });
-    await settledShaders(page);
-    const cold = { ...(await sceneInfo(page)), tasks: await page.evaluate(() => window.__perf.longtasks) };
-    const windows = [];
-    windows.push(await window_(page, 'opening-sketch', 2000));
-    windows.push(await window_(page, 'journey-scroll', 500, async () => {
-      const max = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
-      for (let y = 0; y <= max; y += 120) { await page.evaluate((y) => scrollTo(0, y), y); await page.waitForTimeout(60); }
-    }));
-    await page.waitForTimeout(2500);
-    windows.push(await window_(page, 'bloom-settled', 3000));
-    windows.push(await window_(page, 'hidden', 3000, () => page.evaluate(() => window.__setHidden(true))));
-    await page.evaluate(() => window.__setHidden(false));
-    await page.locator('.journey-pause, #motion-toggle').first().click().catch(() => {});
-    await page.waitForTimeout(1200);
-    windows.push(await window_(page, 'paused-settled', 3000));
-    const after = await sceneInfo(page);
-    const transfer = await transferReport(page);
-    return { page, cold, windows, after, transfer };
-  },
-  async 'phone-stills'() {
-    const page = await newPage(phone, '/?view=stills');
-    await page.waitForTimeout(800);
-    const windows = [await window_(page, 'stills-scroll', 500, async () => {
-      const max = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
-      for (let y = 0; y <= max; y += 160) { await page.evaluate((y) => scrollTo(0, y), y); await page.waitForTimeout(60); }
-    })];
-    await page.waitForTimeout(1000);
-    return { page, cold: await sceneInfo(page), windows, transfer: await transferReport(page) };
-  },
-  async reading() {
-    const page = await newPage(desktop, '/?view=read');
-    await page.waitForTimeout(800);
-    const windows = [await window_(page, 'reading-navigation', 500, async () => {
-      for (const id of ['work', 'about', 'contact', 'work']) { await page.locator(`.masthead a[href="#${id}"]`).click(); await page.waitForTimeout(700); }
-    })];
-    return { page, cold: await sceneInfo(page), windows, transfer: await transferReport(page) };
-  },
-}; }
-
-/* Warm transfer: the same page reloaded in the same context. */
-async function warmTransfer(page) {
-  await page.reload();
-  await page.waitForTimeout(2500);
-  return transferReport(page);
+async function enter(p) {
+  if (!await p.evaluate(() => document.querySelector('.garden').open)) await p.locator('.garden > summary').click();
+  await p.locator('[data-explore]').click();
+  await p.waitForFunction(() => document.documentElement.dataset.explore === 'true');
 }
 
-const results = [];
-try {
-  for (const [name, run] of Object.entries(scenarios)) {
-    if (only && !only.includes(name)) continue;
-    for (let i = 0; i < RUNS; i++) {
-      const r = await run();
-      const warm = i === 0 ? await warmTransfer(r.page) : null;
-      const errors = r.page.errors;
-      await r.page.context().close();
-      const { page, ...rest } = r;
-      results.push({ scenario: name, run: i + 1, ...rest, warmTransfer: warm, errors });
-      console.log(JSON.stringify({ scenario: name, run: i + 1, bytes: r.transfer.total.transfer, ...Object.fromEntries(r.windows.map((w) => [w.name, `${w.drawFramesPerSecond} draws/s ${w.rafPerSecond} raf/s p95 ${w.drawIntervalP95} cpu ${w.cpuMsPerFrame} gpu ${w.gpuMsPerFrame}`])) }));
+/** One measured window: garden and sky frames, frame intervals, long tasks. */
+async function measure(p, ms, act) {
+  await p.evaluate(() => {
+    const P = window.__perf;
+    P.frameTimes = []; P.sampling = true;
+    const s = window.__notebookStats();
+    P.mark = { t: performance.now(), garden: s.garden.frames, sky: s.sky?.frames ?? 0, cpu: s.garden.cpuMs, tasks: P.longtasks?.length ?? 0 };
+  });
+  if (act) await act();
+  await p.waitForTimeout(ms);
+  const r = await p.evaluate(() => {
+    const P = window.__perf; P.sampling = false;
+    const s = window.__notebookStats();
+    const t = performance.now();
+    return {
+      seconds: (t - P.mark.t) / 1000,
+      garden: s.garden.frames - P.mark.garden, sky: (s.sky?.frames ?? 0) - P.mark.sky,
+      cpuMs: s.garden.cpuMs - P.mark.cpu,
+      times: P.frameTimes,
+      tasks: P.longtasks ? P.longtasks.slice(P.mark.tasks).filter(e => e.start >= P.mark.t - 1) : null,
+    };
+  });
+  const iv = r.times.slice(1).map((t, i) => t - r.times[i]);
+  return {
+    seconds: round(r.seconds, 2),
+    gardenFrames: r.garden, skyFrames: r.sky,
+    fps: round(r.garden / r.seconds),
+    frameIntervalP50Ms: round(quantile(iv, 0.5)), frameIntervalP95Ms: round(quantile(iv, 0.95)),
+    cpuMsPerFrame: r.garden ? round(r.cpuMs / r.garden, 2) : null,
+    longTasks: r.tasks === null ? 'unavailable' : r.tasks.length,
+    maxTaskMs: r.tasks === null ? null : round(Math.max(0, ...r.tasks.map(e => e.ms))),
+  };
+}
+
+const budgets = [];
+function budget(id, measured, limit, pass, extra = {}) {
+  budgets.push({ id, budget: limit, measured, pass, ...extra });
+  log(`${pass ? 'pass' : 'FAIL'} ${id}: ${measured} (budget ${limit})`);
+}
+
+/* (a) A place's highlight answers its hover or focus within 100 ms. */
+async function placeResponse() {
+  const out = {};
+  for (const motion of ['normal', 'reduced']) {
+    const reduced = motion === 'reduced';
+    const p = await open({ ...desktop, reducedMotion: reduced ? 'reduce' : 'no-preference' }, '/#whisperbook');
+    try {
+      if (reduced) await p.waitForFunction(() => document.documentElement.dataset.renderer === 'not-requested');
+      else await ready(p);
+      await enter(p);
+      await ready(p);
+      await p.waitForTimeout(1000);
+      if (reduced) await asleep(p);
+      const spots = await p.evaluate(() => [...document.querySelectorAll('.hotspot')].filter(h => !h.hidden && h.getBoundingClientRect().width > 0).map(h => h.dataset.spot));
+      if (!spots.length) throw new Error('no place is visible while exploring');
+      const trials = { pointer: [], focus: [], keyboard: [] };
+      /** Input timestamp of `kind` on `spot` after `since` to the end of the first frame drawn with it highlighted. */
+      const response = (kind, spot, since) => p.waitForFunction(({ spot, since, kind }) => {
+        const P = window.__perf;
+        const input = P.inputs.find(e => e.kind === kind && (kind === 'key' || e.spot === spot) && e.t >= since);
+        const drawn = input && P.hovers.find(h => h.value === spot && h.t >= input.t);
+        return drawn ? drawn.t - input.t : null;
+      }, { spot, since, kind }, { timeout: 20000 }).then(h => h.jsonValue());
+      const drawnAway = async () => {
+        await p.waitForFunction(() => document.querySelector('[data-hover]')?.dataset.hover === 'none', null, { timeout: 20000 });
+        if (reduced) await asleep(p, 10);
+        else await p.waitForTimeout(200);
+      };
+      const now = () => p.evaluate(() => performance.now());
+      for (let i = 0; i < TRIALS; i++) {
+        // Pointer: the mouse moves onto the label (Playwright hover()).
+        const spot = spots[i % spots.length];
+        let since = await now();
+        await p.locator(`.hotspot[data-spot="${spot}"]`).hover();
+        trials.pointer.push(round(await response('pointer', spot, since)));
+        await p.mouse.move(4, 450);
+        await drawnAway();
+        // Focus: the label is focused from script (Playwright focus()).
+        since = await now();
+        await p.locator(`.hotspot[data-spot="${spot}"]`).focus();
+        trials.focus.push(round(await response('focus', spot, since)));
+        await p.evaluate(() => document.activeElement?.blur());
+        await drawnAway();
+        // Keyboard: Tab from one place to the next, timed from the keydown.
+        const from = spots[i % Math.max(1, spots.length - 1)];
+        await p.locator(`.hotspot[data-spot="${from}"]`).focus();
+        await p.waitForFunction(s => document.querySelector('[data-hover]')?.dataset.hover === s, from, { timeout: 20000 });
+        if (reduced) await asleep(p, 10);
+        since = await now();
+        await p.keyboard.press('Tab');
+        const next = await p.evaluate(() => document.activeElement?.dataset.spot ?? null);
+        if (next) trials.keyboard.push(round(await response('key', next, since)));
+        await p.evaluate(() => document.activeElement?.blur());
+        await drawnAway();
+      }
+      out[motion] = { state: await sceneState(p), spots, trialsMs: trials, errors: p.errors };
+      for (const kind of ['pointer', 'focus', 'keyboard']) {
+        if (!trials[kind].length) { budget(`place-response.${motion}.${kind}`, 'no trial reached a place', '< 100 ms', false); continue; }
+        const worst = Math.max(...trials[kind]);
+        budget(`place-response.${motion}.${kind}`, `max ${worst} ms (median ${quantile(trials[kind], 0.5)} ms)`, '< 100 ms', worst < 100, { maxMs: worst, trialsMs: trials[kind] });
+      }
+    } finally { await close(p); }
+  }
+  return out;
+}
+
+/* (b), (c), (d drag) and (e) in one exploring visit. */
+async function exploring() {
+  const out = {};
+  const p = await open(desktop, '/#whisperbook');
+  try {
+    await ready(p);
+    await waitForSceneSettled(p);
+    await enter(p);
+    await p.waitForTimeout(1000);
+    out.state = await sceneState(p);
+    const step = async (name, fn) => { try { out[name] = await fn(); } catch (e) { out[name] = { error: e.message }; budget(`exploring.${name}`, `error: ${e.message.split('\n')[0]}`, 'measurable', false); } };
+
+    await step('active', async () => {
+      const w = await measure(p, 3000);
+      budget('exploring.active-fps', `${w.fps} fps (${w.gardenFrames} frames in ${w.seconds} s)`, '> 20 fps', w.fps > 20, { fps: w.fps });
+      return w;
+    });
+    await step('resumed', async () => {
+      await p.locator('[data-scene-remote="pause"]').evaluate(b => b.click());
+      await p.waitForFunction(() => window.__notebookScene.state().motion === 'user-paused');
+      const slept = await asleep(p);
+      const paused = await measure(p, 1500);
+      await p.locator('[data-scene-remote="pause"]').evaluate(b => b.click());
+      await p.waitForFunction(() => window.__notebookScene.state().motion === 'normal');
+      await p.waitForTimeout(300);
+      const w = await measure(p, 2000);
+      budget('exploring.resumed-fps', `${w.fps} fps (${w.gardenFrames} frames in ${w.seconds} s)`, '> 20 fps', w.fps > 20, { fps: w.fps });
+      return { pausedSlept: slept, paused, resumed: w };
+    });
+    await step('hiddenTab', async () => {
+      await p.evaluate(() => window.__setHidden(true));
+      await p.waitForTimeout(300);
+      const hidden = await measure(p, 2000);
+      // Frames whose drawing started within 800 ms of the tab being shown,
+      // timed in the page (the harness's own round trips are not counted).
+      const shown = await p.evaluate(() => new Promise(resolve => {
+        const P = window.__perf;
+        P.frameTimes = []; P.sampling = true;
+        const a = window.__notebookStats().garden.frames;
+        const t0 = performance.now();
+        window.__setHidden(false);
+        setTimeout(() => {
+          P.sampling = false;
+          const within = P.frameTimes.filter(t => t - t0 <= 800).length;
+          resolve({ framesWithin800ms: within, gardenFramesTotal: window.__notebookStats().garden.frames - a, elapsedMs: Math.round(performance.now() - t0), firstFrameMs: P.frameTimes.length ? Math.round(P.frameTimes[0] - t0) : null });
+        }, 1200);
+      }));
+      budget('exploring.shown-after-hidden', `${shown.framesWithin800ms} frames in the 0.8 s after showing (first after ${shown.firstFrameMs} ms; hidden: ${hidden.gardenFrames})`, '> 10 frames in 0.8 s', shown.framesWithin800ms > 10, { frames: shown.framesWithin800ms });
+      return { hidden, shown };
+    });
+    await step('dragTurn', async () => {
+      await p.waitForTimeout(500);
+      const box = await p.locator('.scene-stage').boundingBox();
+      const x = box.x + box.width * 0.6, y = box.y + box.height * 0.3;
+      const r0 = (await p.evaluate(() => window.__notebookScene.view())).rotation;
+      const w = await measure(p, 1000, async () => {
+        await p.mouse.move(x, y);
+        await p.mouse.down();
+        await p.mouse.move(x + 240, y, { steps: 24 });
+        await p.mouse.up();
+      });
+      const turned = (await p.evaluate(() => window.__notebookScene.view())).rotation - r0;
+      if (w.maxTaskMs === null) throw new Error('the Long Tasks API is unavailable in this browser');
+      budget('exploring.drag-turn-longest-task', `${w.maxTaskMs} ms (${w.longTasks} tasks of 50 ms or more)`, '< 100 ms', w.maxTaskMs < 100, { maxTaskMs: w.maxTaskMs });
+      return { ...w, rotationRad: round(turned, 3) };
+    });
+    await step('readingMotion', async () => {
+      await p.locator('[data-explore-exit]').click();
+      await p.waitForFunction(() => !window.__notebookScene.state().exploring);
+      await waitForSceneSettled(p);
+      const w = await measure(p, 3000);
+      budget('exploring.reading-motion-after-exit', `${w.gardenFrames} garden frames in ${w.seconds} s (sky ${w.skyFrames})`, '> 0 garden frames over 3 s', w.gardenFrames > 0, { frames: w.gardenFrames });
+      return { ...w, state: await sceneState(p) };
+    });
+    out.errors = p.errors;
+  } finally { await close(p); }
+  return out;
+}
+
+/* (d) The longest task from planting to the end of the fennec's visit. */
+async function fennecVisit() {
+  const p = await open(desktop, '/#contact');
+  try {
+    await ready(p);
+    await waitForSceneSettled(p);
+    await p.locator('.garden > summary').click();
+    await p.locator('[data-hour]').evaluate(input => { input.value = '13'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+    await waitForSceneSettled(p);
+    const t0 = await p.evaluate(() => { const P = window.__perf; P.visitMark = { t: performance.now(), frames: window.__notebookStats().garden.frames }; return P.visitMark.t; });
+    await p.locator('[data-plant-one]').click();
+    await p.waitForFunction(() => window.__notebookStats().garden.visiting === true, null, { timeout: 20000 });
+    const tStart = await p.evaluate(() => performance.now());
+    await p.waitForFunction(() => window.__notebookStats().garden.visiting === false, null, { timeout: VISIT_TIMEOUT, polling: 100 });
+    const r = await p.evaluate(() => {
+      const P = window.__perf;
+      const t = performance.now();
+      const tasks = P.longtasks ? P.longtasks.filter(e => e.start >= P.visitMark.t - 1) : null;
+      return { t, frames: window.__notebookStats().garden.frames - P.visitMark.frames, tasks };
+    });
+    if (r.tasks === null) throw new Error('the Long Tasks API is unavailable in this browser');
+    const visitTasks = r.tasks.filter(e => e.start >= tStart);
+    const maxTaskMs = round(Math.max(0, ...r.tasks.map(e => e.ms)));
+    const seconds = (r.t - t0) / 1000;
+    budget('fennec-visit.longest-task', `${maxTaskMs} ms (${r.tasks.length} tasks of 50 ms or more over ${round(seconds)} s)`, '< 100 ms', maxTaskMs < 100, { maxTaskMs });
+    return {
+      state: await sceneState(p),
+      seconds: round(seconds, 2), gardenFrames: r.frames, fps: round(r.frames / seconds),
+      longTasks: r.tasks.length, maxTaskMs,
+      maxTaskAfterVisitStartMs: round(Math.max(0, ...visitTasks.map(e => e.ms))),
+      longestTasksMs: r.tasks.map(e => round(e.ms)).sort((a, b) => b - a).slice(0, 8),
+      errors: p.errors,
+    };
+  } finally { await close(p); }
+}
+
+/* (f) First-pose timing of deep links. Report only. */
+async function firstPose() {
+  const out = {};
+  for (const [layout, options] of [['desktop', desktop], ['phone', phone]]) {
+    for (const hash of ['#whisperbook', '#contact']) {
+      const p = await open(options, '/' + hash);
+      try {
+        await ready(p);
+        await p.waitForFunction(() => window.__perf.liveAt !== null);
+        out[`${layout} ${hash}`] = await p.evaluate(() => {
+          const P = window.__perf;
+          const at = n => performance.getEntriesByName(`notebook:${n}`, 'mark')[0]?.startTime ?? null;
+          const measure = n => performance.getEntriesByName(`notebook:${n}`, 'measure')[0]?.duration ?? null;
+          const r = v => (v === null ? null : Math.round(v));
+          return {
+            firstContentfulPaintMs: r(performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? null),
+            sceneRequestMs: r(at('scene-request')),
+            sceneConstructionMs: r(measure('scene-construction')),
+            firstRenderMs: r(at('first-render')),
+            sceneToFirstRenderMs: r(measure('scene-to-first-render')),
+            liveStageMs: r(P.liveAt.t),
+            liveChapter: P.liveAt.chapter, liveProgress: P.liveAt.progress, framesBeforeLive: P.liveAt.frames,
+            // The long task the reveal happened in: the frame reaches the
+            // screen only once that task has ended.
+            liveTaskEndMs: P.longtasks ? r(P.longtasks.filter(e => e.start <= P.liveAt.t && e.start + e.ms >= P.liveAt.t).map(e => e.start + e.ms)[0] ?? P.liveAt.t) : null,
+            longestTaskBeforeLiveMs: P.longtasks ? r(Math.max(0, ...P.longtasks.filter(e => e.start <= P.liveAt.t).map(e => e.ms))) : null,
+            quality: window.__notebookScene.state().quality,
+          };
+        });
+        log(`first-pose ${layout} ${hash}: live after ${out[`${layout} ${hash}`].liveStageMs} ms`);
+      } finally { await close(p); }
     }
   }
-  // Medians and p95 across runs, per scenario and window.
-  const summary = {};
-  for (const r of results) {
-    const s = (summary[r.scenario] ??= { runs: 0, windows: {}, cold: {}, transferBytes: [] });
-    s.runs++;
-    s.transferBytes.push(r.transfer.total.transfer);
-    for (const k of ['constructionMs', 'sceneToFirstRenderMs', 'shaderWarmupMs', 'drawCalls', 'triangles', 'fcp']) (s.cold[k] ??= []).push(r.cold?.[k] ?? null);
-    for (const w of r.windows) for (const [k, v] of Object.entries(w)) if (typeof v === 'number') ((s.windows[w.name] ??= {})[k] ??= []).push(v);
+  return out;
+}
+
+/** The documented profile: browser, cores, WebGL renderer. */
+async function profile() {
+  const context = await browser.newContext(desktop);
+  const page = await context.newPage();
+  try {
+    await page.goto(base + '/?view=read');
+    const gl = await page.evaluate(() => {
+      const c = document.createElement('canvas');
+      const g = c.getContext('webgl2') || c.getContext('webgl');
+      if (!g) return { webgl: false };
+      const ext = g.getExtension('WEBGL_debug_renderer_info');
+      return {
+        webgl: g instanceof WebGL2RenderingContext ? 'webgl2' : 'webgl',
+        renderer: ext ? g.getParameter(ext.UNMASKED_RENDERER_WEBGL) : g.getParameter(g.RENDERER),
+        vendor: ext ? g.getParameter(ext.UNMASKED_VENDOR_WEBGL) : g.getParameter(g.VENDOR),
+        rendererUnmasked: !!ext,
+        gpuTimers: !!g.getExtension('EXT_disjoint_timer_query_webgl2'),
+        hardwareConcurrency: navigator.hardwareConcurrency,
+        deviceMemory: navigator.deviceMemory ?? null,
+        userAgent: navigator.userAgent,
+      };
+    });
+    return {
+      browser: browser.browserType().name(),
+      version: browser.version(),
+      channel: process.env.PLAYWRIGHT_CHANNEL ?? 'bundled',
+      headless: true,
+      ...gl,
+      softwareRendering: /swiftshader|llvmpipe|softpipe|software|basic render/i.test(`${gl.renderer} ${gl.vendor}`),
+      host: { platform: `${os.platform()} ${os.release()} ${os.arch()}`, cpu: os.cpus()[0]?.model ?? null, cores: os.cpus().length, memoryGB: Math.round(os.totalmem() / 2 ** 30) },
+      viewports: { desktop, phone },
+    };
+  } finally { await context.close(); }
+}
+
+const scenarios = { 'place-response': placeResponse, exploring, 'fennec-visit': fennecVisit, 'first-pose': firstPose };
+const results = {};
+let prof = null;
+try {
+  prof = await profile();
+  log(`${prof.browser} ${prof.version}, ${prof.hardwareConcurrency} cores, WebGL: ${prof.renderer}${prof.softwareRendering ? ' (software rendering)' : ''}`);
+  for (const [name, run] of Object.entries(scenarios)) {
+    if (only && !only.includes(name)) continue;
+    log(`scenario ${name}`);
+    const started = Date.now();
+    try { results[name] = await run(); }
+    catch (e) {
+      results[name] = { error: e.message };
+      budget(name, `error: ${e.message.split('\n')[0]}`, 'measurable', false);
+    }
+    log(`scenario ${name} done in ${round((Date.now() - started) / 1000)} s`);
   }
-  const stat = (xs) => { const v = xs.filter((x) => typeof x === 'number'); return v.length ? { median: round(quantile(v, 0.5)), p95: round(quantile(v, 0.95)) } : 'unavailable'; };
-  for (const s of Object.values(summary)) {
-    s.transferBytes = stat(s.transferBytes);
-    for (const k in s.cold) s.cold[k] = stat(s.cold[k]);
-    for (const w of Object.values(s.windows)) for (const k in w) w[k] = stat(w[k]);
-  }
-  const report = {
-    date: new Date().toISOString(),
-    browser: `${browser.browserType().name()} ${browser.version()}`,
-    channel: process.env.PLAYWRIGHT_CHANNEL ?? 'bundled',
-    headless: true,
-    hardware: { platform: `${os.platform()} ${os.release()}`, cpu: os.cpus()[0]?.model, cores: os.cpus().length, memoryGB: Math.round(os.totalmem() / 2 ** 30) },
-    conditions: { weather: 'Open-Meteo blocked: live weather unavailable, garden default', throttling: 'none', note: 'Desktop and phone rows are desktop-browser emulation, not physical devices. Hidden is simulated.' },
-    viewports: { desktop, phone },
-    runs: RUNS,
-    unavailable: ['GPU timing is only present where the browser exposes EXT_disjoint_timer_query_webgl2 (see stats.gpuMs)', 'energy: not measured'],
-    summary,
-    results,
-  };
-  await writeFile(output + '/performance.json', JSON.stringify(report, null, 2));
-  await writeFile(output + '/performance-summary.json', JSON.stringify({ ...report, results: undefined }, null, 2));
-  console.log('Wrote ' + output + '/performance.json');
 } finally { await browser.close(); }
+
+const failed = budgets.filter(b => !b.pass);
+const report = {
+  date: new Date().toISOString(),
+  url: base,
+  profile: prof,
+  conditions: {
+    weather: 'Open-Meteo blocked: live weather unavailable, garden default',
+    throttling: 'none',
+    hidden: 'simulated (document.hidden overridden, visibilitychange fired)',
+    response: 'input event timestamp to the end of the first garden frame drawn with the place highlighted (data-hover); compositor presentation not included',
+    note: 'Phone rows are desktop-browser emulation, not a physical device. No battery or energy claim is made from these numbers.',
+  },
+  enforced: enforce,
+  budgets,
+  failed: failed.map(b => b.id),
+  scenarios: results,
+};
+await mkdir(outDir, { recursive: true });
+await writeFile(outDir + 'report.json', JSON.stringify(report, null, 2));
+console.log(JSON.stringify(report, null, 2));
+log(`${budgets.length - failed.length} of ${budgets.length} budgets met${prof?.softwareRendering ? ' on a software renderer' : ''}; report in ${outDir}report.json`);
+if (enforce && failed.length) process.exitCode = 1;

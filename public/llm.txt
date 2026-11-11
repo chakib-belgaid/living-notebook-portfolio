@@ -1,61 +1,76 @@
 # Chakib Belgaid — A living notebook
 
-> Portfolio of Chakib Belgaid, a product engineer with a Ph.D. in software engineering. His work covers applied AI, developer tools, and software energy measurement.
+> Portfolio of Chakib Belgaid, an applied AI and product engineer with a Ph.D. in software engineering. His work covers applied AI, developer tools, and software energy measurement.
 
-The default experience is an interactive garden with Sketch, Blueprint, Build, and Bloom stages. For text extraction, use the reading page at `?view=read`: it contains the portfolio content in semantic HTML without requiring JavaScript, WebGL, or garden audio. Visitors can select this page through Low-end mode. English, French, and Arabic are available with JavaScript through `?lang=en`, `?lang=fr`, and `?lang=ar`; the static HTML is English.
+The homepage is one guided reading in eight chapters: a left text card over a full-viewport navy night scene, where the same procedural 3D house is drawn as a Sketch, laid out as a Blueprint, built for each project, and in Bloom at Contact. The text is the content. The static HTML is complete semantic content without JavaScript, WebGL or audio; `?view=read` (or `?view=stills`) shows the same page with still images and loads no renderer. English and French are available: the homepage switches with `?lang=en` and `?lang=fr` when JavaScript runs (its static HTML is English), and each case page has a French copy under `/fr/work/<slug>/`. No other language is offered.
 
-Whisperbook is an Android app for narrating EPUBs and PDFs on the device. The portfolio links to the v0.1 test APK and its release requirements. Current source features may differ from that downloadable build. The browser voice illustration uses browser-local speech and is not the Android narration engine.
+Optional demos run only when the visitor asks for them, and nothing is sent anywhere. In the garden panel the visitor can set the hour, a weather preset or live weather from Open-Meteo, and the season, plant up to 24 trees and turn the garden; "Explore the garden" turns and zooms it, with labelled places that link to the chapters. "Show rendering detail", in the carbon tally's panel, charts this page's estimated rendering cost from browser CPU/GPU time and assumed power; it is not a Wattch hardware measurement. On the Whisperbook case page, "Inside Whisperbook" steps through book, chapters, voices and audio, and "Listen" reads two lines with a voice already on the visitor's device; it is a browser illustration and is not the Android narration engine. Sound in the garden is off until its own control turns it on.
 
-Wattch Core provides Linux energy traces for command-line, Python, and VS Code workflows. The portfolio links to source build instructions and VS Code development setup. Its screenshot uses synthetic traces to illustrate the workflow. The portfolio's rendering meter estimates energy and carbon from browser CPU/GPU time and assumed power; it is not a hardware energy measurement.
+Whisperbook is an Android app for narrating EPUBs and PDFs on the device. The portfolio links to the v0.1 test APK and its release requirements. Current source features may differ from that downloadable build. Its case page shows four app screenshots (Now Playing, Read Along, Voice Cast, Library).
 
-The portfolio does not provide reproducible Whisperbook device latency, narration speed, or peak RAM benchmarks, or a reproducible Wattch daemon overhead comparison against a native C RAPL reader. Use the linked project documentation for version-specific capabilities and evidence. Links to PowerAPI organization repositories do not attribute all organization work to one contributor.
+Wattch Core provides Linux energy traces for command-line, Python, and VS Code workflows. The portfolio links to its source and documentation. Its case page shows two screenshots: dry-run output from a deterministic test scenario, and the Energy Tests surface rendered from a deterministic demo run with synthetic values; both illustrate the workflow, not physical hardware energy. The portfolio's rendering estimate is not a hardware energy measurement either.
+
+The portfolio does not provide reproducible Whisperbook device latency, narration speed, or peak RAM benchmarks, or a reproducible Wattch daemon overhead comparison against a native C RAPL reader. Use the linked project documentation for version-specific capabilities and evidence. Links to PowerAPI organization repositories (pyRAPL, pyJoules) do not attribute all organization work to one contributor.
 
 ## Portfolio
 
-- [Reading page](https://chakib-belgaid.github.io/?view=read): Text layout for bots, accessibility, and low-end computers.
-- [Selected work](https://chakib-belgaid.github.io/?view=read#work): Whisperbook, Wattch Core, and canonical research repositories.
-- [The workshop](https://chakib-belgaid.github.io/?view=read#workshop): Local-inference experiments (Z-Image-Turbo on Android, Pocket TTS benchmark, speculative decoding on MLX), shown in the garden as a workbench inside the building site.
-- [BP Log](https://chakib-belgaid.github.io/?view=read#bplog): Offline blood-pressure display OCR in the browser, shown in the garden as a heart with a pulse trace.
-- [Background](https://chakib-belgaid.github.io/?view=read#about): Career and software energy research.
+- [Homepage](https://chakib-belgaid.github.io/): The guided reading, from the opening sketch to contact.
+- [Reading view](https://chakib-belgaid.github.io/?view=read): The same content with still images and no live renderer, for bots, accessibility, and low-end computers.
+- [Selected work](https://chakib-belgaid.github.io/?view=read#work): BP Log, Whisperbook, pyRAPL, pyJoules & Wattch, and, separately labelled as professional work, MCQ Scan.
+- [BP Log](https://chakib-belgaid.github.io/?view=read#bplog): Offline blood-pressure display reading from a photo, in the browser; shown in the garden as a heart with a pulse trace.
+- [Whisperbook](https://chakib-belgaid.github.io/?view=read#whisperbook): On-device audiobooks on Android; shown as the reading pavilion.
+- [pyRAPL, pyJoules & Wattch](https://chakib-belgaid.github.io/?view=read#energy-tools): Energy measurement a developer can inspect; shown as the observatory. The legacy `#wattch` fragment lands here.
+- [MCQ Scan](https://chakib-belgaid.github.io/?view=read#mcq-scan): Professional work as Lead AI Engineer, 2024–present; shown as the workshop.
+- [About](https://chakib-belgaid.github.io/?view=read#about): Career and software energy research, with the CV.
+- [From the notebook](https://chakib-belgaid.github.io/?view=read#workshop): Smaller public experiments, inside About.
 - [Contact](https://chakib-belgaid.github.io/?view=read#contact): Public email and social links.
+
+## Case studies
+
+- [Whisperbook Android](https://chakib-belgaid.github.io/work/whispbook/) ([French](https://chakib-belgaid.github.io/fr/work/whispbook/)): Architecture, decisions, reliability and status of the Android app, with screenshots and the optional browser illustrations. The slug predates the separate web studio; this page is about the Android app.
+- [Wattch Core](https://chakib-belgaid.github.io/work/wattch/) ([French](https://chakib-belgaid.github.io/fr/work/wattch/)): The measurement spine and its workflows, with the two labelled screenshots.
+- [MCQ Scan](https://chakib-belgaid.github.io/work/mcq-scan/) ([French](https://chakib-belgaid.github.io/fr/work/mcq-scan/)): Professional work, text only; client source, screenshots and datasets are not public.
 
 ## Projects and evidence
 
+- [BP Log / bp-tracker source](https://github.com/chakib-belgaid/bp-tracker): Code and published evaluation.
 - [Whisperbook source](https://github.com/chakib-belgaid/whisper-book): Android book import, local narration, playback, and MP3 export.
 - [Whisperbook v0.1 release](https://github.com/chakib-belgaid/whisper-book/releases/tag/v0.1): Debug-signed test APK for Android 8+ on arm64; see release notes for the downloadable build.
+- [pyRAPL](https://github.com/powerapi-ng/pyRAPL): Python energy measurement; the first of the two libraries Chakib designed.
+- [pyJoules](https://github.com/powerapi-ng/pyJoules): Python energy measurement extended to GPU and other sources.
 - [Wattch Core source](https://github.com/chakib-belgaid/wattch-core): Linux energy measurement tooling and source build documentation.
 - [Wattch VS Code setup](https://github.com/chakib-belgaid/wattch-core/tree/main/editors/vscode-energy-tests#development): Local extension development instructions.
 - [Portfolio source](https://github.com/chakib-belgaid/living-notebook-portfolio): Website implementation and content.
 
-## Research repositories
+## BP Log / bp-tracker
 
-- [pyJoules](https://github.com/powerapi-ng/pyJoules): Python energy measurement.
-- [Joulehunter](https://github.com/powerapi-ng/joulehunter): Python energy profiling; archived repository.
-- [PowerAPI](https://github.com/powerapi-ng/powerapi): Framework for software-defined power meters.
+A phone web app that reads a blood-pressure monitor’s display from a photo, then lets the user check and correct the values before saving. Image-processing rules handle the display layout; a 10,123-parameter CNN trained on synthetic digits runs in plain JavaScript with a 54 KB weights file. Published evaluation: 91% complete readings on 55 photos from one monitor; 99.5% digit accuracy on 187 held-out digits. The full reading set guided pipeline development, so it is not an independent holdout. Median phone latency: 268 ms across three runs on an Android 10 phone.
 
-## October 2026 updates
+Source: https://github.com/chakib-belgaid/bp-tracker
+
+## MCQ Scan (professional work)
+
+At MCQ Scan the client wanted hosting in its own Google Cloud environment, and the application had to be delivered without handing over the source. I implemented compiled application packaging for serverless deployment.
 
 ### AgentDiet
 
 Professional work · demonstrator and funded proposal. I conceived an agent-governance project at MCQ Scan: signed Biscuit tokens, attenuated delegations, and local Datalog checks for tool permissions. I built a Python/FastAPI demonstrator and prepared the technical proposal, market analysis, budget, and project plan. AgentDiet received a 2026 Hyper Open X grant funded by France 2030. The demonstrator validates simulated authorizations; MCP/A2A integration is the project target.
 
-Source: /work/mcq-scan/#agentdiet
+Source: https://chakib-belgaid.github.io/work/mcq-scan/#agentdiet
 
 ### Store Chat
 
-Professional work · structured-output evaluation. A clothing-shopping assistant with Llama 3.1 8B LoRA, local vLLM inference, and Pydantic business validation. I evaluated constrained-decoding tools and integrated LM Format Enforcer to enforce enum values. Internal evaluation separates 97% structurally valid, enum-compliant requests from 95% semantic accuracy per attribute. These are internal evaluation results, not a public benchmark. My contribution was tool evaluation and integration, not a custom sampler.
+Professional work · structured-output evaluation. A clothing-shopping assistant with Llama 3.1 8B LoRA, local vLLM inference, and Pydantic business validation. I evaluated constrained-decoding tools and integrated LM Format Enforcer to enforce enum values. Internal evaluation separates 97% structurally valid, enum-compliant requests from 95% semantic accuracy per attribute. These are internal evaluation results, not a public benchmark. My contribution was evaluating and integrating existing constrained-decoding tools.
 
-Source: /work/mcq-scan/#store-chat
+Source: https://chakib-belgaid.github.io/work/mcq-scan/#store-chat
+
+## From the notebook
 
 ### Whispbook · web studio
 
 Public source · self-hosted audiobook studio. A React/FastAPI studio for importing and editing documents, assigning character voices, and generating chapter audio with Kokoro or Chatterbox. It exports M4B audiobooks, subtitles, and Python scripts that preserve the edited text and synthesis settings. Separate from the Android app. The current web app does not integrate the separate model-based speaker-attribution experiment.
 
 Source: https://github.com/chakib-belgaid/whispbook
-
-### Z-Image-Turbo · Android
-
-Personal experiment · mobile diffusion inference. Porting image generation to Nothing Phone 3: 512×512 output, a comparison of 100 runtime/precision configurations, INT8/INT4 quantization, and a QNN w8a16 path on the Hexagon NPU. The work includes numerical checks, activation-saturation diagnosis, and calibration across all diffusion steps. Experimental work described in my October dossier. Single-block timings do not establish an end-to-end generation speedup; no public repository is linked here.
 
 ### Pocket TTS Android Benchmark
 
@@ -71,20 +86,14 @@ Source: https://github.com/chakib-belgaid/speculative-decoding-mlx
 
 ## Experience and skill scope
 
-At Inria, on an ANR project with Qarnot Computing as the industrial partner, I contributed to deploying PowerAPI on Qarnot’s infrastructure and reduced its binary size by roughly 300×.
+At Inria (2022–2024), with Qarnot Computing as the industrial partner, I adapted the existing HWPC sensor to Qarnot’s infrastructure.
 
 I co-founded a serious-games advertising startup, led six employees and two interns, and delivered two Unity games after winning Ooredoo T-Start in 2014. Our 2016 national campaign attracted more than 300,000 unique subscriber numbers.
 
-I lead a two-person technical team under the CTO, across multi-agent workflows, APIs, interfaces, and deployment. A dependency graph, smaller-model routing, and caching reduced end-to-end workflow processing time by 60% in internal measurements.
+I coordinate a two-person technical team under the CTO, across multi-agent workflows, APIs, interfaces, and deployment. A dependency graph, smaller-model routing, and caching reduced end-to-end workflow processing time by 60% in internal measurements.
 
 Python is my strongest language. I build APIs and AI workflows with FastAPI, Django, Pydantic, React, and TypeScript, and deliver with Docker, GitHub Actions, and GCP.
 
 My inference experience includes local vLLM, MLX on Apple Silicon, LoRA, quantization, and calibration. I distinguish that experimental work from specialist operation of GPU LLM servers in production.
 
 I use AI coding assistants regularly and review and validate their output. Wattch’s Rust implementation was developed with AI assistance; my Rust skill is reading and understanding code, not Python-level fluency.
-
-## BP Log / bp-tracker
-
-A phone web app that reads a blood-pressure monitor’s display from a photo, then lets the user check and correct the values before saving. Image-processing rules handle the display layout; a 10,123-parameter CNN trained on synthetic digits runs in plain JavaScript with a 54 KB weights file. Published evaluation: 91% complete readings on 55 photos from one monitor; 99.5% digit accuracy on 187 held-out digits. The full reading set guided pipeline development, so it is not an independent holdout. Median phone latency: 268 ms across three runs on an Android 10 phone.
-
-Source: https://github.com/chakib-belgaid/bp-tracker

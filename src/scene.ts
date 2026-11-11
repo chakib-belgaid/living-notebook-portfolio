@@ -2,6 +2,7 @@ import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { phase, yieldTask } from "./performance";
 import { gardenSpan } from "./framing";
+import { MAX_TREES } from "./narrative/model";
 
 export type Season = "spring" | "summer" | "autumn" | "winter";
 
@@ -18,12 +19,41 @@ export interface Garden {
   setPostbox: (state: "idle" | "writing" | "sent") => void;
   setProgress: (p: number, immediate?: boolean) => void;
   setMotion: (paused: boolean) => void;
+  /** Ambient life: water, sway, animals, drones, the drum and the needle.
+      Off is a guided reading hold: what moves on its own stops where it is,
+      and once the build and the camera have reached their goals the loop
+      sleeps and draws nothing until something changes. Moves toward new goals
+      and the pencil draw-in still draw. Independent of setMotion (the
+      visitor's pause) and of setProgress's `immediate`. On by default. */
+  setAmbient: (on: boolean) => void;
+  /** Caps the frames drawn for ambient life alone, in frames a second; null
+      lifts the cap. A garden with nothing on its way to a goal and nothing
+      newly changed draws no faster than this. Transitions, the visitor's own
+      gestures, a tree growing in and a fennec's visit draw at the display's
+      rate whatever the cap. */
+  setFrameCap: (fps: number | null) => void;
+  /** Jumps the build and the camera pose (progress, rotation, focus, shift,
+      room, frame, zoom, pan) to their current goals; the next frame draws the
+      destination once. Unlike setProgress(p, true) it sets no reduced-motion
+      state: later changes ease as before. Call it after setting the goals. */
+  snap: () => void;
+  /** True once the build, the camera pose and the rooms' own fades have
+      reached their goals, the draw-in is complete and that state has been
+      drawn. Ambient life does not count: a Bloom garden with ambient on is
+      settled while it sways. */
+  isSettled: () => boolean;
+  /** `callback` runs each time the garden comes to rest after its goals
+      changed or it was snapped (see isSettled). Returns an unsubscribe. */
+  onSettled: (callback: () => void) => () => void;
   setTheme: (dark: boolean) => void;
   rotate: () => void;
   rotateBy: (radians: number) => void;
+  /** Plants a tree on the front terrace (keyboard planting). Returns the tree count. */
   plant: () => number;
   /** Plants a tree where a viewport point (relative to the container) meets a terrace. Returns the tree count, or -1 on a miss. */
   plantAt: (x: number, y: number) => number;
+  /** How many trees the visitor has planted, of MAX_TREES. */
+  trees: () => number;
   /** Local hour, 5–23. Moves the sun; lanterns and fireflies come out after dusk. */
   setHour: (hour: number) => void;
   /** Cloud cover and rain or snow, both 0–1. Clouds soften the sun and its shadows; snow settles on the foliage and terraces. */
@@ -38,8 +68,12 @@ export interface Garden {
   panBy: (dx: number, dy: number) => void;
   /** Back to the framed garden: no zoom or pan of the visitor's own. */
   resetView: () => void;
+  /** The part of the view the places' labels must stay in: insets in
+      pixels from each edge, for what covers the garden there (the masthead,
+      the chapter card, the exploring toolbar). */
+  fenceLabels: (fence: LabelFence) => void;
   /** `ms` is the smoothed CPU time to submit a frame; the totals cover every frame drawn so far. `gpuMs` is null without GPU timers. */
-  stats: () => { triangles: number; calls: number; ms: number; gpuFrameMs: number | null; cpuMs: number; gpuMs: number | null; frames: number };
+  stats: () => { triangles: number; calls: number; ms: number; gpuFrameMs: number | null; cpuMs: number; gpuMs: number | null; frames: number; visiting: boolean };
   /** Recolours foliage, flowers, fallen leaves, and drifting petals for the season. */
   setSeason: (season: Season) => void;
   /** 0–1 mist that hides the far side of the garden, in the page's paper colour. */
@@ -49,12 +83,20 @@ export interface Garden {
   /** How the built garden is drawn: Full as designed, or Light (fewer pixels, 30 fps, cheaper shadows). What was built stays. */
   setQuality: (quality: Quality) => void;
   /** Draws the garden as it is on screen into a 2D canvas, once: a frame is
-      rendered and copied in the same task, so no drawing buffer is kept. */
+      rendered and copied in the same task, so no drawing buffer is kept.
+      (A portrait slot the stage leaves keeps this copy of its pose.) */
   drawInto: (target: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => void;
-  /** What the visitor has made of the garden: its planted trees and its turn. */
+  /** What a rebuilt garden should keep: the visitor's trees, turn, zoom and pan. */
   snapshot: () => GardenSnapshot;
-  /** Carries a snapshot into a rebuilt garden, already drawn in. Returns the tree count. */
-  restore: (snapshot: GardenSnapshot) => number;
+  /** Carries a snapshot into a rebuilt garden, already drawn in. */
+  restore: (snapshot: GardenSnapshot) => void;
+  /** Shows the drawing complete at once, without the pencil draw-in: for a
+      garden that opens on a later chapter (a deep link, a return) or that
+      replaces one already on screen. Call before its first frame. */
+  skipDrawIn: () => void;
+  /** Resolves once the next frame has been drawn; asks for that frame. A
+      garden off screen or in a hidden tab draws it when it is shown again. */
+  nextFrame: () => Promise<void>;
   dispose: () => void;
 }
 export type GardenSnapshot = {
@@ -85,6 +127,51 @@ function random() {
 }
 
 export type Quality = "full" | "light";
+
+export type LabelFence = { top: number; right: number; bottom: number; left: number };
+
+/* The places' labels stand just above their buildings, kept inside the
+   fence and clear of one another: a label that would run off the stage or
+   under what covers it slides back in, and one that would cover a
+   neighbour moves just above or below it, whichever is the shorter move.
+   Hidden labels keep their anchor; they are placed again once shown. */
+const LABEL_GAP = 6;
+function placeLabels(labels: HTMLElement[], anchors: Map<HTMLElement, [number, number]>, width: number, height: number, fence: LabelFence) {
+  const minX = fence.left + LABEL_GAP,
+    maxX = width - fence.right - LABEL_GAP,
+    minY = fence.top + LABEL_GAP,
+    maxY = height - fence.bottom - LABEL_GAP;
+  const boxes = labels.map((h) => {
+    const [x, y] = anchors.get(h)!;
+    const w = h.hidden ? 0 : h.offsetWidth,
+      ht = h.hidden ? 0 : h.offsetHeight;
+    return { h, w, ht, left: x - w / 2, top: y - LABEL_GAP - ht };
+  });
+  const shown = boxes.filter((b) => b.w > 0);
+  for (const b of shown) {
+    b.left = T.MathUtils.clamp(b.left, minX, Math.max(minX, maxX - b.w));
+    b.top = T.MathUtils.clamp(b.top, minY, Math.max(minY, maxY - b.ht));
+  }
+  const fits = (top: number, b: { ht: number }) => top >= minY && top + b.ht <= maxY;
+  const placed: typeof shown = [];
+  for (const b of shown.sort((a, c) => a.top - c.top)) {
+    for (let tries = 0; tries <= placed.length; tries++) {
+      const hit = placed.find(
+        (p) => b.left < p.left + p.w + 2 && p.left < b.left + b.w + 2 && b.top < p.top + p.ht + 2 && p.top < b.top + b.ht + 2,
+      );
+      if (!hit) break;
+      const up = hit.top - b.ht - 2,
+        down = hit.top + hit.ht + 2;
+      const [near, far] = b.top - up <= down - b.top ? [up, down] : [down, up];
+      b.top = fits(near, b) || !fits(far, b) ? near : far;
+    }
+    placed.push(b);
+  }
+  for (const b of boxes) {
+    b.h.style.left = `${b.left}px`;
+    b.h.style.top = `${b.top}px`;
+  }
+}
 
 export async function createGarden(
   container: HTMLElement,
@@ -1573,6 +1660,49 @@ async function buildGarden(
   beam(lampKnee, lampHead, 0.008, "dark");
   add(new T.ConeGeometry(0.05, 0.07, 10, 1, true), lampHead.x, lampHead.y - 0.02, lampHead.z, "ochre", [0, 0, 0.6]);
 
+  // The work at MCQ Scan, which the workshop also stands for. Symbols only:
+  // company work is never shown. Fixed values, no random().
+  // AgentDiet, at the doorway: a permission is checked where the tool runs.
+  // A barrier across the gap in the front wall, a reader post outside it with
+  // a seal on its panel, and three biscuit-coloured tokens hung from the
+  // gatepost, each smaller than the last: a delegation can only narrow.
+  const gateL = x0 + 0.5,
+    gateR = x0 + 0.94;
+  box(gateL, siteY + 0.3, z1, 0.06, 0.6, 0.06, "dark");
+  box(gateR, siteY + 0.5, z1, 0.06, 1.0, 0.06, "dark");
+  box((gateL + gateR) / 2, siteY + 0.42, z1 + 0.05, gateR - gateL + 0.06, 0.035, 0.035, "ochre");
+  if (!lite)
+    for (let i = 0; i < 3; i++)
+      box(gateL + 0.09 + i * 0.13, siteY + 0.42, z1 + 0.05, 0.05, 0.04, 0.04, "dark", false);
+  const readerX = gateL - 0.2,
+    readerZ = z1 + 0.2;
+  box(readerX, 0.36, readerZ, 0.08, 0.4, 0.08, "trim");
+  add(new T.BoxGeometry(0.14, 0.02, 0.11), readerX, 0.58, readerZ, "dark", [0.5, 0, 0]);
+  add(new T.CylinderGeometry(0.04, 0.04, 0.015, 12), readerX, 0.596, readerZ + 0.009, "terracotta", [0.5, 0, 0], false);
+  const armY = siteY + 0.97;
+  box(gateR + 0.21, armY, z1, 0.48, 0.03, 0.03, "dark");
+  ([[0.1, 0.085], [0.25, 0.06], [0.37, 0.04]] as const).forEach(([dx, r]) => {
+    const tokenY = armY - 0.07 - r;
+    add(new T.CylinderGeometry(r, r, 0.022, 14), gateR + dx, tokenY, z1, "ochre", [Math.PI / 2, 0, 0]);
+    if (!lite)
+      beam(new T.Vector3(gateR + dx, armY, z1), new T.Vector3(gateR + dx, tokenY + r, z1), 0.004, "dark", false);
+  });
+  // Store Chat, a clothing-shopping assistant: a rail of three garments inside
+  // the front wall, under a speech bubble.
+  const railX = x0 + 0.27,
+    railZ = z1 - 0.21,
+    railY = siteY + 0.56;
+  box(railX - 0.16, siteY + 0.45, railZ, 0.025, 0.9, 0.025, "dark");
+  box(railX + 0.16, siteY + 0.28, railZ, 0.025, 0.56, 0.025, "dark");
+  box(railX, railY, railZ, 0.34, 0.02, 0.02, "dark");
+  (["terracotta", "glass", "ochre"] as const).forEach((c, i) =>
+    box(railX - 0.1 + i * 0.1, railY - 0.13, railZ, 0.085, 0.2, 0.03, c));
+  box(railX - 0.03, siteY + 0.82, railZ + 0.02, 0.22, 0.13, 0.03, "light");
+  add(new T.BoxGeometry(0.05, 0.05, 0.03), railX - 0.08, siteY + 0.75, railZ + 0.02, "light", [0, 0, Math.PI / 4], false);
+  if (!lite)
+    for (let i = 0; i < 3; i++)
+      box(railX - 0.08 + i * 0.05, siteY + 0.82, railZ + 0.037, 0.02, 0.02, 0.005, "dark", false);
+
   // The heart garden, on the plot that was left empty: BP Log, which reads a
   // blood-pressure monitor's display from a photo. A heart stands on a low
   // plinth, turned to the garden, and a pulse trace runs across the tile in
@@ -2305,12 +2435,10 @@ async function buildGarden(
       pathGlow !== (pathStep === null ? 0 : 1) ||
       flagLift !== (postbox === "idle" ? 0 : 1) ||
       letterTime >= 0 ||
-      hoverGlow !== (hoverSpot ? 1 : 0) ||
-      // The register's wheels, only while they are on show and still turning.
-      (built > 0.01 &&
-        tallyGoal !== null &&
-        tallyShown !== null &&
-        Math.abs(tallyGoal - tallyShown) >= 0.0005)
+      hoverGlow !== (hoverSpot ? 1 : 0)
+      // The register's turning wheels are not a reason to keep drawing: they
+      // snap to the figure when the garden is still (updateRooms) and roll
+      // only in frames drawn anyway.
     );
   }
   // The rings sound out while narrating, and from the voices step on; the
@@ -2319,7 +2447,8 @@ async function buildGarden(
   const lampOn = () => voiced() || explaining !== null;
   function updateRooms(dt: number, solid: number, drawn: number, blue: number) {
     built = solid;
-    const still = paused || reduced;
+    // Held (ambient off) stops the drum, pen, needle and rings like a pause.
+    const still = paused || reduced || !ambient;
     narration = approach(narration, voiced() ? 1 : 0, reduced ? 1 : dt / 0.3);
     lamp = approach(lamp, lampOn() ? 1 : 0, reduced ? 1 : dt / 0.3);
     if (!still) ringTime += dt;
@@ -2474,8 +2603,10 @@ async function buildGarden(
   });
   world.add(new T.Points(fireflyGeometry, fireflyMaterial));
 
+  /* The visitor's trees (the garden panel). A tree springs up where it is
+     planted and keeps its size; a rebuilt garden draws the same trees again
+     from their seeds (see snapshot and restore). */
   const planted: { group: T.Group; age: number; grown: boolean }[] = [];
-  const MAX_TREES = 24;
   const plantMaterial = new T.MeshStandardMaterial({
     color: 0x8ca360,
     roughness: 1,
@@ -2531,7 +2662,6 @@ async function buildGarden(
     g.userData.size = 1.15 + random() * 0.6;
     g.scale.setScalar(grown ? g.userData.size : 0.001);
     world.add(g);
-    if (!grown) visitTree(local);
     planted.push({ group: g, age: grown ? 1 : 0, grown });
     invalidate();
     return planted.length;
@@ -2866,11 +2996,15 @@ async function buildGarden(
   });
 
   // Fennecs trot between spots on the same terrace, then sit for a while.
+  // They are night animals: out after dark too, with a faint moonlit sheen
+  // so they read against the night garden, and kept in the light drawing.
   const fennecFur = mat(0xd9b98a),
     fennecPale = mat(0xf3e6cf),
     fennecDark = mat(0x4a3426);
-  const groundSpots = lite ? [] : await surfaceSpots(70, onGround);
-  const fennecs = Array.from({ length: lite ? 0 : 3 }, () => {
+  fennecFur.emissive.setHex(0x8a6c48);
+  fennecPale.emissive.setHex(0x8a6c48);
+  const groundSpots = await surfaceSpots(lite ? 40 : 70, onGround);
+  const fennecs = Array.from({ length: 3 }, () => {
     const fennec = new T.Group();
     const body = new T.Mesh(
       new T.SphereGeometry(0.09, 10, 8).scale(0.7, 0.7, 1.3),
@@ -2950,10 +3084,15 @@ async function buildGarden(
     r.userData.t = 0;
   }
 
-  /* A planted tree is noticed by the nearest fennec on its level: it looks
-     up, trots over by a clear route, settles beneath the tree for a while,
-     then goes back to its day. One visit at a time, and not again for a
-     while; nothing happens while motion is paused or reduced. */
+  /* A tree planted on purpose (plant, plantAt) is noticed by the nearest
+     fennec on its level: it looks up, trots over by a clear route, settles
+     beneath the tree for a while, then goes back to its day (decision 42).
+     One visit at a time, not again for a while, and never on its own;
+     nothing starts while motion is paused or reduced. A visit counts as
+     moving (see moving()), so a held garden (ambient off) keeps drawing
+     until the visit ends, then settles once and sleeps. It runs on the
+     loop's own dt, not the ambient clock: during a hold only the visitor
+     moves, and the rest of the garden stays where it stopped. */
   type Visit = {
     fennec: T.Group;
     route: T.Vector3[];
@@ -2964,6 +3103,8 @@ async function buildGarden(
     tree: T.Vector3;
   };
   let visit: Visit | null = null,
+    // When the next visit may start, in seconds of wall time: the ambient
+    // clock (elapsed) stands still during a hold.
     nextVisit = 0;
   const probe = new T.Vector3(),
     down = new T.Vector3(0, -1, 0);
@@ -2985,7 +3126,9 @@ async function buildGarden(
     return true;
   }
   function visitTree(tree: T.Vector3) {
-    if (!fennecs.length || visit || paused || reduced || elapsed < nextVisit) return;
+    const now = performance.now() / 1000;
+    if (!fennecs.length || visit || paused || reduced || now < nextVisit) return;
+    // Only a fennec that can be seen: not in the rain, or unbuilt.
     if (fennecFur.opacity < 0.5) return;
     // A tree on its own level, or up to a planter's or curb's height above it.
     const near = fennecs
@@ -2993,6 +3136,8 @@ async function buildGarden(
       .sort((a, b) => a.position.distanceTo(tree) - b.position.distanceTo(tree))[0];
     if (!near) return;
     const from = near.position.clone();
+    // A fennec caught mid-stride stands on its own level, not on its bob.
+    from.y = (near.userData.to as T.Vector3).y;
     // At the foot of the tree, on open ground on the fennec's level: its own
     // side of the trunk first, then around it.
     const toward = Math.atan2(from.x - tree.x, from.z - tree.z);
@@ -3015,11 +3160,37 @@ async function buildGarden(
     }
     if (!route) return;
     visit = { fennec: near, route, leg: 0, t: 0, phase: "notice", time: 0, tree: tree.clone() };
-    nextVisit = elapsed + 20;
+    nextVisit = now + 20;
     show("visitor", "notice");
+    invalidate();
+  }
+  // The visit is over: the fennec picks up its own day from where it is.
+  function endVisit() {
+    if (!visit) return;
+    const f = visit.fennec,
+      u = f.userData;
+    f.position.y = visit.route[Math.min(visit.leg, visit.route.length - 1)].y;
+    (u.legs as T.Mesh[]).forEach((l) => (l.rotation.x = 0));
+    (u.tail as T.Group).rotation.set(-2.1, 0, 0);
+    (u.ear as T.Mesh).rotation.x = -0.15;
+    u.from = f.position.clone();
+    u.to = f.position.clone();
+    u.t = 1;
+    u.rest = 1 + random() * 2;
+    visit = null;
+    show("visitor", "none");
   }
   function updateVisitor(dt: number) {
     if (!visit) return;
+    /* Motion paused (the visitor's pause or reduced motion) mid-visit: the
+       visit ends where the fennec stands. Freezing it would keep a held loop
+       awake for good, since a visit counts as moving, and finishing it by
+       placing the fennec at the tree would be a jump the visitor asked not to
+       see. Its legs straighten and it sits; nothing else changes. */
+    if (paused || reduced) {
+      endVisit();
+      return;
+    }
     const v = visit,
       f = v.fennec,
       u = f.userData;
@@ -3030,6 +3201,7 @@ async function buildGarden(
     const facing = Math.atan2(v.tree.x - f.position.x, v.tree.z - f.position.z);
     if (v.phase === "notice") {
       // Ears up, legs still, and a turn toward the new tree.
+      f.position.y = v.route[0].y;
       f.rotation.y = turnToward(f.rotation.y, facing, dt * 5);
       ear.rotation.x = -0.45;
       legs.forEach((l) => (l.rotation.x = 0));
@@ -3061,22 +3233,17 @@ async function buildGarden(
         }
       }
     } else {
+      // Sits beneath the tree: an ear twitch and a slow tail, on the visit's
+      // own clock (the ambient one stands still during a hold).
       f.position.y = v.route[v.route.length - 1].y;
       f.rotation.y = turnToward(f.rotation.y, facing, dt * 3);
       legs.forEach((l) => (l.rotation.x = 0));
-      ear.rotation.x = -0.15 + Math.max(0, Math.sin(elapsed * 2)) * 0.1;
-      tail.rotation.set(-2.1, Math.sin(elapsed * 0.6) * 0.3, 0);
-      if (v.time > 6) {
-        // Back to its own day from where it sat.
-        u.from = f.position.clone();
-        u.to = f.position.clone();
-        u.t = 1;
-        u.rest = 1 + random() * 2;
-        visit = null;
-        show("visitor", "none");
-      }
+      ear.rotation.x = -0.15 + Math.max(0, Math.sin(v.time * 2)) * 0.1;
+      tail.rotation.set(-2.1, Math.sin(v.time * 0.6) * 0.3, 0);
+      if (v.time > 6) endVisit();
     }
   }
+
 
   // A ginger cat asleep on the terrace bench.
   const catFur = mat(0xd38b4c, 0.85);
@@ -3437,7 +3604,8 @@ async function buildGarden(
     berryMaterial.opacity = life * flowerAmount[season] * (season === "autumn" ? 2 : 1);
     birdMaterial.opacity =
       life * day * dry * (season === "winter" ? 0.6 : 1) * (1 - fogAmount * 0.7);
-    fennecFur.opacity = fennecPale.opacity = fennecDark.opacity = life * day * dry;
+    fennecFur.opacity = fennecPale.opacity = fennecDark.opacity = life * dry;
+    fennecFur.emissiveIntensity = fennecPale.emissiveIntensity = night * 0.3;
     lifeMaterials.forEach((m) => (m.visible = m.opacity > 0.01));
     // Nothing alive is drawn yet: the animals wait where they are.
     if (life <= 0.01) return;
@@ -3527,9 +3695,9 @@ async function buildGarden(
       const hex = palette[key];
       if (hex !== undefined) snow(material, hex, snowWeight[key] ?? 0);
     });
-    plantLeaves.forEach((m, i) => snow(m, palette.plants[i], plantSnowWeight[i]));
     snow(bushMaterials[0], palette.leaf!, snowWeight.leaf!);
     snow(bushMaterials[1], palette.leafDark!, snowWeight.leafDark!);
+    plantLeaves.forEach((m, i) => snow(m, palette.plants[i], plantSnowWeight[i]));
     const lying = snowCover > 0.35;
     if (lying !== snowLying) {
       snowLying = lying;
@@ -3552,6 +3720,12 @@ async function buildGarden(
     progress = 0,
     paused = false,
     reduced = false,
+    // Ambient life (see setAmbient); off during a guided reading hold.
+    ambient = true,
+    // Frames a second for ambient life alone (see setFrameCap); 0 is no cap.
+    ambientCap = 0,
+    // True from a change of goals or a snap until the garden has settled.
+    settling = false,
     visible = true,
     rotation = 0,
     rotationTarget = 0,
@@ -3575,6 +3749,14 @@ async function buildGarden(
   function invalidate() {
     dirty = true;
     wake();
+  }
+  const settleListeners = new Set<() => void>();
+  // Waiting for the next drawn frame (see nextFrame).
+  let frameWaiters: (() => void)[] = [];
+  // The world is drawn smaller and flatter on the sketch; it reaches full size by Build.
+  function worldScaleAt(p: number, out: T.Vector3) {
+    const s = lerp(0.77, 1, smooth(0, 0.62, p));
+    return out.set(s, s * lerp(0.72, 1, smooth(0.1, 0.55, p)), s);
   }
   const onVisibility = () => {
     if (!document.hidden) wake();
@@ -3691,14 +3873,27 @@ async function buildGarden(
     height = container.clientHeight;
     renderer.setSize(width, height);
     invalidate();
+    // Resizing clears the canvas. Draw again in this same frame (the observer
+    // runs after layout, before paint), so a new host size or a rotation
+    // never shows one blank frame.
+    if (constructed && !disposed) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      last = -1;
+      render(performance.now());
+    }
   };
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(container);
   resize();
-  const pencilColor = new T.Color(0x85898b),
+  // The light set is the warm-paper sketchbook (P1): graphite rather than a
+  // cool grey, so the opening drawing holds on ivory #f5f0e5 at phone size.
+  const pencilColor = new T.Color(0x605f59),
     blueColor = new T.Color(0x447cba),
     finalColor = new T.Color(0x7b8277);
   const projected = new T.Vector3();
+  const anchors = new Map<HTMLElement, [number, number]>();
+  let labelFence: LabelFence = { top: 0, right: 0, bottom: 0, left: 0 };
   const points: Record<string, T.Vector3> = {
     wattch: new T.Vector3(-3.65, 2.65, 0.2),
     whisperbook: new T.Vector3(3.35, 3.55, -0.65),
@@ -3840,6 +4035,29 @@ async function buildGarden(
     container.dataset[key] = value;
   }
   let shadowFrame = 0;
+  // Whether anything is still on its way to a goal (ambient life aside).
+  function moving() {
+    return (
+      Math.abs(targetProgress - progress) > 0.0001 ||
+      Math.abs(rotationTarget - rotation) > 0.0001 ||
+      Math.abs(focusGoal - focusAmount) > 0.0005 ||
+      Math.abs(focusZoomGoal - focusZoom) > 0.0005 ||
+      // The camera's aim point eases with shift and room; without it a held
+      // garden could sleep (and report settled) a few pixels short.
+      focusPoint.distanceTo(focusTarget) > 0.0005 ||
+      Math.abs(fogTarget - fogAmount) > 0.002 ||
+      shift.distanceTo(shiftGoal) > 0.0005 ||
+      Math.abs(roomGoal - room) > 0.0005 ||
+      view.distanceTo(viewGoal) > 0.0005 ||
+      Math.abs(userZoomGoal - userZoom) > 0.0005 ||
+      pan.distanceTo(panGoal) > 0.0005 ||
+      Math.abs(snowGoal - snowCover) > 0.001 ||
+      roomsSettling() ||
+      planted.some((p) => p.age < 1) ||
+      // A fennec's visit to a new tree: a held garden draws it to its end.
+      visit !== null
+    );
+  }
   function render(now: number) {
     frame = 0;
     if (disposed) return;
@@ -3847,8 +4065,11 @@ async function buildGarden(
       last = -1;
       return;
     }
-    // Light drawing keeps to 30 frames a second.
-    if (light && last >= 0 && now - last < 1000 / 30 - 4) {
+    const changed = moving();
+    // Light drawing keeps to 30 frames a second, and ambient life on its own
+    // (nothing moving to a goal, nothing newly changed) to its cap.
+    const rate = light ? 30 : ambientCap && !changed && !dirty && drawIn >= 1 ? ambientCap : 0;
+    if (rate && last >= 0 && now - last < 1000 / rate - 4) {
       wake();
       return;
     }
@@ -3859,23 +4080,14 @@ async function buildGarden(
       drawIn = reduced || paused ? 1 : Math.min(1, drawIn + dt / 3.2);
       dirty = true;
     }
-    const growing = planted.some((p) => p.age < 1);
-    const changed =
-      Math.abs(targetProgress - progress) > 0.0001 ||
-      Math.abs(rotationTarget - rotation) > 0.0001 ||
-      Math.abs(focusGoal - focusAmount) > 0.0005 ||
-      Math.abs(focusZoomGoal - focusZoom) > 0.0005 ||
-      Math.abs(fogTarget - fogAmount) > 0.002 ||
-      shift.distanceTo(shiftGoal) > 0.0005 ||
-      Math.abs(roomGoal - room) > 0.0005 ||
-      view.distanceTo(viewGoal) > 0.0005 ||
-      Math.abs(userZoomGoal - userZoom) > 0.0005 ||
-      pan.distanceTo(panGoal) > 0.0005 ||
-      Math.abs(snowGoal - snowCover) > 0.001 ||
-      roomsSettling() ||
-      growing;
-    // Paused, or before the garden is built, a settled garden sleeps.
-    if ((paused || progress < 0.5) && !changed && !dirty) {
+    // Settling is reported once, from the first frame with nothing left to move.
+    if (changed || drawIn < 1) settling = true;
+    else if (settling) {
+      settling = false;
+      settleListeners.forEach((f) => queueMicrotask(f));
+    }
+    // Paused, held, or before the garden is built, a settled garden sleeps.
+    if ((paused || !ambient || progress < 0.5) && !changed && !dirty) {
       last = -1;
       return;
     }
@@ -3905,7 +4117,9 @@ async function buildGarden(
       rotationTarget,
       reduced ? 1 : Math.min(dt * 4, 1),
     );
-    if (!paused) elapsed += dt;
+    // Ambient life keeps its own clock; it stops while paused or held.
+    const resting = paused || !ambient;
+    if (!resting) elapsed += dt;
     const ease = reduced ? 1 : Math.min(dt * 3.2, 1);
     // The drawing starts in its frame, where the loading still was, rather
     // than sliding over from the centre.
@@ -3936,8 +4150,7 @@ async function buildGarden(
     lifeUniform.value = paused ? 0 : life;
     const blueprint = smooth(0.07, 0.3, progress),
       solid = smooth(0.35, 0.6, progress);
-    world.scale.setScalar(lerp(0.77, 1, smooth(0, 0.62, progress)));
-    world.scale.y *= lerp(0.72, 1, smooth(0.1, 0.55, progress));
+    worldScaleAt(progress, world.scale);
     world.rotation.y = rotation;
     if (snowCover !== snowGoal) {
       const step = snowGoal - snowCover;
@@ -3971,8 +4184,10 @@ async function buildGarden(
         .copy(pencilColor)
         .lerp(blueColor, blueprint)
         .lerp(finalColor, solid);
+      // On warm paper the pencil needs more weight than the old 0.21 to read
+      // in a 45vh phone slot (P1 stills); the night set is unchanged.
       lineMaterial.opacity =
-        lerp(darkTheme ? 0.38 : 0.21, darkTheme ? 0.85 : 0.6, blueprint) *
+        lerp(darkTheme ? 0.38 : 0.44, darkTheme ? 0.85 : 0.66, blueprint) *
         (1 - solid * 0.92);
       stickMaterial.color.copy(lineMaterial.color);
       stickMaterial.opacity = lineMaterial.opacity * (1 - solid);
@@ -4023,9 +4238,11 @@ async function buildGarden(
       );
     });
     updateRooms(dt, solid, drawn, blueprint);
-    updateLife(paused || reduced ? 0 : dt, life);
+    updateLife(resting || reduced ? 0 : dt, life);
     // The gardener is only drawn with the life of the garden.
-    if (!lite && life > 0.01) updateGardener(paused || reduced ? 0 : dt, paused || reduced);
+    if (!lite && life > 0.01) updateGardener(resting || reduced ? 0 : dt, resting || reduced);
+    // The visit keeps the loop's own dt through a hold; a pause ends it.
+    updateVisitor(dt);
     if (butterflyMaterial.visible)
       butterflies.forEach((b, i) => {
         b.position.set(
@@ -4050,14 +4267,13 @@ async function buildGarden(
       p.group.scale.setScalar(Math.max(0.001, back * p.group.userData.size));
       p.grown = p.age >= 1;
     }
-    updateVisitor(paused || reduced ? 0 : dt);
     // The garden is fitted to its frame, as if the frame were the whole
     // view; the rest of the view shows more of the same scene around it.
     // The camera and the labels move only when what frames them changes.
     if (cameraMoved(drawn)) {
       const band = Math.max(0.05, view.y - view.x);
       const aspect = width / (height * band);
-      const span = gardenSpan(aspect);
+      const span = gardenSpan(aspect, width);
       const half = span / 2 / (1 + focusAmount * focusZoom) / userZoom / room;
       const full = half / band;
       camera.left = -half * aspect - (shift.x * half + pan.x * half) * aspect * 2;
@@ -4083,9 +4299,9 @@ async function buildGarden(
           .copy(points[h.dataset.spot!])
           .applyMatrix4(world.matrixWorld)
           .project(camera);
-        h.style.left = `${(projected.x * 0.5 + 0.5) * width}px`;
-        h.style.top = `${(-projected.y * 0.5 + 0.5) * height}px`;
+        anchors.set(h, [(projected.x * 0.5 + 0.5) * width, (-projected.y * 0.5 + 0.5) * height]);
       }
+      placeLabels(hotspots, anchors, width, height, labelFence);
     }
     readGpuTimers();
     const query = gpuTimer && gpuPending.length < 4 ? gl.createQuery() : null;
@@ -4099,6 +4315,8 @@ async function buildGarden(
     if (firstRender) { firstRender = false; performance.mark("notebook:first-render"); performance.measure("notebook:scene-to-first-render", "notebook:scene-construction:start", "notebook:first-render"); }
     renderMs = lerp(renderMs || 1, performance.now() - before, 0.1);
     show("progress", progress.toFixed(3));
+    // How much of the pencil drawing is drawn in (1: complete).
+    show("drawn", drawn.toFixed(2));
     show("drawCalls", String(renderer.info.render.calls));
     show("triangles", String(renderer.info.render.triangles));
     show("geometries", String(renderer.info.memory.geometries));
@@ -4118,6 +4336,11 @@ async function buildGarden(
     show("hover", hoverSpot ?? "none");
     workMs += performance.now() - work;
     framesDrawn++;
+    if (frameWaiters.length) {
+      const waiting = frameWaiters;
+      frameWaiters = [];
+      waiting.forEach((resolve) => resolve());
+    }
   }
   await checkpoint("ground-litter");
   await buildLitter();
@@ -4241,12 +4464,13 @@ async function buildGarden(
     setProgress(p, immediate = false) {
       targetProgress = p;
       reduced = immediate;
+      settling = true;
       invalidate();
       if (immediate) progress = p;
     },
     setTheme(dark) {
       darkTheme = dark;
-      pencilColor.setHex(dark ? 0x8fbcda : 0x85898b);
+      pencilColor.setHex(dark ? 0x8fbcda : 0x605f59);
       blueColor.setHex(dark ? 0xc0eaff : 0x447cba);
       guideMaterial.color.setHex(dark ? 0x71b3e4 : 0x698bb5);
       ghostMaterial.color.setHex(dark ? 0x94c8e9 : 0x777b7d);
@@ -4256,8 +4480,44 @@ async function buildGarden(
       invalidate();
     },
     setMotion(value) {
+      // Setting the motion the garden already has (a hold re-applies it)
+      // draws nothing; a change does, so unpausing resumes and pausing
+      // completes the draw-in.
+      if (paused === value) return;
       paused = value;
       invalidate();
+    },
+    setAmbient(on) {
+      ambient = on;
+      // Off stops the clocks and draws nothing new: a running loop sleeps at
+      // its next frame, so a hold settles without one more draw. On wakes it.
+      if (on) invalidate();
+    },
+    setFrameCap(fps) {
+      ambientCap = fps && fps > 0 ? fps : 0;
+    },
+    snap() {
+      progress = targetProgress;
+      rotation = rotationTarget;
+      focusAmount = focusGoal;
+      focusZoom = focusZoomGoal;
+      focusPoint.copy(focusTarget);
+      shift.copy(shiftGoal);
+      room = roomGoal;
+      view.copy(viewGoal);
+      userZoom = userZoomGoal;
+      pan.copy(panGoal);
+      settling = true;
+      invalidate();
+    },
+    isSettled() {
+      // `settling` is cleared by the frame that draws the destination, so a
+      // snap is not settled until that frame (an offscreen garden waits).
+      return !settling && !moving() && drawIn >= 1;
+    },
+    onSettled(callback) {
+      settleListeners.add(callback);
+      return () => settleListeners.delete(callback);
     },
     rotate() {
       rotationTarget += Math.PI / 6;
@@ -4267,13 +4527,29 @@ async function buildGarden(
       rotationTarget += radians;
       invalidate();
     },
+    plant() {
+      if (planted.length >= MAX_TREES) return MAX_TREES;
+      // Keyboard planting fills the front terrace from left to right.
+      const i = planted.length % 12;
+      const at = new T.Vector3(-4.3 + i * 0.78 + (random() - 0.5) * 0.2, 0.36, 3.95);
+      const count = makeTree(at);
+      // Deliberate planting only: a restored garden's trees bring no visit.
+      visitTree(at);
+      return count;
+    },
     plantAt(x, y) {
       if (planted.length >= MAX_TREES) return MAX_TREES;
       pointer.set((x / width) * 2 - 1, -(y / height) * 2 + 1);
       raycaster.setFromCamera(pointer, camera);
       const hit = raycaster.intersectObjects(solidMeshes, false)[0];
       if (!hit?.face || hit.face.normal.y < 0.7) return -1;
-      return makeTree(world.worldToLocal(hit.point.clone()));
+      const at = world.worldToLocal(hit.point.clone());
+      const count = makeTree(at);
+      visitTree(at);
+      return count;
+    },
+    trees() {
+      return planted.length;
     },
     setSeason(value) {
       season = value;
@@ -4285,16 +4561,11 @@ async function buildGarden(
       invalidate();
     },
     setTally(grams) {
+      // The register never wakes a sleeping garden: a pause, a reading hold
+      // and the unbuilt house draw no frame for it (the ruler is the live
+      // readout). Its wheels catch up in the next frame drawn for any other
+      // reason, and turn in the frames the loop draws anyway after Bloom.
       tallyGoal = grams;
-      // A frame only when the register is on show and its figure would
-      // change visibly; after Bloom the loop is drawing anyway.
-      const drawn = tallyDrawn ?? null;
-      if (
-        built > 0.01 &&
-        ((grams === null) !== (drawn === null) ||
-          (grams !== null && Math.abs(grams - drawn!) >= 0.0005))
-      )
-        invalidate();
     },
     setWeather(cloud, precip, snowing = false) {
       weatherCloud = cloud;
@@ -4308,6 +4579,7 @@ async function buildGarden(
     },
     frame(top, bottom) {
       viewGoal.set(top, bottom);
+      settling = true;
       invalidate();
     },
     zoomBy(factor, x, y) {
@@ -4335,18 +4607,28 @@ async function buildGarden(
       panGoal.set(0, 0);
       invalidate();
     },
+    fenceLabels(fence) {
+      labelFence = fence;
+      // Placed again on the next frame, even with the camera still.
+      framed.fill(NaN);
+      invalidate();
+    },
     focus(spot, shiftX = 0, shiftY = 0, roomX = 1) {
       if (spot && points[spot]) {
         const room = rooms[spot];
+        // Aimed where the spot will stand once the build reaches its goal,
+        // not where the still-growing world has it now (P1: a focus set with
+        // a new progress otherwise lands short on the sketch's smaller world).
         focusTarget
           .copy(room?.at ?? points[spot])
-          .multiply(world.scale)
+          .multiply(worldScaleAt(targetProgress, new T.Vector3()))
           .applyAxisAngle(new T.Vector3(0, 1, 0), rotation);
         focusGoal = 1;
         focusZoomGoal = room?.zoom ?? 0.4;
       } else focusGoal = 0;
       shiftGoal.set(shiftX, shiftY);
       roomGoal = roomX;
+      settling = true;
       invalidate();
     },
     stats() {
@@ -4358,14 +4640,12 @@ async function buildGarden(
         cpuMs: workMs,
         gpuMs: gpuTimer ? (gpuSamples ? (gpuSum / gpuSamples) * framesDrawn : 0) : null,
         frames: framesDrawn,
+        // A fennec is on its way to, or sitting under, a newly planted tree.
+        visiting: visit !== null,
       };
     },
     setQuality(value) {
       applyQuality(value);
-    },
-    drawInto(target, x, y, w, h) {
-      renderer.render(scene, camera);
-      target.drawImage(renderer.domElement, x, y, w, h);
     },
     snapshot() {
       return {
@@ -4390,18 +4670,24 @@ async function buildGarden(
       drawIn = 1;
       restored = true;
       invalidate();
-      return planted.length;
     },
-    plant() {
-      if (planted.length >= MAX_TREES) return MAX_TREES;
-      // Keyboard planting fills the front terrace from left to right.
-      const i = planted.length % 12;
-      return makeTree(
-        new T.Vector3(-4.3 + i * 0.78 + (random() - 0.5) * 0.2, 0.36, 3.95),
-      );
+    skipDrawIn() {
+      drawIn = 1;
+      invalidate();
+    },
+    drawInto(target, x, y, w, h) {
+      renderer.render(scene, camera);
+      target.drawImage(renderer.domElement, x, y, w, h);
+    },
+    nextFrame() {
+      return new Promise<void>((resolve) => {
+        frameWaiters.push(resolve);
+        invalidate();
+      });
     },
     dispose() {
       disposed = true;
+      settleListeners.clear();
       cancelAnimationFrame(frame);
       frame = 0;
       document.removeEventListener("visibilitychange", onVisibility);
