@@ -1,5 +1,5 @@
 import { chapters, chapter, cv, email, identity, notebook, posterAlt, timeline } from "./narrative/content.ts";
-import { chapterOrder, fragmentAliases, nextChapterId, posterSrc, POSTER_SIZES, primaryNav, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
+import { chapterOrder, fragmentAliases, nextChapterId, posterSrc, POSTER_SIZES, primaryNav, WIDE_LAYOUT_QUERY, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
 import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY } from "./compute.ts";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -28,13 +28,17 @@ const actions = (list: Action[]) => list.length ? `<div class="chapter-actions">
  * it decorative, so their own text is what a screen reader hears. */
 const describedBy = (c: Chapter) => chapters.find(other => other.scene.poster === c.scene.poster)!.id === c.id;
 
+/** Every poster is lazy, the opening ones included: each layout hides the
+ * other's host (`display: none`), and a lazy image that is not laid out is
+ * never fetched, so a phone does not download the wide still nor a desktop
+ * the portrait one. The still the visitor does see is requested early by
+ * posterPreloadScript, so it is not delayed by being lazy. */
 function sceneHost(c: Chapter) {
   const { poster } = c.scene;
-  const lazy = c.id === "intro" ? "" : ` loading="lazy"`;
   const alt = describedBy(c) ? e(posterAlt[poster]) : "";
   const size = POSTER_SIZES.portrait;
   return `<div class="scene-host" data-scene-host="${c.id}" data-phase="${c.scene.phase}" data-poster="${poster}">
-        <img class="scene-poster" src="${posterSrc(poster, "portrait")}" width="${size.width}" height="${size.height}" alt="${alt}"${lazy} decoding="async" />
+        <img class="scene-poster" src="${posterSrc(poster, "portrait")}" width="${size.width}" height="${size.height}" alt="${alt}" loading="lazy" decoding="async" />
       </div>`;
 }
 
@@ -47,8 +51,27 @@ function sceneRail() {
   const poster = chapter("intro").scene.poster;
   const size = POSTER_SIZES.wide;
   return `<aside class="scene-rail" data-scene-host="rail" data-phase="${chapter("intro").scene.phase}" data-poster="${poster}" aria-hidden="true">
-        <img class="scene-poster" src="${posterSrc(poster, "wide")}" width="${size.width}" height="${size.height}" alt="" decoding="async" />
+        <img class="scene-poster" src="${posterSrc(poster, "wide")}" width="${size.width}" height="${size.height}" alt="" loading="lazy" decoding="async" />
       </aside>${railPosterScript()}`;
+}
+
+/** Inline-script source that leaves in `c` the entry of `table` for the
+ * chapter the fragment names (aliases included), or null, and its id in `h`.
+ * `decodeURIComponent` throws on a malformed escape: callers wrap it. */
+function fragmentChapter(table: Record<string, unknown>) {
+  const aliases = Object.fromEntries(Object.entries(fragmentAliases).map(([alias, { chapter }]) => [alias, chapter]));
+  return `var p=${JSON.stringify(table)},a=${JSON.stringify(aliases)},h=decodeURIComponent(location.hash.slice(1));h=a[h]||h;var c=Object.prototype.hasOwnProperty.call(p,h)?p[h]:null;`;
+}
+
+/** For the document head, before the stylesheets: asks for the one still the
+ * first view shows (this layout's, for the chapter the fragment names, the
+ * opening sketch otherwise) as early as the parser could have found an eager
+ * image. The posters themselves are lazy (see sceneHost). */
+export function posterPreloadScript() {
+  const posters = Object.fromEntries(chapters.map(c => [c.id, c.scene.poster]));
+  const sketch = JSON.stringify(chapter("intro").scene.poster);
+  const code = `(function(){var k=${sketch};try{${fragmentChapter(posters)}if(c)k=c}catch(e){}try{var l=document.createElement("link");l.rel="preload";l.as="image";l.fetchPriority="high";l.href="/assets/stills/"+(matchMedia(${JSON.stringify(WIDE_LAYOUT_QUERY)}).matches?"wide":"portrait")+"/"+k+".webp";document.head.appendChild(l)}catch(e){}})()`;
+  return `<script>${code}</script>`;
 }
 
 /** A deep link (`/#contact`, `?lang=fr#whisperbook`, a reload or a Return)
@@ -58,8 +81,7 @@ function sceneRail() {
  * rule as resolveFragment: aliases, and a malformed escape lands on intro. */
 function railPosterScript() {
   const posters = Object.fromEntries(chapters.map(c => [c.id, { src: posterSrc(c.scene.poster, "wide"), poster: c.scene.poster, phase: c.scene.phase }]));
-  const aliases = Object.fromEntries(Object.entries(fragmentAliases).map(([alias, { chapter }]) => [alias, chapter]));
-  const code = `(function(){try{var p=${JSON.stringify(posters)},a=${JSON.stringify(aliases)},h=decodeURIComponent(location.hash.slice(1));h=a[h]||h;var c=Object.prototype.hasOwnProperty.call(p,h)?p[h]:null;if(!c||h==="intro")return;var r=document.querySelector('[data-scene-host="rail"]');r.querySelector("img").src=c.src;r.setAttribute("data-poster",c.poster);r.setAttribute("data-phase",c.phase)}catch(e){}})()`;
+  const code = `(function(){try{${fragmentChapter(posters)}if(!c||h==="intro")return;var r=document.querySelector('[data-scene-host="rail"]');r.querySelector("img").src=c.src;r.setAttribute("data-poster",c.poster);r.setAttribute("data-phase",c.phase)}catch(e){}})()`;
   return `<script>${code}</script>`;
 }
 
