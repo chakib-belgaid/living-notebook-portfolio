@@ -176,7 +176,7 @@ export function createSceneMount(controller: NarrativeController) {
   /* The navy night (the user's G2 decision) until the visitor plays with
      the sky: the moon and stars up and the house's lamps lit. */
   const atmosphere: Atmosphere = { hour: NIGHT_HOUR, weather: presets.clear, season: "summer" };
-  /** The visitor's trees and turn, carried into the next garden built. */
+  /** The visitor's trees and view (turn, zoom, pan), carried into the next garden built. */
   let kept: GardenSnapshot | null = null;
   let planting = false;
   const plantedListeners = new Set<(count: number) => void>();
@@ -654,8 +654,9 @@ export function createSceneMount(controller: NarrativeController) {
       sky.refresh(true);
       syncFrameCap();
       applyAtmosphere();
-      // The trees and the turn of the garden this one replaces.
-      if (kept?.trees.length) garden.restore(kept);
+      // The trees and the turn of the garden this one replaces: a visitor who
+      // only turned it, planting nothing, keeps that turn too.
+      if (kept) garden.restore(kept);
       adapter = createSceneAdapter(garden, hostKind());
       adapter.setMotionPreference(state.motion);
       // Every landing shows its pose complete at once, the opening sketch

@@ -254,6 +254,27 @@ test('reduced motion: Explore asks for the live drawing, then enters and leaves 
   } finally { await p.context().close(); }
 });
 
+test('desktop: a turn made without planting survives Still images and the return to the live drawing', async () => {
+  const p = await live(desktop);
+  try {
+    const start = (await view(p)).rotation;
+    await enter(p);
+    await p.locator('[data-explore-turn="right"]').click();
+    await p.locator('[data-explore-turn="right"]').click();
+    await p.locator('[data-explore-exit]').click();
+    const turned = (await view(p)).rotation;
+    assert.ok(turned > start, JSON.stringify({ start, turned }));
+    assert.match(await p.locator('[data-tree-count]').textContent(), /^0 of 24 trees$/, 'nothing was planted');
+    const stills = p.locator('[data-scene-control="stills"]');
+    await p.locator('.scene-toggle').click();
+    await stills.click();
+    await p.waitForFunction(() => !document.querySelector('.scene-stage'));
+    await stills.click();
+    await p.waitForFunction(ready, null, { timeout: 60000 });
+    assert.equal((await view(p)).rotation, turned, 'the rebuilt garden opens as the visitor left it');
+  } finally { await p.context().close(); }
+});
+
 test('desktop: pause stills exploring, a lost renderer or a layout change ends it cleanly', async () => {
   const p = await live(desktop, '#about');
   try {
