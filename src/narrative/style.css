@@ -221,6 +221,8 @@
     padding-block: 2.5rem; border-bottom: 0;
   }
   .chapter-intro { justify-content: center; }
+  /* Keep the closing card low in the final viewport, clear of the header. */
+  .chapter-contact { justify-content: flex-end; }
   .chapter-card {
     padding: 1.4rem 1.6rem 1.1rem;
     background: var(--slip); backdrop-filter: blur(12px);

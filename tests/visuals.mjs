@@ -2,9 +2,8 @@
    against a production preview:
      npx vite build --outDir <dir> && npx vite preview --outDir <dir> --host 127.0.0.1 --port <port> --strictPort
      TEST_URL=http://127.0.0.1:<port> node tests/visuals.mjs
-   Writes .qa/visuals/ (git-ignored): every chapter's reading hold, loaded by
-   its deep link and captured once the live garden has settled and stopped
-   drawing, at 1440×900 and 390×844; exploring with the places shown on both
+   Writes .qa/visuals/ (git-ignored): every chapter's resting pose, loaded by
+   its deep link and captured once the camera and construction have settled, at 1440×900 and 390×844; exploring with the places shown on both
    layouts (the phone's in its dialog); the garden panel open; the carbon
    tally with the rendering meter open; and the Whisperbook case page with
    its enlargement dialog open. A review aid, not a test: the only checks are
@@ -13,6 +12,7 @@
    run exits non-zero if a capture could not be made. Live weather
    (Open-Meteo) is blocked so the garden shows its default sky. */
 import { chromium } from 'playwright';
+import { waitForSceneSettled } from './browser-fixture.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
@@ -42,16 +42,7 @@ const settledOn = (p, chapter) => p.waitForFunction(c => {
   const s = window.__notebookScene.state();
   return s.live && s.chapter === c && s.transition === 1 && s.settled;
 }, chapter, { timeout: READY_TIMEOUT });
-/** Waits until the garden has drawn nothing for 500 ms. */
-async function asleep(p, tries = 40) {
-  const frames = () => p.evaluate(() => window.__notebookStats().garden.frames);
-  for (let i = 0; i < tries; i++) {
-    const a = await frames();
-    await p.waitForTimeout(500);
-    if (await frames() === a) return true;
-  }
-  return false;
-}
+
 async function load(p, path) {
   await p.goto('about:blank');
   await p.goto(base + path);
@@ -93,20 +84,20 @@ async function capture(layout, name, prepare, { scene = true } = {}) {
 
 try {
   for (const layout of Object.keys(layouts)) {
-    // Each chapter's reading hold, from its deep link.
+    // Each chapter's resting pose, from its deep link.
     for (const chapter of chapters) {
       await capture(layout, `hold-${chapter}`, async p => {
         await load(p, `/#${chapter}`);
         await ready(p);
         await settledOn(p, chapter);
-        await asleep(p);
+        await waitForSceneSettled(p);
       });
     }
     // Exploring, with the places shown.
     await capture(layout, 'exploring', async p => {
       await load(p, '/#whisperbook');
       await ready(p);
-      await asleep(p);
+      await waitForSceneSettled(p);
       await enterExploring(p);
       await p.waitForTimeout(1500);
     });
@@ -114,7 +105,7 @@ try {
     await capture(layout, 'garden-panel', async p => {
       await load(p, '/#about');
       await ready(p);
-      await asleep(p);
+      await waitForSceneSettled(p);
       await p.locator('.garden > summary').click();
       await p.waitForFunction(() => document.querySelector('.garden').open);
       await p.waitForTimeout(300);

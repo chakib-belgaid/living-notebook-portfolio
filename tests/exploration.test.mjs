@@ -3,13 +3,13 @@
 //   TEST_URL=http://127.0.0.1:<port> node --test --test-concurrency=1 tests/exploration.test.mjs
 // Entering shows the toolbar and the labelled places and moves focus to Back
 // to reading; Escape returns focus to the panel's Explore button and the
-// reading hold sleeps again; the wheel zooms only while exploring; a place
+// ambient animation continues; the wheel zooms only while exploring; a place
 // opens its chapter; the phone's dialog unlocks the page when it closes;
 // reduced motion enters and leaves without easing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { setupPage } from './browser-fixture.mjs';
+import { setupPage, waitForSceneSettled } from './browser-fixture.mjs';
 
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
 const desktop = { viewport: { width: 1440, height: 900 } };
@@ -60,10 +60,10 @@ const exploring = p => p.evaluate(() => {
 });
 
 for (const [label, options] of [['desktop', desktop], ['phone', phone]]) {
-  test(`${label}: Explore enters with its toolbar and places, Escape returns to reading and the hold sleeps`, async () => {
+  test(`${label}: Explore enters with its toolbar and places, Escape returns to reading with animation continuing`, async () => {
     const p = await live(options);
     try {
-      await asleep(p);
+      await waitForSceneSettled(p);
       const start = await p.evaluate(() => ({ y: scrollY, chapter: window.__notebookScene.state().chapter, hash: location.hash }));
       await enter(p);
       const inside = await exploring(p);
@@ -105,8 +105,14 @@ for (const [label, options] of [['desktop', desktop], ['phone', phone]]) {
         { ...back, y: Math.abs(back.y - start.y) <= 2 },
         { flag: null, state: false, focus: true, bar: true, spots: true, chapter: start.chapter, y: true, hash: start.hash, overflow: 'visible', inert: false, host: label === 'phone' ? start.chapter : 'rail' },
       );
-      // The chapter's pose is held again: no recurring frames.
-      await asleep(p);
+      // Returning to reading keeps visible ambient motion running.
+      await waitForSceneSettled(p);
+      await p.locator(`#${start.chapter} .scene-host`).evaluate(el => {
+        if (getComputedStyle(el).display !== 'none') el.scrollIntoView({ block: 'center' });
+      });
+      const a = await frames(p);
+      await p.waitForTimeout(1500);
+      assert.ok(await frames(p) > a, 'ambient animation continues after leaving Explore');
       assert.deepEqual(p.errors, []);
     } finally { await p.context().close(); }
   });
@@ -114,7 +120,7 @@ for (const [label, options] of [['desktop', desktop], ['phone', phone]]) {
   test(`${label}: the wheel scrolls the page while reading and zooms the garden only while exploring`, async () => {
     const p = await live(options, '#bplog');
     try {
-      await asleep(p);
+      await waitForSceneSettled(p);
       const box = await p.locator('.scene-stage').boundingBox();
       const at = { x: box.x + box.width * 0.75, y: box.y + box.height * 0.5 };
       const before = { view: await view(p), y: await p.evaluate(() => scrollY) };
@@ -203,7 +209,7 @@ for (const [label, options] of [['desktop', desktop], ['phone', phone]]) {
       await p.waitForFunction(() => location.hash === '#energy-tools' && document.activeElement?.id === 'energy-tools-title');
       const after = await p.evaluate(() => ({ flag: document.documentElement.dataset.explore ?? null, state: window.__notebookScene.state().exploring, chapter: window.__notebookScene.state().chapter, overflow: getComputedStyle(document.documentElement).overflow }));
       assert.deepEqual(after, { flag: null, state: false, chapter: 'energy-tools', overflow: 'visible' });
-      await asleep(p);
+      await waitForSceneSettled(p);
     } finally { await p.context().close(); }
   });
 }
@@ -273,7 +279,7 @@ test('desktop: pause stills exploring, a lost renderer or a layout change ends i
     await p.setViewportSize({ width: 390, height: 844 });
     await p.waitForFunction(() => !window.__notebookScene.state().exploring && window.__notebookScene.state().host === 'about');
     assert.equal(await p.evaluate(() => document.querySelector('[data-explore-bar]').hidden), true);
-    await asleep(p);
+    await waitForSceneSettled(p);
     assert.deepEqual(p.errors, []);
   } finally { await p.context().close(); }
 });

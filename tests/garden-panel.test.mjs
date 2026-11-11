@@ -1,11 +1,10 @@
 // The garden panel on a live scene, against a production preview (see
 // tests/scene-lifecycle.test.mjs for the harness): planting, the weather,
-// the season, the hour and the quality reach the garden, and a held garden
-// goes back to sleep once the tree has grown.
+// the season, the hour and the quality reach the animated garden.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { setupPage } from './browser-fixture.mjs';
+import { setupPage, waitForSceneSettled } from './browser-fixture.mjs';
 
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
 let browser;
@@ -18,31 +17,21 @@ async function live(viewport, hash = '#about') {
     await page.waitForFunction(() => document.documentElement.dataset.renderer === 'ready' && window.__notebookScene.state().live, null, { timeout: 60000 });
   });
 }
-const frames = p => p.evaluate(() => window.__notebookStats().garden.frames);
-/** Waits until the garden has drawn nothing for 500 ms. */
-async function asleep(p, tries = 30) {
-  for (let i = 0; i < tries; i++) {
-    const a = await frames(p);
-    await p.waitForTimeout(500);
-    if (await frames(p) === a) return;
-  }
-  throw new Error('the garden kept drawing');
-}
 
 for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['phone', { width: 390, height: 844 }]]) {
-  test(`${label}: the panel plants, turns and sets the sky of the live garden, which then sleeps again`, async () => {
+  test(`${label}: the panel plants, turns and sets the sky of the live garden while ambient motion continues`, async () => {
     const p = await live(viewport);
     try {
-      await asleep(p);
+      await waitForSceneSettled(p);
       await p.locator('.garden > summary').click();
       assert.equal(await p.evaluate(() => document.querySelector('.garden').open), true);
-      // Planting draws the tree springing up, then the held garden sleeps.
+      // Planting draws the tree springing up alongside ambient motion.
       await p.locator('[data-plant-one]').click();
       await p.waitForFunction(() => /^1 of 24 trees$/.test(document.querySelector('[data-tree-count]').textContent));
       await p.locator('[data-plant-one]').click();
       await p.waitForFunction(() => /^2 of 24 trees$/.test(document.querySelector('[data-tree-count]').textContent));
       assert.equal(await p.evaluate(() => document.querySelector('[data-garden-status]').textContent), 'Tree planted. 2 of 24.');
-      await asleep(p);
+      await waitForSceneSettled(p);
       // The weather and the season reach the page and the garden.
       await p.locator('.garden-panel [data-weather="rain"]').click();
       await p.locator('.garden-panel [data-season="winter"]').click();
@@ -62,7 +51,7 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['ph
       await p.locator('.garden-panel [data-quality="light"]').click();
       assert.equal(await p.evaluate(() => ({ pressed: document.querySelector('.garden-panel [data-quality="light"]').getAttribute('aria-pressed'), saved: localStorage.getItem('notebook:quality') })).then(JSON.stringify), JSON.stringify({ pressed: 'true', saved: 'light' }));
       await p.locator('[data-turn]').click();
-      await asleep(p);
+      await waitForSceneSettled(p);
       // Planting by clicking takes the stage's clicks only while it is on.
       await p.locator('[data-plant-mode]').click();
       assert.equal(await p.evaluate(() => document.documentElement.classList.contains('planting') && getComputedStyle(document.querySelector('.scene-stage')).pointerEvents), 'auto');

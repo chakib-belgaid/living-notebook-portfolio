@@ -2,13 +2,13 @@
 // production preview (see tests/scene-lifecycle.test.mjs for the harness):
 //   TEST_URL=http://127.0.0.1:<port> node --test --test-concurrency=1 tests/quality-rebuild.test.mjs
 // A phone under Auto builds the lighter garden; choosing Full rebuilds it at
-// full detail, keeping the trees, the chapter and the stage, then holds it
-// again; Light rebuilds the lighter one. On a desktop Full and Light share a
-// tier, so nothing is rebuilt.
+// full detail, keeping the trees, the chapter, the stage and ambient motion;
+// Light rebuilds the lighter one. On a desktop Full and Light share a tier,
+// so nothing is rebuilt.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { setupPage } from './browser-fixture.mjs';
+import { setupPage, waitForSceneSettled } from './browser-fixture.mjs';
 
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
 const phone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
@@ -24,15 +24,6 @@ async function live(options, hash) {
     await page.goto(`${base}/${hash}`);
     await page.waitForFunction(ready, null, { timeout: 60000 });
   });
-}
-const frames = p => p.evaluate(() => window.__notebookStats().garden.frames);
-async function asleep(p, tries = 40) {
-  for (let i = 0; i < tries; i++) {
-    const a = await frames(p);
-    await p.waitForTimeout(500);
-    if (await frames(p) === a) return;
-  }
-  throw new Error('the garden kept drawing');
 }
 const facts = p => p.evaluate(() => {
   const s = window.__notebookScene.state();
@@ -68,13 +59,13 @@ test('phone: Full rebuilds the lighter garden at full detail with the trees and 
     assert.deepEqual(full, { rebuilds: 1, rebuilding: false, renderer: 'ready', live: true, chapter: 'whisperbook', pose: 'whisperbook', detail: 'full', quality: 'full', canvases: 1, trees: '2 of 24 trees' });
     assert.equal(await p.evaluate(() => window.__notebookScene.view().rotation), turned, 'the turn is kept');
     assert.equal(await p.evaluate(() => window.__empty), 0, 'the stage is never empty');
-    // The reading hold sleeps again.
-    await asleep(p);
+    // The rebuilt garden finishes its one-off actions.
+    await waitForSceneSettled(p);
     await p.locator('.garden-panel [data-quality="light"]').click();
     await p.waitForFunction(() => window.__notebookStats().rebuilds === 2 && !window.__notebookScene.state().rebuilding, null, { timeout: 90000 });
     const light = await facts(p);
     assert.deepEqual([light.detail, light.quality, light.canvases, light.trees, light.chapter], ['low', 'light', 1, '2 of 24 trees', 'whisperbook']);
-    await asleep(p);
+    await waitForSceneSettled(p);
     assert.deepEqual(p.errors, []);
   } finally { await p.context().close(); }
 });
@@ -94,7 +85,7 @@ test('phone: a rebuild while exploring stays exploring with the same view', asyn
     assert.deepEqual(after, { exploring: true, flag: 'true', zoom, host: 'explore', detail: 'full' });
     await p.keyboard.press('Escape');
     assert.equal(await p.evaluate(() => window.__notebookScene.state().host), 'bplog');
-    await asleep(p);
+    await waitForSceneSettled(p);
   } finally { await p.context().close(); }
 });
 

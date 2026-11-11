@@ -91,7 +91,7 @@ const scene = p => p.evaluate(() => window.__notebookScene.state());
 const stats = p => p.evaluate(() => window.__notebookStats());
 const probe = p => p.evaluate(() => window.__probe);
 const live = (p, timeout = 60000) => p.waitForFunction(() => window.__notebookScene.state().live, null, { timeout });
-/** Settled on `chapter` (and held, in guided normal motion). */
+/** The chapter's camera and construction have reached their destination. */
 const settledOn = (p, chapter, timeout = 60000) => p.waitForFunction(c => {
   const s = window.__notebookScene.state();
   return s.live && s.chapter === c && s.transition === 1 && s.settled;
@@ -103,18 +103,9 @@ async function over(p, ms) {
   const b = await p.evaluate(() => ({ s: window.__notebookStats(), d: window.__probe.drawFrames }));
   return { garden: b.s.garden.frames - a.s.garden.frames, sky: b.s.sky.frames - a.s.sky.frames, draws: b.d - a.d };
 }
-/** Waits until nothing has drawn for 400 ms and returns what was drawn
- * meanwhile. A settled garden draws nothing more, however slow the runner;
- * the sky may still be easing its own growth, so a hold is measured once
- * the stage is quiet. */
-async function quiet(p, tries = 15) {
-  const late = { garden: 0, sky: 0 };
-  for (let i = 0; i < tries; i++) {
-    const o = await over(p, 400);
-    if (!o.garden && !o.sky && !o.draws) return late;
-    late.garden += o.garden; late.sky += o.sky;
-  }
-  throw new Error(`the stage kept drawing after settling: ${JSON.stringify(late)}`);
+function assertAnimating(counts) {
+  assert.ok(counts.garden > 0 && counts.sky > 0 && counts.draws > 0,
+    `the visible garden and sky keep animating: ${JSON.stringify(counts)}`);
 }
 const openControls = async p => {
   if (await p.locator('#scene-panel').isHidden()) await p.locator('.scene-toggle').click();
@@ -271,35 +262,34 @@ for (const [path, poster, progress] of [['/#contact', 'bloom', 1], ['/?lang=fr#w
   });
 }
 
-test('a reading hold draws no garden or sky frames once settled (desktop Contact, Bloom)', async t => {
+test('desktop keeps animating after a deep link and a settled transition to Contact', async t => {
   const p = await open('/#mcq-scan');
   try {
     await settledOn(p, 'mcq-scan');
+    assertAnimating(await over(p, 1500));
     // A passive transition: the visitor reads on into About and Contact.
     await p.locator('#mcq-scan').hover();
     for (let i = 0; i < 60 && (await scene(p)).chapter !== 'contact'; i++) { await p.mouse.wheel(0, 400); await p.waitForTimeout(80); }
     await settledOn(p, 'contact');
-    const late = await quiet(p);
-    const held = await over(p, 5000);
-    t.diagnostic(`held at Contact for 5 s: ${JSON.stringify(held)}; frames after settling: ${JSON.stringify(late)}`);
-    assert.equal(late.garden, 0, 'the garden drew after settling');
-    assert.deepEqual(held, { garden: 0, sky: 0, draws: 0 });
-    assert.equal((await scene(p)).held, true);
+    const active = await over(p, 5000);
+    t.diagnostic(`settled at Contact for 5 s: ${JSON.stringify(active)}`);
+    assertAnimating(active);
+    assertAnimating(await over(p, 1500));
     assert.deepEqual(p.errors, []);
   } finally { await close(p); }
 });
 
-test('phone: a reading hold at Whisperbook draws no garden or sky frames', async t => {
+test('phone keeps animating after the transition to Whisperbook settles', async t => {
   const p = await open('/#bplog', { options: phoneOptions });
   try {
     await settledOn(p, 'bplog');
     for (let i = 0; i < 60 && (await scene(p)).chapter !== 'whisperbook'; i++) { await p.mouse.wheel(0, 250); await p.waitForTimeout(80); }
     await settledOn(p, 'whisperbook');
-    const late = await quiet(p);
-    const held = await over(p, 5000);
-    t.diagnostic(`held at Whisperbook (phone) for 5 s: ${JSON.stringify(held)}; frames after settling: ${JSON.stringify(late)}`);
-    assert.equal(late.garden, 0, 'the garden drew after settling');
-    assert.deepEqual(held, { garden: 0, sky: 0, draws: 0 });
+    await p.locator('#whisperbook .scene-host').scrollIntoViewIfNeeded();
+    const active = await over(p, 5000);
+    t.diagnostic(`settled at Whisperbook (phone) for 5 s: ${JSON.stringify(active)}`);
+    assertAnimating(active);
+    assertAnimating(await over(p, 1500));
     assert.deepEqual(p.errors, []);
   } finally { await close(p); }
 });
@@ -348,8 +338,8 @@ test('a hidden tab stops all drawing; on return the latest chapter is posed at o
     const drawn = (await probe(p)).progress;
     assert.ok(drawn.length > 0 && drawn.every(v => v > 0.99), `the first frames after return are Contact: ${[...new Set(drawn)].join(', ')}`);
     const shown = await over(p, 1500);
-    t.diagnostic(`shown again, then held: ${JSON.stringify(shown)}`);
-    assert.deepEqual(shown, { garden: 0, sky: 0, draws: 0 });
+    t.diagnostic(`shown again: ${JSON.stringify(shown)}`);
+    assertAnimating(shown);
     assert.deepEqual(p.errors, []);
   } finally { await close(p); }
 });
@@ -515,6 +505,7 @@ test('pause is independent of sound consent and of pose selection (F22)', async 
     s = await scene(p);
     assert.equal(s.motion, 'normal');
     assert.equal(s.sound, false);
+    assertAnimating(await over(p, 1500));
     assert.deepEqual(p.errors, []);
   } finally { await close(p); }
 });

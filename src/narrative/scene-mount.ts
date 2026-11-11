@@ -1,5 +1,5 @@
 /** The one live scene: renderer lifecycle, host handoff, poster handoff and
- * the reading holds, driven by the reading controller (./controller.ts)
+ * ambient animation, driven by the reading controller (./controller.ts)
  * through P1's adapter (./scene-adapter.ts).
  *
  * State, tracked independently (model.ts `ReadingState`):
@@ -32,11 +32,10 @@
  * history and deep links snap the scene to the destination at once and pin
  * it there until the visitor scrolls away.
  *
- * Reading holds. After a passive transition settles, the adapter's hold()
- * stops ambient life and the sky is paused: no recurring garden or sky
- * frames until something changes. Pause and system-reduced motion keep
- * everything still (poses snap). A hidden tab draws nothing (the garden and
- * sky check document.hidden); on return the latest chapter is posed before
+ * Ambient life continues after chapter transitions settle, including on
+ * initial landings and after exploring. Pause and system-reduced motion
+ * keep everything still (poses snap). A hidden tab draws nothing (both loops
+ * check document.hidden); on return the latest chapter is posed before
  * the first frame. Offscreen, the garden stops (its IntersectionObserver)
  * and so does the sky (ours).
  *
@@ -216,7 +215,6 @@ export function createSceneMount(controller: NarrativeController) {
   let loading: Promise<void> | null = null;
   /** Bumped when a scene is torn down, so a late load or reveal is ignored. */
   let generation = 0;
-  let held = false;
   /** Settle events so far: rapid scrolling must end in one, not one per chapter passed. */
   let settles = 0;
   let stageOnScreen = true;
@@ -362,7 +360,7 @@ export function createSceneMount(controller: NarrativeController) {
 
   /* ---------- Atmosphere ---------- */
   /** The hour, weather and season, on the garden and the sky. The garden
-   * draws the change in its next frame (a held garden draws one); the mist
+   * draws the change in its next frame; the mist
    * takes the page's paper colour. */
   function applyAtmosphere() {
     const w = atmosphere.weather;
@@ -390,10 +388,10 @@ export function createSceneMount(controller: NarrativeController) {
   }
 
   /* ---------- Pose ---------- */
-  /** Sky: still unless something is moving on screen. */
+  /** Sky motion follows the visitor's preference and the stage's visibility. */
   let skyStill: boolean | null = null;
   function syncSky() {
-    const still = state.motion !== "normal" || held || !stageOnScreen || document.hidden;
+    const still = state.motion !== "normal" || !stageOnScreen || document.hidden;
     // Only a change is passed on: setting the same value redraws the sky once.
     if (!sky || still === skyStill) return;
     skyStill = still;
@@ -407,9 +405,6 @@ export function createSceneMount(controller: NarrativeController) {
     if (!adapter || !garden) { publish(); return; }
     const snap = how === "snap" || state.motion !== "normal";
     if (!snap && changed) {
-      // A passive transition: life may move while the house changes.
-      held = false;
-      adapter.release();
       state.transition = 0;
     }
     syncSky();
@@ -565,14 +560,10 @@ export function createSceneMount(controller: NarrativeController) {
     state.motion = motionPreference(reducedQuery.matches, userPaused);
     adapter?.setMotionPreference(state.motion);
     if (stage) stage.toggleAttribute("data-instant", state.motion !== "normal");
-    // Still: settled poses are held; a moving one lands at once. Exploring
-    // keeps its pose: still, it lands at once; moving, its life goes on.
-    if (adapter && exploring) {
-      if (state.motion !== "normal") garden?.snap();
-      else adapter.release();
-    } else {
-      if (adapter && state.motion !== "normal") { held = true; adapter.go(state.chapter, { immediate: true }); state.transition = 1; }
-      if (adapter && state.motion === "normal") { held = true; adapter.hold(); }
+    // A still preference lands at once; resuming restores ambient motion.
+    if (adapter && state.motion !== "normal") {
+      if (exploring) garden?.snap();
+      else { adapter.go(state.chapter, { immediate: true }); state.transition = 1; }
     }
     syncSky();
     syncSound();
@@ -658,8 +649,6 @@ export function createSceneMount(controller: NarrativeController) {
       // it with the matching pose, never with a half-drawn (at first, empty)
       // page. The pencil draw-in is not used on the release-1 page.
       garden.skipDrawIn();
-      held = true;
-      adapter.hold();
       adapter.go(target, { immediate: true });
       sky.setGrowth(chapterContent(target).scene.progress, true);
       offSettled = adapter.onSettled(settled);
@@ -701,11 +690,6 @@ export function createSceneMount(controller: NarrativeController) {
   function settled() {
     settles++;
     state.transition = 1;
-    // Exploring keeps its ambient life until it ends (decision 46).
-    if (state.mode === "guided" && adapter && !held && !exploring) {
-      held = true;
-      adapter.hold();
-    }
     syncSky();
     publish();
   }
@@ -730,8 +714,6 @@ export function createSceneMount(controller: NarrativeController) {
     if (stage) moveStage(hostFor(target));
     state.chapter = target;
     showRailPoster(target);
-    held = true;
-    adapter.hold();
     adapter.go(target, { immediate: true });
     sky?.setGrowth(chapterContent(target).scene.progress, true);
     publish();
@@ -845,8 +827,6 @@ export function createSceneMount(controller: NarrativeController) {
     adapter = next;
     if (exploring) poseExplore(next, true);
     else {
-      held = true;
-      next.hold();
       next.go(state.chapter, { immediate: true });
       sky?.setGrowth(chapterContent(state.chapter).scene.progress, true);
       state.transition = 1;
@@ -874,8 +854,6 @@ export function createSceneMount(controller: NarrativeController) {
   /* ---------- Explore the garden (./explore.ts) ---------- */
   /** The whole garden complete, its life on (decision 46). */
   function poseExplore(a: SceneAdapter, immediate: boolean) {
-    held = false;
-    a.release();
     a.setPhase(1);
     a.focus(null);
     // The dialog's toolbar covers the foot of the screen: the garden is
@@ -903,7 +881,7 @@ export function createSceneMount(controller: NarrativeController) {
   }
   /** Back to reading: the stage in its reading host, the reading position
    * as it was (unless a link is taking the visitor elsewhere), the chapter's
-   * pose drawn at once and held (decision 28). The visitor's turn stays, as
+   * pose drawn at once with ambient life continuing. The visitor's turn stays, as
    * the panel's Turn keeps it; their zoom and pan give way to the framing. */
   function endExplore(reason: ExitReason) {
     if (!exploring) return;
@@ -914,15 +892,15 @@ export function createSceneMount(controller: NarrativeController) {
     const from = exploreFrom ?? { y: scrollY, chapter: state.chapter };
     exploreFrom = null;
     const navigating = reason === "hotspot" || reason === "navigation";
-    if (!navigating && Math.abs(scrollY - from.y) > 1) scrollTo({ top: from.y, left: scrollX, behavior: "instant" });
+    // The controller restores the chapter after a width change; the old
+    // layout's pixel position would move the reader to a different chapter.
+    if (!navigating && reason !== "layout" && Math.abs(scrollY - from.y) > 1) scrollTo({ top: from.y, left: scrollX, behavior: "instant" });
     invalidate();
     if (stage && (stage.parentElement as HTMLElement | null)?.dataset.sceneHost === "explore") moveStage(hostFor(from.chapter));
     if (garden && adapter) {
       garden.resetView();
       adapter.frame(0, 1);
       garden.snap();
-      held = true;
-      adapter.hold();
       state.chapter = from.chapter;
       showRailPoster(from.chapter);
       adapter.go(from.chapter, { immediate: true });
@@ -1095,7 +1073,7 @@ export function createSceneMount(controller: NarrativeController) {
   Object.assign(window, {
     __notebookStats: () => ({ garden: garden?.stats() ?? null, sky: sky?.stats() ?? null, rebuilds }),
     __notebookScene: {
-      state: () => ({ ...state, held, settles, settled: adapter?.isSettled() ?? null, pose: adapter?.state() ?? null, exploring, rebuilds, rebuilding: !!rebuilding || !!retiring, detail: builtDetail }),
+      state: () => ({ ...state, held: adapter?.state().held ?? false, settles, settled: adapter?.isSettled() ?? null, pose: adapter?.state() ?? null, exploring, rebuilds, rebuilding: !!rebuilding || !!retiring, detail: builtDetail }),
       /** The visitor's own view of the live garden (goals): zoom 1–4, rotation in radians. */
       view: () => { const s = garden?.snapshot(); return s ? { zoom: s.zoom, rotation: s.rotation, pan: s.pan } : null; },
     },

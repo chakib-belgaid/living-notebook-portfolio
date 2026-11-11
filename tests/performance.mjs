@@ -21,8 +21,8 @@
                      shown while exploring: > 10.
                      (d) longest main-thread task during a drag turn while
                      exploring: < 100 ms.
-                     (e) the reading hold after leaving exploration: 0 garden
-                     frames over 3 s (decision 50's acceptance target).
+                     (e) ambient motion continues after leaving exploration:
+                     garden frames continue over 3 s.
      fennec-visit    (d) longest main-thread task from planting a tree at
                      #contact in daylight (hour 13) to the end of the fennec's
                      visit: < 100 ms.
@@ -49,6 +49,7 @@ import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
+import { waitForSceneSettled } from './browser-fixture.mjs';
 
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
 const enforce = process.env.PERFORMANCE_BUDGETS === '1';
@@ -261,7 +262,7 @@ async function exploring() {
   const p = await open(desktop, '/#whisperbook');
   try {
     await ready(p);
-    await asleep(p);
+    await waitForSceneSettled(p);
     await enter(p);
     await p.waitForTimeout(1000);
     out.state = await sceneState(p);
@@ -321,14 +322,13 @@ async function exploring() {
       budget('exploring.drag-turn-longest-task', `${w.maxTaskMs} ms (${w.longTasks} tasks of 50 ms or more)`, '< 100 ms', w.maxTaskMs < 100, { maxTaskMs: w.maxTaskMs });
       return { ...w, rotationRad: round(turned, 3) };
     });
-    await step('readingHold', async () => {
+    await step('readingMotion', async () => {
       await p.locator('[data-explore-exit]').click();
       await p.waitForFunction(() => !window.__notebookScene.state().exploring);
-      await p.waitForFunction(() => window.__notebookScene.state().settled, null, { timeout: 60000 }).catch(() => {});
-      const slept = await asleep(p, 60);
+      await waitForSceneSettled(p);
       const w = await measure(p, 3000);
-      budget('exploring.reading-hold-after-exit', `${w.gardenFrames} garden frames in ${w.seconds} s (sky ${w.skyFrames}; slept first: ${slept})`, '0 garden frames over 3 s', w.gardenFrames === 0, { frames: w.gardenFrames });
-      return { sleptBeforeHold: slept, ...w, state: await sceneState(p) };
+      budget('exploring.reading-motion-after-exit', `${w.gardenFrames} garden frames in ${w.seconds} s (sky ${w.skyFrames})`, '> 0 garden frames over 3 s', w.gardenFrames > 0, { frames: w.gardenFrames });
+      return { ...w, state: await sceneState(p) };
     });
     out.errors = p.errors;
   } finally { await close(p); }
@@ -340,10 +340,10 @@ async function fennecVisit() {
   const p = await open(desktop, '/#contact');
   try {
     await ready(p);
-    await asleep(p);
+    await waitForSceneSettled(p);
     await p.locator('.garden > summary').click();
     await p.locator('[data-hour]').evaluate(input => { input.value = '13'; input.dispatchEvent(new Event('input', { bubbles: true })); });
-    await asleep(p, 60);
+    await waitForSceneSettled(p);
     const t0 = await p.evaluate(() => { const P = window.__perf; P.visitMark = { t: performance.now(), frames: window.__notebookStats().garden.frames }; return P.visitMark.t; });
     await p.locator('[data-plant-one]').click();
     await p.waitForFunction(() => window.__notebookStats().garden.visiting === true, null, { timeout: 20000 });

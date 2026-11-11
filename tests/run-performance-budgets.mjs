@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 // Run the hardware-dependent limits explicitly, one browser at a time,
 // against a production preview (TEST_URL). No limit is relaxed to accommodate
 // a software renderer. Two parts, and the run fails if either fails:
-//   1. The reading holds (tests/scene-lifecycle.test.mjs), selected by name:
-//      the scene's reading holds, the hidden tab, the still preferences and
+//   1. Animation lifecycle checks (tests/scene-lifecycle.test.mjs), selected by name:
+//      continuous visible animation, the hidden tab, the still preferences and
 //      pause. A pattern that selects nothing fails the run instead of passing
 //      with zero tests.
 //   2. The exploration budgets (tests/performance.mjs with
@@ -13,11 +13,11 @@ import { fileURLToPath } from 'node:url';
 //      100 ms in normal and reduced motion; more than 20 garden frames per
 //      second while exploring and after pause and resume; more than 10 frames
 //      in the 0.8 s after a hidden tab is shown; no main-thread task of
-//      100 ms or longer during a drag turn or a fennec visit; and no garden
-//      frame over 3 s of reading after exploring ends. Its report, with the
+//      100 ms or longer during a drag turn or a fennec visit; and continued garden
+//      animation over 3 s of reading after exploring ends. Its report, with the
 //      browser and WebGL renderer it ran on, is in .qa/performance/report.json.
 const env = { ...process.env, PERFORMANCE_BUDGETS: '1' };
-const pattern = 'reading hold|hidden tab|loads no scene|independent of sound';
+const pattern = 'keeps animating|hidden tab|loads no scene|independent of sound';
 const holds = spawnSync(process.execPath, [
   '--test', '--test-concurrency=1', '--test-timeout=240000',
   `--test-name-pattern=${pattern}`,
@@ -39,6 +39,6 @@ let failed = [];
 try { failed = JSON.parse(exploration.stdout).failed ?? []; } catch { failed = ['the performance report could not be read']; }
 const explorationOk = exploration.status === 0;
 
-console.log(`\nReading holds (scene-lifecycle.test.mjs): ${holdsOk ? 'pass' : 'FAIL'}`);
+console.log(`\nAnimation lifecycle (scene-lifecycle.test.mjs): ${holdsOk ? 'pass' : 'FAIL'}`);
 console.log(`Exploration budgets (performance.mjs): ${explorationOk ? 'pass' : `FAIL${failed.length ? ` (${failed.join(', ')})` : ''}`}`);
 process.exitCode = holdsOk && explorationOk ? 0 : 1;
