@@ -363,7 +363,12 @@ test('context loss shows the still and keeps links; the restored renderer never 
     await p.evaluate(() => { window.__probe.progress = []; window.__lose.restoreContext(); });
     await p.waitForFunction(() => document.documentElement.dataset.renderer === 'ready' && window.__notebookScene.state().live, null, { timeout: 60000 });
     const drawn = (await probe(p)).progress;
-    assert.ok(drawn.length > 0 && drawn.every(v => v > 0.99), `after restore only Contact is drawn: ${[...new Set(drawn)].join(', ')}`);
+    // The garden reports a progress only when it changes (src/scene.ts `show`),
+    // and a frame can run between the click on Contact and the restore, so a
+    // restore that redraws Contact's own value may record nothing new. What is
+    // shown must be Contact's, and nothing earlier may be drawn on the way.
+    const shown = await p.evaluate(() => Number(document.querySelector('.scene-garden').dataset.progress));
+    assert.ok(shown > 0.99 && drawn.every(v => v > 0.99), `after restore only Contact is drawn: shown ${shown}; drawn ${[...new Set(drawn)].join(', ')}`);
     assert.deepEqual(p.errors, []);
   } finally { await close(p); }
 });
