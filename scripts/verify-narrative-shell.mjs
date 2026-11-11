@@ -22,7 +22,7 @@ for (const [label, viewport] of Object.entries(sizes)) {
   const order =await page.$$eval("main > section.chapter", s => s.map(x => x.id));
   check(`${label} no-JS: eight chapters in order`, JSON.stringify(order) === JSON.stringify(ids), order.join(","));
   const text = await page.locator("main").innerText();
-  const anchors = ["I turn AI ideas into useful products.", "I start with the question.", "Can a photo save some typing?", "Books I could listen to, on my own terms.", "Making energy measurement usable.", "The client’s cloud. A workable path to shipping.", "The path so far.", "Let’s talk about what you’re building."];
+  const anchors = ["I build AI that fits its constraints, then I measure it.", "I start with the question.", "Can a photo save some typing?", "Can a phone narrate a book without uploading it?", "What can an energy trace actually tell us?", "Who decides what an agent may do?", "The path so far.", "Let’s talk about what you’re building."];
   let last = -1, inOrder = true;
   for (const a of anchors) { const i = text.indexOf(a); if (i <= last) inOrder = false; last = i; }
   check(`${label} no-JS: chapter copy visible in order`, inOrder);

@@ -1,5 +1,5 @@
 import { chapters, chapter, cv, email, identity, notebook, posterAlt, timeline } from "./narrative/content.ts";
-import { fragmentAliases, nextChapterId, phaseLabels, phases, posterSrc, POSTER_SIZES, primaryNav, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
+import { chapterOrder, fragmentAliases, nextChapterId, posterSrc, POSTER_SIZES, primaryNav, type Action, type Chapter, type ChapterId } from "./narrative/model.ts";
 import { CPU_WATTS, GPU_WATTS, GRID_INTENSITY } from "./compute.ts";
 
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -192,8 +192,9 @@ function chapterFoot(c: Chapter) {
   const link = next
     ? `<a class="next-link" href="#${next}">${e(chapter(next).short)}<span class="action-icon" aria-hidden="true">↓</span></a>`
     : `<a class="next-link" href="#intro">Back to the top<span class="action-icon" aria-hidden="true">↑</span></a>`;
-  const steps = phases.map(p => `<li${p === c.scene.phase ? ` aria-current="step"` : ""}>${phaseLabels[p]}</li>`).join("");
-  return `<footer class="chapter-foot">${c.turn ? `<p class="chapter-turn">${e(c.turn)}</p>` : ""}<ol class="phase-indicator" aria-label="Construction phase">${steps}</ol>${link}</footer>`;
+  // "03 / 08" and the place in the house: the footer says where the reader stands.
+  const count = `${String(chapterOrder(c.id) + 1).padStart(2, "0")} / ${String(chapters.length).padStart(2, "0")}`;
+  return `<footer class="chapter-foot">${c.turn ? `<p class="chapter-turn">${e(c.turn)}</p>` : ""}<p class="chapter-place"><span class="chapter-count" data-no-translate>${count}</span><span>${e(c.place)}</span></p>${link}</footer>`;
 }
 
 function workIndex() {
@@ -215,23 +216,28 @@ function aboutExtras() {
 const leadParagraphs: Partial<Record<ChapterId, number>> = { about: 1 };
 
 function renderChapter(c: Chapter) {
+  // A project chapter leads with its question: the name is the heading, set
+  // small beside the kind of work, and the question takes the display size.
+  const label = c.label ? `<p class="chapter-label">${e(c.label)}</p>` : "";
   const heading = c.id === "intro"
-    ? `<h1 id="intro-title" tabindex="-1">${e(c.title)}</h1>`
-    : `<h2 id="${c.id}-title" tabindex="-1">${e(c.title)}</h2>`;
+    ? `${label}<h1 id="intro-title" tabindex="-1">${e(c.title)}</h1>`
+    : c.subtitle
+      ? `<div class="chapter-kicker"><h2 id="${c.id}-title" tabindex="-1">${e(c.title)}</h2>${label}</div>`
+      : `${label}<h2 id="${c.id}-title" tabindex="-1">${e(c.title)}</h2>`;
   const paragraphs = c.motivation ?? [];
   const split = leadParagraphs[c.id] ?? paragraphs.length;
   const para = (text: string) => `<p class="chapter-motivation">${e(text)}</p>`;
   const lead = [
-    c.label ? `<p class="chapter-label">${e(c.label)}</p>` : "",
     heading,
     c.subtitle ? `<p class="chapter-subtitle">${e(c.subtitle)}</p>` : "",
     ...paragraphs.slice(0, split).map(para),
     c.id === "intro" || c.id === "contact" ? actions(c.actions) : "",
-    c.annotation ? `<p class="chapter-annotation">${e(c.annotation)}</p>` : "",
+    c.annotation ? `<p class="chapter-annotation">${e(c.annotation)}${c.id === "intro" || c.id === "contact" ? ` <span class="tally-cue">${e(c.id === "intro" ? identity.tallyCue : identity.tallyClose)}</span>` : ""}</p>` : "",
     c.id === "work" ? workIndex() : "",
   ].join("");
   let body = paragraphs.slice(split).map(para).join("");
   if (c.decision) body += `<div class="chapter-decision"><h3>${e(c.decision.heading)}</h3><p>${e(c.decision.text)}</p></div>`;
+  if (c.measured) body += `<div class="chapter-measured"><h3>Measured</h3><dl>${c.measured.map(m => `<div><dt>${e(m.of)}</dt><dd>${e(m.figure)}</dd></div>`).join("")}</dl></div>`;
   if (c.id === "about") {
     const extras = aboutExtras();
     body += extras.timeline + actions(c.actions) + extras.notebook;

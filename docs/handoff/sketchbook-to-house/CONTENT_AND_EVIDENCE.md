@@ -10,13 +10,26 @@ Role: **Applied AI & Product Engineer · Ph.D. in Software Engineering**.
 
 Heading:
 
-> I turn AI ideas into useful products.
+> I build AI that fits its constraints, then I measure it.
 
 Supporting statement:
 
-> I build AI products and developer tools, from the interface to the systems underneath. Research taught me to question what works; building products taught me what to simplify and when to ship.
+> I build AI products and developer tools, from the interface to the systems underneath. My Ph.D. studied how to measure the energy software uses. The habit stayed: keep the system small, then check the claim.
 
-Opening annotation: **A living notebook. Scroll to watch the ideas take shape.**
+Opening annotation: **A living notebook. Scroll to watch the house take shape.** Once the page is enhanced, a second sentence points at the carbon tally: *The small figure at the bottom of the screen is this visit’s estimated carbon cost so far.*
+
+The heading, statement and annotation above replace "I turn AI ideas into useful products." and its statement at the user's decision on 10 November 2026. The role line is unchanged. The page title (browser tab, search and social cards) is **Chakib Belgaid, Ph.D. — Applied AI & Product Engineer**, at the user's request the same day.
+
+The same decision reworked the other chapters; `src/narrative/content.ts` is the current copy, and where it differs from §2 below it governs. In short:
+
+- **Whisperbook** — question: *Can a phone narrate a book without uploading it?* Decision: **Enforce the promise in the app** (the manifest removes the network permission; checked in the app's `AndroidManifest.xml` on 10 November 2026). Measured: 0 network permissions at runtime; on-device latency, narration speed and peak RAM not yet measured reproducibly.
+- **pyRAPL, pyJoules & Wattch** — question: *What can an energy trace actually tell us?* Measured: Wattch's overhead against a native RAPL reader is not yet compared reproducibly.
+- **MCQ Scan** — question: *Who decides what an agent may do?* AgentDiet leads as the decision (**Check the permission where the tool runs**); Store Chat and the delivery anecdote are the context, in the exact wording of "MCQ Scan: exact boundaries". Measured, all internally reported and never merged: 97% per request, 95% per attribute, 60% end-to-end processing time.
+- **About** — the timeline restores the Funecs facts published on `main` (six employees and two interns, two Unity games, Ooredoo T-Start 2014, more than 300,000 unique subscriber numbers in 2016) and names the Ph.D.'s subject. The 300× PowerAPI claim stays excluded.
+- **Contact** — a closing annotation, *The house is built.*, with a second sentence about the carbon tally once the page is enhanced.
+- **Garden** — the workshop also stands for the work at MCQ Scan, in symbols only: a gate with three tokens of decreasing size (AgentDiet) and a clothes rail under a speech bubble (Store Chat). No company visuals.
+
+Chapter form, same decision: a project chapter's heading is its name, set small beside the kind of work ("BP Log · Personal project"); its question has the display size; a **Measured** list gives the figures the linked evidence reports, each with what it counts; the footer gives the chapter's count and its place in the house ("03 / 08 · The heart garden") in place of the phase list. Places: The sketch, The blueprint, The heart garden, The reading pavilion, The observatory, The workshop, The tower, The greenhouse.
 
 Primary action: **Explore my work** → `#work`.
 
@@ -61,7 +74,7 @@ These entries navigate directly to inline homepage chapters. They are not four e
 
 ### BP Log
 
-Label: The heart garden · Personal project.
+Label: Personal project. Place: The heart garden.
 
 Title: **BP Log**.
 
@@ -69,11 +82,13 @@ Subtitle: **Can a photo save some typing?**
 
 Motivation: A blood-pressure reading should be easy to keep. BP Log reads the monitor from a photo, lets the user check the values, and saves them on the phone, offline.
 
-Decision — **Keep the system small**: I combined image-processing rules with a 54 KB neural model in plain JavaScript. The useful next step was fixing recognition failures; a heavier runtime would not solve those.
+Decision — **Keep the system small**: Image-processing rules handle the display’s layout; a small neural network, trained only on generated digits, reads the digits in plain JavaScript. When a photo failed, I fixed that failure. A heavier runtime would not have solved it.
+
+Measured (the repository's README, checked 10 November 2026): **54 KB** — the whole network: 10,123 parameters, no libraries. **40% → 91%** — of 55 real photos read fully, one monitor. **99.5%** — of 187 held-out digits read right.
 
 Transition: Another everyday friction led me to the reading pavilion.
 
-Evidence note: Public code and evaluation. Evaluated on one monitor; users check and confirm the readings.
+Evidence note: Public code, data and evaluation. The 55 photos also guided development, so they are not an independent test. Users check and confirm every reading before it is saved.
 
 Actions: Release 1: Code & evaluation → canonical repository. Release 2 adds Read the story → `/work/bp-log/`.
 

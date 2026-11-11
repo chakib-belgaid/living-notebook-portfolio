@@ -23,6 +23,10 @@
   --header-clearance: 0px;
   --gutter: 1.25rem;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  /* The instrument voice: figures that were measured (a chapter's readings,
+     its place in the count, the carbon tally). A system face, so it costs
+     the visit no bytes. */
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 @media (min-width: 700px) {
   :root { --gutter: 2rem; }
@@ -95,22 +99,49 @@
   color: var(--muted);
 }
 .chapter h1, .chapter h2 { letter-spacing: -0.01em; text-wrap: balance; }
-.chapter h1 { font-size: clamp(2.375rem, 1.7rem + 2.4vw, 4.25rem); line-height: 1.04; font-weight: 450; margin-bottom: 1.1rem; }
+/* The opening claim is a full sentence: sized to set in three lines. */
+.chapter h1 { font-size: clamp(2.1rem, 1.2rem + 3.6vw, 3rem); line-height: 1.06; font-weight: 450; margin-bottom: 1.1rem; }
 .chapter h2 { font-size: clamp(2.125rem, 1.5rem + 2.2vw, 3.25rem); line-height: 1.08; font-weight: 450; margin-bottom: 0.75rem; }
-.chapter-subtitle { font-size: clamp(1.3rem, 1.1rem + 0.6vw, 1.6rem); line-height: 1.25; margin-bottom: 1.1rem; text-wrap: balance; }
+/* A project chapter leads with its question. Its name is the heading, set
+   small on one line with the kind of work; the question has the display size. */
+.chapter-kicker { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.8rem; margin-bottom: 0.7rem; }
+.chapter .chapter-kicker h2 { margin: 0; font-size: 1.3125rem; line-height: 1.3; font-weight: 550; letter-spacing: 0; }
+.chapter-kicker .chapter-label { margin: 0; }
+.chapter-subtitle {
+  margin-bottom: 1rem;
+  font-size: clamp(1.9rem, 1.45rem + 1.5vw, 2.6rem); line-height: 1.1; font-weight: 450; letter-spacing: -0.01em;
+  text-wrap: balance;
+}
 .chapter-motivation, .chapter-decision p, .timeline p { font-size: 1.0625rem; line-height: 1.6; }
 .chapter-intro .chapter-motivation { font-size: 1.125rem; max-width: 34rem; }
 .chapter-annotation {
   margin-block: 0.75rem 0; max-width: 27rem;
   font-size: 0.9375rem; line-height: 1.45; font-style: italic; color: var(--muted);
 }
+/* The tally is an enhancement, so the sentence that points at it is too. */
+:root:not(.enhanced) .tally-cue { display: none; }
+.chapter-contact .chapter-annotation { margin-bottom: 0.9rem; }
 
 .chapter-decision { margin-block: 0.25rem 1.25rem; padding-inline-start: 1rem; border-inline-start: 2px solid var(--accent); }
-.chapter-decision h3, .notebook h3 {
+.chapter-decision h3, .chapter-measured h3, .notebook h3 {
   margin-bottom: 0.4rem;
   font-family: var(--sans); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
 }
 .chapter-decision h3 { color: var(--accent); }
+
+/* Measured: the figures the linked evidence reports, each beside what it
+   counts. The figure leads visually; in the markup the term names it. */
+.chapter-measured { margin-block: 0.25rem 1.1rem; padding-inline-start: 1rem; border-inline-start: 2px solid var(--blueprint); }
+.chapter-measured h3 { color: var(--blueprint); }
+.chapter-measured dl { display: grid; gap: 0.3rem; margin: 0; }
+/* A row while both fit; with enlarged text on a narrow screen the caption
+   drops under its figure instead of pushing the page wider. */
+.chapter-measured dl > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75rem; }
+.chapter-measured dd {
+  order: -1; flex: 0 0 7.25rem; max-width: 100%; margin: 0; white-space: nowrap; unicode-bidi: isolate;
+  font-family: var(--mono); font-size: 1rem; line-height: 1.4; font-variant-numeric: tabular-nums;
+}
+.chapter-measured dt { flex: 1 1 9rem; min-width: 0; font-family: var(--sans); font-size: 0.8125rem; line-height: 1.45; color: var(--muted); }
 
 .chapter-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.25rem; margin-block: 0.5rem 1rem; }
 .action { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.75rem; font-family: var(--sans); font-size: 0.9375rem; }
@@ -152,15 +183,14 @@
 .notebook p { margin-bottom: 0; font-size: 0.9375rem; line-height: 1.5; }
 .notebook a { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2.25rem; font-family: var(--sans); font-size: 0.8125rem; }
 
-/* Footer: the static phase indicator and the next chapter. */
+/* Footer: the chapter's count and its place in the house, then the next one. */
 .chapter-foot {
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.25rem 1rem;
   margin-top: 1.75rem; padding-top: 0.6rem; border-top: 1px solid var(--hairline);
   font-family: var(--sans); font-size: 0.8125rem;
 }
-.phase-indicator { display: flex; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; color: var(--muted); }
-.phase-indicator li + li::before { content: "·"; content: "·" / ""; margin-inline: 0.45rem; }
-.phase-indicator [aria-current] { color: var(--ink); font-weight: 700; }
+.chapter-place { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.65rem; margin: 0; color: var(--muted); }
+.chapter-count { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.04em; color: var(--ink); unicode-bidi: isolate; }
 .chapter-turn {
   flex-basis: 100%; margin: 0.15rem 0 0.45rem;
   font-family: "Newsreader", Georgia, serif; font-size: 1rem; line-height: 1.4;
@@ -236,6 +266,7 @@
     background: var(--scene-bg);
   }
   .chapter-motivation, .chapter-decision p { font-size: 1.125rem; }
+  .chapter h1 { font-size: clamp(2.15rem, 1rem + 2.05vw, 2.9rem); }
 }
 
 /* The reading ruler (src/narrative/ruler.ts; markup in src/render.ts
@@ -275,7 +306,7 @@
 }
 .tally > summary::-webkit-details-marker { display: none; }
 .tally > summary:hover, .tally[open] > summary { background: color-mix(in srgb, var(--paper) 92%, var(--ink)); }
-.tally-figure { font-size: 1.0625rem; font-weight: 600; font-variant-numeric: tabular-nums lining-nums; unicode-bidi: isolate; }
+.tally-figure { font-family: var(--mono); font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums lining-nums; unicode-bidi: isolate; }
 .tally-figure:empty::before { content: "…"; color: var(--muted); }
 .tally-note { font-size: 0.8125rem; font-style: italic; color: var(--muted); }
 .tally-panel {
@@ -418,7 +449,7 @@
   /* Inside the bar the tally wears no slip of its own and sits tighter. */
   .tally > summary { min-height: 2.5rem; padding-block: 0.15rem; background: transparent; backdrop-filter: none; box-shadow: none; }
   .tally > summary:hover, .tally[open] > summary { background: var(--hairline); }
-  .tally-figure { font-size: 0.9375rem; }
+  .tally-figure { font-size: 0.875rem; }
   .tally-note { font-size: 0.75rem; }
   .ruler-motion { width: 2.5rem; height: 2.5rem; }
   .garden > summary { width: 2.5rem; height: 2.5rem; background: none; backdrop-filter: none; box-shadow: none; }

@@ -91,11 +91,18 @@ export interface Chapter {
   id: ChapterId;
   /** Short destination name for next links and the footer ("The work"). */
   short: string;
+  /** The role line (opening) or the kind of work, beside a project's name. */
   label?: string;
+  /** The heading. A project chapter's is its name, set small; its question
+   * (`subtitle`) carries the visual weight. */
   title: string;
   subtitle?: string;
   /** A quiet invitation into the sketchbook, after the opening actions. */
   annotation?: string;
+  /** Where in the house this chapter stands; the footer names it. */
+  place: string;
+  /** Figures the linked evidence reports, each with what it counts. */
+  measured?: { figure: string; of: string }[];
   /** Connects this chapter's decision to the next part of the story. */
   turn?: string;
   /** Motivation, or the context for professional work. */
