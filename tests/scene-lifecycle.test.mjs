@@ -277,6 +277,9 @@ for (const [path, poster, progress] of [['/#contact', 'bloom', 1], ['/?lang=fr#w
   test(`deep link ${path}: the first paint shows the ${poster} poster and the scene never draws the sketch`, async () => {
     const p = await open(path);
     try {
+      // The probe records the poster at the first frame that has the rail; on
+      // a loaded machine the page can be enhanced before that frame runs.
+      await p.waitForFunction(() => window.__probe.firstRailPoster !== null);
       const first = (await probe(p)).firstRailPoster;
       assert.match(first, new RegExp(`${poster}\\.webp$`), `first painted rail poster: ${first}`);
       await live(p);
