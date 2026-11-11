@@ -66,7 +66,7 @@ The supplied review boards are references for hierarchy and intent. They are not
 - [ ] F14 The renderer enhances reserved geometry without changing text layout; posters do not collapse or expand when WebGL becomes ready.
 - [ ] F15 Exactly one live house renderer is used. Changing chapters does not repeatedly build/dispose the entire garden or create many WebGL contexts.
 - [ ] F16 Direct deep links initialize the correct pose/poster; no visible Sketch flash before the requested chapter.
-- [ ] F17 Hidden tab, offscreen host, stills mode and guided reading holds stop recurring scene/sky draws after settling.
+- [ ] F17 Hidden tab, offscreen host and stills mode stop recurring scene/sky draws after settling. Guided reading keeps the garden's and the sky's ambient life, drawn at no more than 30 frames a second once a chapter has settled; transitions and exploring draw at the display's rate (amended 11 November 2026, see section 4).
 - [ ] F18 Returning from hidden state restarts the clock without a large movement jump. Rapid scroll applies the latest state rather than replaying a queue.
 - [ ] F19 Context loss shows the correct still, retains content/navigation and restores the latest scene safely when possible.
 - [ ] F20 Resize, mobile URL-bar changes, orientation, font completion and locale changes preserve the selected content and usable scroll/focus.
@@ -158,9 +158,12 @@ Project-specific initial engineering targets below are proposed budgets for P0/P
 | Core first-view transfer before optional scene work | Aim <=350 KB reported bytes | Document exactly what is included; phase images/fonts must not be double counted. |
 | Seven-second default mobile startup transfer | Aim <=650 KB under the baseline profile | Prevent a large regression while improving stability; full-journey transfer reported separately. |
 | Phase still | <=100 KB each; current + at most one anticipated image eagerly fetched | New eight-chapter/day-night set may exceed old six-image totals; do not preload the whole set. |
-| Guided reading hold, hidden/offscreen scene | 0 recurring house/sky frames after settling | Compare actual draw counters, not only requestAnimationFrame probes. One-off invalidations are allowed. |
+| Hidden/offscreen scene | 0 recurring house/sky frames after settling | Compare actual draw counters, not only requestAnimationFrame probes. One-off invalidations are allowed. |
+| Guided reading, once a chapter has settled | Ambient life at no more than 30 house frames and 30 sky frames a second | Amended from 0 on 11 November 2026 (see the note below the table). `READING_FRAME_RATE` in `src/narrative/model.ts`; checked by the "reading draws ambient life" case in `tests/scene-lifecycle.test.mjs`, which only proves the value on a display of 50 Hz or more. |
 | Motion quality | Aim 60 fps on reference desktop, stable 30 fps on selected light mobile tier | Report p95 frame intervals/dropped frames and actual device; averages alone are insufficient. |
 | Explicit navigation response | Heading/focus/URL promptly established, optional short settle only | No old three-second flight. Measure interaction response separately from animation duration. |
+
+**Reading target, amended 11 November 2026.** The user chose to keep ambient life running while a chapter is read (commit `36486bc`), so the original target of 0 recurring frames no longer describes the product. Measured reason, headless Chrome 157 on ANGLE Metal (Apple M5), 5 s settled at 1440×900, one run each: uncapped, the garden and the sky drew 300 frames each, costing 396 ms of garden CPU and 1,011 ms of GPU time at Whisperbook and 866 ms and 1,195 ms at Contact, where the 3 November build drew 0. Capped at 30 a second they draw 150 each: 83 ms CPU and 564 ms GPU at Whisperbook, 135 ms and 804 ms at Contact. On the emulated phone the garden already drew 30 a second in the light build; the cap halves the sky's frames from 300 to 150. User-visible consequence: water, leaves, animals and stars move at 30 frames a second while reading instead of the display's rate; transitions, the visitor's gestures, a tree growing in, a fennec's visit and exploring are unchanged. Raw outputs: `.qa/p8-perf/measure-{base64d,current,cap30}-chrome-reading.json` (git-ignored).
 
 Do not buy performance by removing the central 3D experience from capable mobile devices. First remove avoidable work, prioritize loading, control rendering while reading, and tune the existing quality tiers. Keep a faithful still narrative for unavailable rendering or user preference.
 

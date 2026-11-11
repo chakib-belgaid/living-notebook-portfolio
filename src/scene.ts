@@ -26,6 +26,12 @@ export interface Garden {
       and the pencil draw-in still draw. Independent of setMotion (the
       visitor's pause) and of setProgress's `immediate`. On by default. */
   setAmbient: (on: boolean) => void;
+  /** Caps the frames drawn for ambient life alone, in frames a second; null
+      lifts the cap. A garden with nothing on its way to a goal and nothing
+      newly changed draws no faster than this. Transitions, the visitor's own
+      gestures, a tree growing in and a fennec's visit draw at the display's
+      rate whatever the cap. */
+  setFrameCap: (fps: number | null) => void;
   /** Jumps the build and the camera pose (progress, rotation, focus, shift,
       room, frame, zoom, pan) to their current goals; the next frame draws the
       destination once. Unlike setProgress(p, true) it sets no reduced-motion
@@ -3716,6 +3722,8 @@ async function buildGarden(
     reduced = false,
     // Ambient life (see setAmbient); off during a guided reading hold.
     ambient = true,
+    // Frames a second for ambient life alone (see setFrameCap); 0 is no cap.
+    ambientCap = 0,
     // True from a change of goals or a snap until the garden has settled.
     settling = false,
     visible = true,
@@ -4057,8 +4065,11 @@ async function buildGarden(
       last = -1;
       return;
     }
-    // Light drawing keeps to 30 frames a second.
-    if (light && last >= 0 && now - last < 1000 / 30 - 4) {
+    const changed = moving();
+    // Light drawing keeps to 30 frames a second, and ambient life on its own
+    // (nothing moving to a goal, nothing newly changed) to its cap.
+    const rate = light ? 30 : ambientCap && !changed && !dirty && drawIn >= 1 ? ambientCap : 0;
+    if (rate && last >= 0 && now - last < 1000 / rate - 4) {
       wake();
       return;
     }
@@ -4069,7 +4080,6 @@ async function buildGarden(
       drawIn = reduced || paused ? 1 : Math.min(1, drawIn + dt / 3.2);
       dirty = true;
     }
-    const changed = moving();
     // Settling is reported once, from the first frame with nothing left to move.
     if (changed || drawIn < 1) settling = true;
     else if (settling) {
@@ -4482,6 +4492,9 @@ async function buildGarden(
       // Off stops the clocks and draws nothing new: a running loop sleeps at
       // its next frame, so a hold settles without one more draw. On wakes it.
       if (on) invalidate();
+    },
+    setFrameCap(fps) {
+      ambientCap = fps && fps > 0 ? fps : 0;
     },
     snap() {
       progress = targetProgress;

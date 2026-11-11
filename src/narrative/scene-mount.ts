@@ -56,7 +56,7 @@ import type { Sky } from "../sky";
 import type { Soundscape } from "../soundscape";
 import { chapter as chapterContent } from "./content";
 import type { ChangeCause, NarrativeController } from "./controller";
-import { chapterIds, exploreSpots, posterSrc, resolveFragment, WIDE_LAYOUT_QUERY, type ChapterId, type MotionPreference, type RendererLifecycle } from "./model";
+import { chapterIds, exploreSpots, posterSrc, READING_FRAME_RATE, resolveFragment, WIDE_LAYOUT_QUERY, type ChapterId, type MotionPreference, type RendererLifecycle } from "./model";
 import {
   COMPACT_QUERY, LIVE_KEY, PAUSE_KEY, QUALITY_KEY, REDUCED_MOTION_QUERY,
   detailFor, liveByDefault, motionPreference, qualityChoice, qualityFor, read, saveDataOn, viewMode, write,
@@ -397,6 +397,12 @@ export function createSceneMount(controller: NarrativeController) {
     skyStill = still;
     sky.setMotion(still);
   }
+  /** Ambient life alone draws at the reading rate; exploring lifts the cap. */
+  function syncFrameCap() {
+    const cap = exploring ? null : READING_FRAME_RATE;
+    garden?.setFrameCap(cap);
+    sky?.setFrameCap(cap);
+  }
   function pose(id: ChapterId, how: "ease" | "snap") {
     const changed = id !== state.chapter;
     state.chapter = id;
@@ -646,6 +652,7 @@ export function createSceneMount(controller: NarrativeController) {
       garden.setTheme(true);
       sky = createSky(back, front);
       sky.refresh(true);
+      syncFrameCap();
       applyAtmosphere();
       // The trees and the turn of the garden this one replaces.
       if (kept?.trees.length) garden.restore(kept);
@@ -823,6 +830,7 @@ export function createSceneMount(controller: NarrativeController) {
     const view = old.snapshot();
     garden = built;
     builtDetail = detail;
+    syncFrameCap();
     built.setTheme(true);
     applyAtmosphere();
     if (tallyGrams !== null) built.setTally(tallyGrams);
@@ -877,6 +885,7 @@ export function createSceneMount(controller: NarrativeController) {
   function beginExplore(host: HTMLElement | null) {
     if (!stage || !adapter || !garden) return;
     exploring = true;
+    syncFrameCap();
     exploreFrom = { y: scrollY, chapter: state.chapter };
     root.dataset.explore = "true";
     stage.removeAttribute("aria-hidden");
@@ -893,6 +902,7 @@ export function createSceneMount(controller: NarrativeController) {
   function endExplore(reason: ExitReason) {
     if (!exploring) return;
     exploring = false;
+    syncFrameCap();
     delete root.dataset.explore;
     stage?.setAttribute("aria-hidden", "true");
     rail.setAttribute("aria-hidden", "true");

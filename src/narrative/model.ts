@@ -163,6 +163,12 @@ export interface ReadingState {
   sound: boolean;
 }
 
+/** Frames a second the garden and the sky draw for their ambient life while
+ * a chapter is being read (src/narrative/scene-mount.ts). Transitions and
+ * exploring draw at the display's rate. The user's decision of 11 November
+ * 2026, on the measured cost of drawing 60 a second through every reading. */
+export const READING_FRAME_RATE = 30;
+
 /** How many trees the visitor may plant in the garden (src/scene.ts
  * `plant`; the panel in src/narrative/garden-panel.ts). */
 export const MAX_TREES = 24;

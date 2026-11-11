@@ -305,6 +305,46 @@ test('desktop keeps animating after a deep link and a settled transition to Cont
   } finally { await close(p); }
 });
 
+test('reading draws ambient life at 30 frames a second at most; exploring draws at the display rate', async t => {
+  const p = await open('/#contact');
+  try {
+    await settledOn(p, 'contact');
+    /** Garden, sky and display frames per second over `ms`. */
+    const rate = async ms => {
+      const read = () => p.evaluate(() => ({ s: window.__notebookStats(), tick: window.__probe.tick, t: performance.now() }));
+      const a = await read();
+      await p.waitForTimeout(ms);
+      const b = await read();
+      const seconds = (b.t - a.t) / 1000;
+      const per = n => Math.round((n / seconds) * 10) / 10;
+      return { garden: per(b.s.garden.frames - a.s.garden.frames), sky: per(b.s.sky.frames - a.s.sky.frames), display: per(b.tick - a.tick) };
+    };
+    const reading = await rate(4000);
+    t.diagnostic(`reading at Contact: ${JSON.stringify(reading)}`);
+    assert.ok(reading.garden > 0 && reading.sky > 0, `ambient life goes on while reading: ${JSON.stringify(reading)}`);
+    assert.ok(reading.garden <= 33 && reading.sky <= 33, `no more than 30 frames a second while reading: ${JSON.stringify(reading)}`);
+    await p.locator('.garden > summary').click();
+    await p.locator('[data-explore]').click();
+    await p.waitForFunction(() => document.documentElement.dataset.explore === 'true');
+    await p.waitForTimeout(1500);
+    const exploring = await rate(3000);
+    t.diagnostic(`exploring: ${JSON.stringify(exploring)}`);
+    // A software renderer draws below 30 frames a second whatever is asked of
+    // it; only a display fast enough can show the cap's value and its lifting.
+    if (reading.display >= 50) {
+      assert.ok(reading.garden >= 25 && reading.sky >= 25, `the cap is 30, not lower: ${JSON.stringify(reading)}`);
+      assert.ok(exploring.garden >= 45, `exploring is not capped: ${JSON.stringify(exploring)}`);
+    }
+    await p.locator('[data-explore-exit]').click();
+    await p.waitForFunction(() => document.documentElement.dataset.explore !== 'true');
+    await settledOn(p, 'contact');
+    const back = await rate(3000);
+    t.diagnostic(`reading again: ${JSON.stringify(back)}`);
+    assert.ok(back.garden > 0 && back.garden <= 33 && back.sky <= 33, `the cap returns with the reading: ${JSON.stringify(back)}`);
+    assert.deepEqual(p.errors, []);
+  } finally { await close(p); }
+});
+
 test('phone keeps animating after the transition to Whisperbook settles', async t => {
   const p = await open('/#bplog', { options: phoneOptions });
   try {

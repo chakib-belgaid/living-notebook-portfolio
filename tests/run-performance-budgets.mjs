@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 // against a production preview (TEST_URL). No limit is relaxed to accommodate
 // a software renderer. Two parts, and the run fails if either fails:
 //   1. Animation lifecycle checks (tests/scene-lifecycle.test.mjs), selected by name:
-//      continuous visible animation, the hidden tab, the still preferences and
-//      pause. A pattern that selects nothing fails the run instead of passing
-//      with zero tests.
+//      continuous visible animation, the 30 frames a second it keeps to while
+//      reading, the hidden tab, the still preferences and pause. A pattern
+//      that selects nothing fails the run instead of passing with zero tests.
 //   2. The exploration budgets (tests/performance.mjs with
 //      PERFORMANCE_BUDGETS=1): place labels answer hover, focus and Tab within
 //      100 ms in normal and reduced motion; more than 20 garden frames per
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 //      animation over 3 s of reading after exploring ends. Its report, with the
 //      browser and WebGL renderer it ran on, is in .qa/performance/report.json.
 const env = { ...process.env, PERFORMANCE_BUDGETS: '1' };
-const pattern = 'keeps animating|hidden tab|loads no scene|independent of sound';
+const pattern = 'keeps animating|reading draws ambient|hidden tab|loads no scene|independent of sound';
 const holds = spawnSync(process.execPath, [
   '--test', '--test-concurrency=1', '--test-timeout=240000',
   `--test-name-pattern=${pattern}`,
