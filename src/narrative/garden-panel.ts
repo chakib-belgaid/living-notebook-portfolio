@@ -125,10 +125,9 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
     if (asked !== generation) return;
     live = weather;
     place = from;
-    if (weatherMode === "live") {
-      applyWeather();
-      applySeason();
-    }
+    if (weatherMode === "live") applyWeather();
+    // The place decides the hemisphere, so "Now" may change with it.
+    if (weatherMode === "live" || seasonMode === "now") applySeason();
     showNote();
   }
   /** One lookup of the time zone's place (or the position already granted)
@@ -168,7 +167,10 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
     weatherMode = mode;
     releaseNote();
     if (mode === "live" && !live) void startWeather();
-    else applyWeather();
+    else {
+      applyWeather();
+      if (mode === "live") applySeason();
+    }
   };
   weatherChips.forEach(b => b.addEventListener("click", onWeatherClick));
   const onLocate = async () => {

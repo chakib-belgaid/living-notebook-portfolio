@@ -148,3 +148,26 @@ test('at Contact, the closing invitation turns sound on, explores, and takes foc
     assert.equal(await p.evaluate(() => document.documentElement.dataset.sound), 'true');
   } finally { await p.context().close(); }
 });
+
+test('season "Now" follows the hemisphere of a place that arrives after it was chosen', async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const p = await setupPage(browser, { viewport: { width: 1440, height: 900 }, timezoneId: 'Australia/Sydney' }, async page => {
+    // Held until "Now" is chosen, so the place arrives afterwards.
+    await page.route('**/geocoding-api.open-meteo.com/**', async r => { await gate; await r.fulfill({ json: { results: [{ name: 'Sydney', latitude: -33.87, longitude: 151.21 }] } }); });
+    await page.goto(`${base}/#intro`);
+    await page.waitForFunction(() => document.documentElement.dataset.renderer === 'ready' && window.__notebookScene.state().live, null, { timeout: 60000 });
+  });
+  try {
+    await p.locator('.garden > summary').click();
+    await p.locator('.garden-panel [data-season="now"]').click();
+    const north = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'];
+    const flip = { spring: 'autumn', summer: 'winter', autumn: 'spring', winter: 'summer' };
+    const month = await p.evaluate(() => new Date().getMonth());
+    assert.equal(await p.evaluate(() => document.documentElement.dataset.season), north[month]);
+    release();
+    await p.locator('[data-sky-note]').waitFor({ state: 'visible' });
+    await p.waitForFunction(season => document.documentElement.dataset.season === season, flip[north[month]]);
+    assert.match(await p.locator('[data-season-report]').textContent(), / in Sydney\.$/);
+  } finally { await p.context().close(); }
+});
