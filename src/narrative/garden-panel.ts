@@ -8,14 +8,21 @@
  * - Tend the garden: plant a tree on the front terrace or by clicking a
  *   terrace, turn the garden, and choose the drawing quality.
  * The scene mount keeps the state (src/narrative/scene-mount.ts
- * `GardenScene`), so this module only reads and writes it. Nothing is
- * fetched and no permission is asked until the visitor presses Live or
- * Use my exact location. */
+ * `GardenScene`), so this module only reads and writes it.
+ *
+ * The sky note beside the panel's button (markup in src/render.ts
+ * `skyNote()`) is the hint that the sky can change: once the page is
+ * enhanced it looks up the current weather from Open-Meteo for the place the
+ * time zone names (or the device position, only if already granted; never
+ * under data saver), and shows the temperature there. Pressing it brings
+ * that hour, weather and season to the garden; pressing again returns to
+ * what was shown before. Without weather it offers the visitor's own hour.
+ * No permission is asked until the visitor presses Use my exact location. */
 import { getLocale, onLocaleChange } from "../i18n";
 import type { Season } from "../scene";
 import { MAX_TREES } from "./model";
 import { currentWeather, placeFromDevice, placeFromTimeZone, presets, type Place, type Weather, type WeatherKind } from "../weather";
-import type { QualityChoice } from "./preferences";
+import { saveDataOn, type QualityChoice } from "./preferences";
 import type { GardenScene } from "./scene-mount";
 
 export interface GardenPanel {
@@ -86,8 +93,9 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
     showHour(h);
     scene.setHour(h);
   }
-  const onHourInput = () => setHour(Number(hourInput.value));
+  const onHourInput = () => { releaseNote(); setHour(Number(hourInput.value)); };
   const onHourNow = () => {
+    releaseNote();
     setHour(clockHour());
     announce(`Light set to ${formatHour(clockHour())}.`);
   };
@@ -109,45 +117,69 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
     clearInterval(refresh);
     if (weatherMode === "live" && place) refresh = window.setInterval(() => { if (place && !root.hidden) loadWeather(place).catch(() => {}); }, REFRESH_MS);
   }
-  async function loadWeather(from: Place) {
-    live = await currentWeather(from);
+  /** Raised when the visitor chooses a place: a lookup started before then
+   * (the automatic one, or a refresh of the old place) is discarded. */
+  let generation = 0;
+  async function loadWeather(from: Place, asked = generation) {
+    const weather = await currentWeather(from);
+    if (asked !== generation) return;
+    live = weather;
     place = from;
-    applyWeather();
-    applySeason();
+    if (weatherMode === "live") applyWeather();
+    // The place decides the hemisphere, so "Now" may change with it.
+    if (weatherMode === "live" || seasonMode === "now") applySeason();
+    showNote();
+  }
+  /** One lookup of the time zone's place (or the position already granted)
+   * and its weather, shared by the sky note and the Live chip. "no-city":
+   * the time zone names none; "failed": the network or the service. A failed
+   * lookup is forgotten, so Live tries again. */
+  let lookup: Promise<"ok" | "no-city" | "failed"> | null = null;
+  function lookUp() {
+    return lookup ??= (async () => {
+      const asked = generation;
+      try {
+        let granted = false;
+        try {
+          granted = (await navigator.permissions?.query({ name: "geolocation" }))?.state === "granted";
+        } catch { /* Permissions API unavailable. */ }
+        const from = granted ? await placeFromDevice() : await placeFromTimeZone();
+        if (!from) return "no-city" as const;
+        await loadWeather(from, asked);
+        return "ok" as const;
+      } catch {
+        lookup = null;
+        return "failed" as const;
+      }
+    })();
   }
   async function startWeather() {
     write(skyReport, "Looking up the weather");
-    try {
-      let granted = false;
-      try {
-        granted = (await navigator.permissions?.query({ name: "geolocation" }))?.state === "granted";
-      } catch { /* Permissions API unavailable. */ }
-      const from = granted ? await placeFromDevice() : await placeFromTimeZone();
-      if (weatherMode !== "live") return;
-      if (!from) {
-        write(skyReport, "Your time zone doesn’t name a city. Use your exact location for live weather.");
-        applyWeather();
-        return;
-      }
-      await loadWeather(from);
-    } catch {
-      if (weatherMode !== "live") return;
-      write(skyReport, "Live weather isn’t available right now.");
-      applyWeather();
-    }
+    const result = await lookUp();
+    if (weatherMode !== "live") return;
+    if (result === "no-city") write(skyReport, "Your time zone doesn’t name a city. Use your exact location for live weather.");
+    else if (result === "failed") write(skyReport, "Live weather isn’t available right now.");
+    applyWeather();
+    applySeason();
   }
   const onWeatherClick = (event: Event) => {
     const mode = (event.currentTarget as HTMLButtonElement).dataset.weather as "live" | WeatherKind;
     weatherMode = mode;
+    releaseNote();
     if (mode === "live" && !live) void startWeather();
-    else applyWeather();
+    else {
+      applyWeather();
+      if (mode === "live") applySeason();
+    }
   };
   weatherChips.forEach(b => b.addEventListener("click", onWeatherClick));
   const onLocate = async () => {
     write(skyReport, "Finding your location");
+    releaseNote();
     try {
       weatherMode = "live";
-      await loadWeather(await placeFromDevice());
+      const from = await placeFromDevice();
+      await loadWeather(from, ++generation);
     } catch {
       write(skyReport, place ? `Location wasn’t shared. Showing ${place.name}.` : "Location wasn’t shared.");
       applyWeather();
@@ -172,11 +204,77 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
     write(seasonReport, seasonMode !== "now" ? `Previewing ${s}.` : place ? `${name} in ${place.name}.` : `${name}.`);
   }
   const onSeasonClick = (event: Event) => {
+    releaseNote();
     seasonMode = (event.currentTarget as HTMLButtonElement).dataset.season as typeof seasonMode;
     applySeason();
   };
   seasonChips.forEach(b => b.addEventListener("click", onSeasonClick));
   press(seasonChips, "season", seasonMode);
+
+  /* ---------- The sky note: the visitor's sky, one press away ---------- */
+  const note = root.querySelector<HTMLButtonElement>("[data-sky-note]");
+  const noteFigure = note?.querySelector<HTMLElement>("[data-sky-note-figure]") ?? null;
+  const noteCaption = note?.querySelector<HTMLElement>("[data-sky-note-caption]") ?? null;
+  /** The panel's settings before the note was pressed, restored by a second press. */
+  let beforeNote: { hour: number; weather: "live" | WeatherKind; season: "now" | Season } | null = null;
+  /** Weather was looked up (or will not be): the note can be shown. */
+  let noteReady = false;
+  function showNote() {
+    if (!note) return;
+    noteReady = true;
+    if (live && place) {
+      write(noteFigure, `${Math.round(live.temperature ?? 0)}°C`);
+      write(noteCaption, `${place.name} now`);
+      note.setAttribute("aria-label", `Show the sky in ${place.name} now: ${live.label}, ${Math.round(live.temperature ?? 0)}°C`);
+    } else {
+      write(noteFigure, formatHour(clockHour()));
+      write(noteCaption, "your time");
+      note.setAttribute("aria-label", `Show the garden at your time: ${formatHour(clockHour())}`);
+    }
+    note.title = "Bring this sky to the garden";
+    syncNote();
+  }
+  function syncNote() {
+    if (!note) return;
+    note.hidden = !noteReady || !scene.live();
+    note.setAttribute("aria-pressed", String(!!beforeNote));
+  }
+  /** The visitor set the sky in the panel: the note no longer shows it. */
+  function releaseNote() {
+    if (!beforeNote) return;
+    beforeNote = null;
+    syncNote();
+  }
+  const onNote = () => {
+    if (beforeNote) {
+      const back = beforeNote;
+      beforeNote = null;
+      weatherMode = back.weather;
+      seasonMode = back.season;
+      setHour(back.hour);
+      applyWeather();
+      applySeason();
+      announce(`Back to ${formatHour(back.hour)} in the garden.`);
+    } else {
+      beforeNote = { hour: Number(hourInput.value), weather: weatherMode, season: seasonMode };
+      setHour(clockHour());
+      if (live && place) {
+        weatherMode = "live";
+        seasonMode = "now";
+        applyWeather();
+        applySeason();
+        announce(`The garden shows ${place.name} now: ${live.label}, ${Math.round(live.temperature ?? 0)}°C.`);
+      } else announce(`Light set to ${formatHour(clockHour())}.`);
+    }
+    syncNote();
+  };
+  note?.addEventListener("click", onNote);
+  // Every visitor's page asks once, except under data saver; a failure, or
+  // a time zone without a city, leaves the note offering the hour alone.
+  if (note) {
+    if (saveDataOn()) showNote();
+    else void lookUp().then(() => showNote());
+  }
 
   /* ---------- Planting and turning ---------- */
   let plantingOn = false;
@@ -242,6 +340,7 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
     turn.disabled = !live;
     if (exploreButton) exploreButton.disabled = failed() || scene.exploring();
     if (!live && plantingOn) setPlanting(false);
+    syncNote();
   }
   const offState = scene.onState(sync);
   sync();
@@ -260,7 +359,7 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
   };
   root.addEventListener("keydown", onKey);
   root.addEventListener("pointerdown", onOutside, true);
-  const offLocale = onLocaleChange(() => showHour(Number(hourInput.value)));
+  const offLocale = onLocaleChange(() => { showHour(Number(hourInput.value)); if (noteReady) showNote(); });
 
   return {
     destroy() {
@@ -274,6 +373,7 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
       plantOne.removeEventListener("click", onPlantOne);
       turn.removeEventListener("click", onTurn);
       exploreButton?.removeEventListener("click", onExplore);
+      note?.removeEventListener("click", onNote);
       root.removeEventListener("keydown", onKey);
       root.removeEventListener("pointerdown", onOutside, true);
       clearInterval(refresh);
