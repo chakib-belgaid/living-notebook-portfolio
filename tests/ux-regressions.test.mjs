@@ -2,7 +2,7 @@
 // request-intercepted production files when a sandbox cannot bind a port.
 import { test, before, after } from 'node:test';
 import { chromium } from 'playwright';
-import { setupPage } from './browser-fixture.mjs';
+import { routeWeather, setupPage } from './browser-fixture.mjs';
 import { assertHeader, assertLanding, assertMobilePriorities, assertRuler, assertSceneIsolation } from './ux-regressions.mjs';
 const base = process.env.TEST_URL || 'http://127.0.0.1:5199';
 let browser;
@@ -45,6 +45,7 @@ for (const locale of ['en', 'fr']) {
 for (const portrait of [false, true]) {
   test(`${portrait ? 'portrait' : 'wide'} capture excludes overlapping UI while preserving the stage`, async () => {
     const p = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await routeWeather(p);
     try { await assertSceneIsolation(p, portrait); } finally { await p.close(); }
   });
 }

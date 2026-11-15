@@ -127,6 +127,7 @@ function ruler() {
           <div class="ruler-ticks" aria-hidden="true">${dots}</div>
         </div>
         ${tally()}
+        ${skyNote()}
         ${gardenPanel()}
         <button type="button" class="ruler-motion ruler-sound" data-scene-remote="sound" aria-pressed="false" aria-label="Sound" title="Sound">${speaker}</button>
         <button type="button" class="ruler-motion" data-scene-remote="pause" aria-pressed="false" aria-label="Pause motion" title="Pause motion">${pause}</button>
@@ -147,6 +148,21 @@ function exploreBar() {
       <p class="explore-help" id="explore-help" data-explore-help>Drag to turn, scroll or pinch to zoom, two fingers to move. <span class="explore-keys">Arrow keys turn and zoom, Shift and an arrow moves. Escape returns to reading.</span></p>
       <div class="explore-actions">${button("data-explore-exit", "Back to reading")}${button("data-explore-reset", "Reset view")}${button('data-explore-turn="left"', "Turn left")}${button('data-explore-turn="right"', "Turn right")}${button('data-explore-zoom="in"', "Zoom in")}${button('data-explore-zoom="out"', "Zoom out")}<span class="explore-pad" role="group" aria-label="Move the garden">${move("left", "Move left", "←")}${move("up", "Move up", "↑")}${move("down", "Move down", "↓")}${move("right", "Move right", "→")}</span></div>
     </div>`;
+}
+
+/** The sky note (src/narrative/garden-panel.ts): the temperature where the
+ * visitor is, beside the garden panel's button. Hidden and empty here: the
+ * module fills it once the weather is known. */
+function skyNote() {
+  return `<button type="button" class="sky-note" data-sky-note aria-pressed="false" hidden><span class="sky-note-figure" data-sky-note-figure dir="ltr"></span><span class="sky-note-caption" data-sky-note-caption></span></button>`;
+}
+
+/** The closing invitation (src/narrative/garden-invite.ts): after the
+ * contact actions, sound and exploring are offered once the story is read.
+ * Hidden without JavaScript, where neither exists. */
+function gardenInvite() {
+  const speaker = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path d="M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>`;
+  return `<p class="garden-invite" data-garden-invite hidden><button type="button" class="garden-invite-button">${speaker}<span data-garden-invite-label>Turn the sound on and walk around the garden</span></button></p>`;
 }
 
 /** The garden panel (src/narrative/garden-panel.ts): the previous page's
@@ -266,6 +282,7 @@ function renderChapter(c: Chapter) {
     ...paragraphs.slice(0, split).map(para),
     c.id === "intro" || c.id === "contact" ? actions(c.actions) : "",
     annotation(c),
+    c.id === "contact" ? gardenInvite() : "",
     c.id === "work" ? workIndex() : "",
   ].join("");
   let body = paragraphs.slice(split).map(para).join("");
