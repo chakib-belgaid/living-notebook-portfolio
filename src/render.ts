@@ -214,9 +214,9 @@ function chapterFoot(c: Chapter) {
   const link = next
     ? `<a class="next-link" href="#${next}">${e(chapter(next).short)}<span class="action-icon" aria-hidden="true">↓</span></a>`
     : `<a class="next-link" href="#intro">Back to the top<span class="action-icon" aria-hidden="true">↑</span></a>`;
-  // "03 / 08" and the place in the house: the footer says where the reader stands.
+  // "03 / 08": how far along the reader is. The place is named above the heading.
   const count = `${String(chapterOrder(c.id) + 1).padStart(2, "0")} / ${String(chapters.length).padStart(2, "0")}`;
-  return `<footer class="chapter-foot">${c.turn ? `<p class="chapter-turn">${e(c.turn)}</p>` : ""}<p class="chapter-place"><span class="chapter-count" data-no-translate>${count}</span><span>${e(c.place)}</span></p>${link}</footer>`;
+  return `<footer class="chapter-foot">${c.turn ? `<p class="chapter-turn">${e(c.turn)}</p>` : ""}<p class="chapter-count" data-no-translate>${count}</p>${link}</footer>`;
 }
 
 function workIndex() {
@@ -234,6 +234,14 @@ function aboutExtras() {
   };
 }
 
+/** The italic note under the opening and closing actions. The sentence about
+ * the carbon tally is an enhancement; alone (the opening) the whole note is. */
+function annotation(c: Chapter) {
+  const cue = c.id === "intro" ? identity.tallyCue : c.id === "contact" ? identity.tallyClose : "";
+  if (!c.annotation) return cue ? `<p class="chapter-annotation tally-cue">${e(cue)}</p>` : "";
+  return `<p class="chapter-annotation">${e(c.annotation)}${cue ? ` <span class="tally-cue">${e(cue)}</span>` : ""}</p>`;
+}
+
 /** Which motivation paragraphs precede the scene slot on narrow screens. */
 const leadParagraphs: Partial<Record<ChapterId, number>> = { about: 1 };
 
@@ -241,11 +249,14 @@ function renderChapter(c: Chapter) {
   // A project chapter leads with its question: the name is the heading, set
   // small beside the kind of work, and the question takes the display size.
   const label = c.label ? `<p class="chapter-label">${e(c.label)}</p>` : "";
+  // The place in the house, named above the plain heading: the metaphor reads
+  // without being explained, and a skimming reader can ignore it.
+  const place = `<p class="chapter-label chapter-place-label">${e(c.place)}</p>`;
   const heading = c.id === "intro"
-    ? `${label}<h1 id="intro-title" tabindex="-1">${e(c.title)}</h1>`
+    ? `${place}${label}<h1 id="intro-title" tabindex="-1">${e(c.title)}</h1>`
     : c.subtitle
-      ? `<div class="chapter-kicker"><h2 id="${c.id}-title" tabindex="-1">${e(c.title)}</h2>${label}</div>`
-      : `${label}<h2 id="${c.id}-title" tabindex="-1">${e(c.title)}</h2>`;
+      ? `${place}<div class="chapter-kicker"><h2 id="${c.id}-title" tabindex="-1">${e(c.title)}</h2>${label}</div>`
+      : `${place}${label}<h2 id="${c.id}-title" tabindex="-1">${e(c.title)}</h2>`;
   const paragraphs = c.motivation ?? [];
   const split = leadParagraphs[c.id] ?? paragraphs.length;
   const para = (text: string) => `<p class="chapter-motivation">${e(text)}</p>`;
@@ -254,7 +265,7 @@ function renderChapter(c: Chapter) {
     c.subtitle ? `<p class="chapter-subtitle">${e(c.subtitle)}</p>` : "",
     ...paragraphs.slice(0, split).map(para),
     c.id === "intro" || c.id === "contact" ? actions(c.actions) : "",
-    c.annotation ? `<p class="chapter-annotation">${e(c.annotation)}${c.id === "intro" || c.id === "contact" ? ` <span class="tally-cue">${e(c.id === "intro" ? identity.tallyCue : identity.tallyClose)}</span>` : ""}</p>` : "",
+    annotation(c),
     c.id === "work" ? workIndex() : "",
   ].join("");
   let body = paragraphs.slice(split).map(para).join("");

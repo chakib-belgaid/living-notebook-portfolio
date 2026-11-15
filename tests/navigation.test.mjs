@@ -68,7 +68,7 @@ for (const [label, viewport] of [['desktop', desktop], ['phone', phone]]) {
       assert.equal(await hash(p), '#whisperbook');
       assert.equal(await historyLength(p), start + 2);
       assert.equal(await focusedId(p), 'whisperbook-title');
-      const clear = await clearOfHeader(p, '#whisperbook .chapter-label');
+      const clear = await clearOfHeader(p, '#whisperbook .chapter-place-label');
       assert.ok(clear.ok, JSON.stringify(clear));
 
       await p.locator('#whisperbook .next-link').click();
@@ -156,9 +156,9 @@ test('Back and Forward restore the entries without pushing', async () => {
 for (const javaScriptEnabled of [true, false]) {
   test(`legacy and canonical fragments land on their chapters (${javaScriptEnabled ? 'JS' : 'no JS'})`, async () => {
     const cases = [
-      ['#wattch', '#energy-tools .chapter-label', 'energy-tools'],
+      ['#wattch', '#energy-tools .chapter-place-label', 'energy-tools'],
       ['#workshop', '#workshop-title', 'about'],
-      ['#mcq-scan', '#mcq-scan .chapter-label', 'mcq-scan'],
+      ['#mcq-scan', '#mcq-scan .chapter-place-label', 'mcq-scan'],
       ['#contact', '#contact-title', 'contact'],
       ['#intro', 'h1', 'intro'],
     ];
@@ -314,7 +314,7 @@ test('Return without sessionStorage falls back to the chapter anchor', async () 
     assert.equal(await p.evaluate(() => { try { sessionStorage; return 'available'; } catch { return 'blocked'; } }), 'blocked');
     await caseRoundTrip(p, { viewport: desktop, expectCase: '/work/whispbook/', expectReturn: '/#whisperbook' });
     assert.equal(await hash(p), '#whisperbook');
-    assert.ok((await clearOfHeader(p, '#whisperbook .chapter-label')).ok, 'chapter top, clear of the header');
+    assert.ok((await clearOfHeader(p, '#whisperbook .chapter-place-label')).ok, 'chapter top, clear of the header');
     assert.deepEqual(p.errors, []);
   } finally { await close(p); }
 });
@@ -380,7 +380,7 @@ test('Wattch and MCQ Scan cases return to their chapters', async () => {
       await p.evaluate(() => document.fonts.ready.then(() => true));
       await settle(p);
       assert.equal(await hash(p), `#${chapter}`);
-      assert.ok((await clearOfHeader(p, `#${chapter} .chapter-label`)).ok, path);
+      assert.ok((await clearOfHeader(p, `#${chapter} .chapter-place-label`)).ok, path);
       assert.deepEqual(p.errors, []);
     } finally { await close(p); }
   }
@@ -390,7 +390,7 @@ test('390×844 first viewport: role line, promise and CV link, CV inside the Sec
   for (const lang of ['en', 'fr']) {
     const p = await open(`/?lang=${lang}`, { viewport: phone });
     try {
-      for (const sel of ['#intro .chapter-label', 'h1', '.cv-link', '.owner', '.language-picker']) {
+      for (const sel of ['#intro .chapter-label:not(.chapter-place-label)', 'h1', '.cv-link', '.owner', '.language-picker']) {
         const box = await p.locator(sel).boundingBox();
         assert.ok(box && box.y >= 0 && box.y + box.height <= 844 && box.x >= 0 && box.x + box.width <= 390, `${lang} ${sel} ${JSON.stringify(box)}`);
       }
@@ -446,7 +446,7 @@ test('?view= values land on the readable document and survive navigation', async
   for (const view of ['read', 'stills', 'garden', 'unknown']) {
     const p = await open(`/?view=${view}&lang=en&quality=low&ref=x#whisperbook`);
     try {
-      assert.ok((await clearOfHeader(p, '#whisperbook .chapter-label')).ok, view);
+      assert.ok((await clearOfHeader(p, '#whisperbook .chapter-place-label')).ok, view);
       await p.locator('.nav-sections a[href="#contact"]').click();
       const url = new URL(p.url());
       assert.equal(url.search, `?view=${view}&lang=en&quality=low&ref=x`, view);
