@@ -11,7 +11,6 @@ export const translations: Record<string, string> = {
   "About me": "À propos de moi",
   // Storytelling refinement: the original garden's questions and places.
   "I build AI products and developer tools, from the interface to the systems underneath. My Ph.D. studied how to measure the energy software uses. The habit stayed: keep the system small, then check the claim.": "Je crée des produits d’IA et des outils pour développeurs, de l’interface aux systèmes qui les font fonctionner. Ma thèse portait sur la mesure de l’énergie consommée par les logiciels. L’habitude m’est restée : garder un système léger, puis vérifier ce que j’affirme.",
-  "A living notebook. Scroll to watch the house take shape.": "Un carnet vivant. Faites défiler pour voir la maison prendre forme.",
   "The small figure at the bottom of the screen is this visit’s estimated carbon cost so far.": "Le petit chiffre en bas de l’écran est le coût carbone estimé de cette visite jusqu’ici.",
   "I start with the question.": "Je commence par la question.",
   "A photo. A book. An energy trace. Each started with a question.": "Une photo. Un livre. Une trace d’énergie. Au départ, une question.",

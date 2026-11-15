@@ -16,7 +16,7 @@ Supporting statement:
 
 > I build AI products and developer tools, from the interface to the systems underneath. My Ph.D. studied how to measure the energy software uses. The habit stayed: keep the system small, then check the claim.
 
-Opening annotation: **A living notebook. Scroll to watch the house take shape.** Once the page is enhanced, a second sentence points at the carbon tally: *The small figure at the bottom of the screen is this visit’s estimated carbon cost so far.*
+Opening annotation: ~~A living notebook. Scroll to watch the house take shape.~~ Removed at the user's decision on 15 November 2026: the place label above each heading now carries the house (see "Chapter form" below). Once the page is enhanced, the remaining sentence points at the carbon tally: *The small figure at the bottom of the screen is this visit’s estimated carbon cost so far.*
 
 The heading, statement and annotation above replace "I turn AI ideas into useful products." and its statement at the user's decision on 10 November 2026. The role line is unchanged. The page title (browser tab, search and social cards) is **Chakib Belgaid, Ph.D. — Applied AI & Product Engineer**, at the user's request the same day.
 
@@ -30,6 +30,8 @@ The same decision reworked the other chapters; `src/narrative/content.ts` is the
 - **Garden** — the workshop also stands for the work at MCQ Scan, in symbols only: a gate with three tokens of decreasing size (AgentDiet) and a clothes rail under a speech bubble (Store Chat). No company visuals.
 
 Chapter form, same decision: a project chapter's heading is its name, set small beside the kind of work ("BP Log · Personal project"); its question has the display size; a **Measured** list gives the figures the linked evidence reports, each with what it counts; the footer gives the chapter's count and its place in the house ("03 / 08 · The heart garden") in place of the phase list. Places: The sketch, The blueprint, The heart garden, The reading pavilion, The observatory, The workshop, The tower, The greenhouse.
+
+**15 November 2026, user's decision: the place moves above the heading.** Visitors had to learn the house metaphor before they could read the page. Following the pattern of jordankowal.com (a themed label above a plain heading), each chapter now opens with its place as a small uppercase label in the muted label colour, on its own line: the place, then the existing line, then the heading ("THE HEART GARDEN" / "BP Log · PERSONAL PROJECT" / the question; on the opening, "THE SKETCH" / the role line / the claim; on Work, About and Contact, the place above the plain heading). The footer keeps "03 / 08" and the next-chapter link, without the place. Chosen over the same label in the accent colour (it competed with the decision label) and over one merged line "The heart garden · Personal project" (the place came second and wrapped on phones).
 
 Primary action: **Explore my work** → `#work`.
 

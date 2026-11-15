@@ -33,7 +33,7 @@ for (const [label, viewport] of Object.entries(sizes)) {
     const box = await page.locator(sel).first().boundingBox();
     return !!box && box.y >= 0 && box.y + box.height <= viewport.height && box.x >= 0 && box.x + box.width <= viewport.width;
   };
-  check(`${label} first viewport: role line`, await inView("#intro .chapter-label"));
+  check(`${label} first viewport: role line`, await inView("#intro .chapter-label:not(.chapter-place-label)"));
   check(`${label} first viewport: h1`, await inView("h1"));
   check(`${label} first viewport: CV link`, await inView(".cv-link"));
   check(`${label} CV link visible`, await page.locator(".cv-link").isVisible());
@@ -77,11 +77,11 @@ for (const [label, viewport] of Object.entries(sizes)) {
   // [fragment, chapter or element landed on, first visible line that must clear the header]
   const fragments = [
     ["work", "#work", "#work-title"],
-    ["bplog", "#bplog", "#bplog .chapter-label"],
-    ["whisperbook", "#whisperbook", "#whisperbook .chapter-label"],
-    ["wattch", "#energy-tools", "#energy-tools .chapter-label"],
-    ["energy-tools", "#energy-tools", "#energy-tools .chapter-label"],
-    ["mcq-scan", "#mcq-scan", "#mcq-scan .chapter-label"],
+    ["bplog", "#bplog", "#bplog .chapter-place-label"],
+    ["whisperbook", "#whisperbook", "#whisperbook .chapter-place-label"],
+    ["wattch", "#energy-tools", "#energy-tools .chapter-place-label"],
+    ["energy-tools", "#energy-tools", "#energy-tools .chapter-place-label"],
+    ["mcq-scan", "#mcq-scan", "#mcq-scan .chapter-place-label"],
     ["workshop", "#workshop", "#workshop-title"],
     ["about", "#about", "#about-title"],
     ["contact", "#contact", "#contact-title"],

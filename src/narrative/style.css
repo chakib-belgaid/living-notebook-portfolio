@@ -107,6 +107,8 @@
 .chapter-kicker { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.8rem; margin-bottom: 0.7rem; }
 .chapter .chapter-kicker h2 { margin: 0; font-size: 1.3125rem; line-height: 1.3; font-weight: 550; letter-spacing: 0; }
 .chapter-kicker .chapter-label { margin: 0; }
+/* The place in the house sits close above the line it names. */
+.chapter-place-label:has(+ .chapter-kicker, + .chapter-label) { margin-bottom: 0.35rem; }
 .chapter-subtitle {
   margin-bottom: 1rem;
   font-size: clamp(1.9rem, 1.45rem + 1.5vw, 2.6rem); line-height: 1.1; font-weight: 450; letter-spacing: -0.01em;
@@ -183,14 +185,13 @@
 .notebook p { margin-bottom: 0; font-size: 0.9375rem; line-height: 1.5; }
 .notebook a { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2.25rem; font-family: var(--sans); font-size: 0.8125rem; }
 
-/* Footer: the chapter's count and its place in the house, then the next one. */
+/* Footer: the chapter's count, then the next one. */
 .chapter-foot {
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.25rem 1rem;
   margin-top: 1.75rem; padding-top: 0.6rem; border-top: 1px solid var(--hairline);
   font-family: var(--sans); font-size: 0.8125rem;
 }
-.chapter-place { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.65rem; margin: 0; color: var(--muted); }
-.chapter-count { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.04em; color: var(--ink); unicode-bidi: isolate; }
+.chapter-count { margin: 0; font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.04em; color: var(--ink); unicode-bidi: isolate; }
 .chapter-turn {
   flex-basis: 100%; margin: 0.15rem 0 0.45rem;
   font-family: "Newsreader", Georgia, serif; font-size: 1rem; line-height: 1.4;

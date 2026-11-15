@@ -60,7 +60,6 @@ export const chapters: Chapter[] = [
     label: identity.role,
     title: identity.promise,
     motivation: [identity.statement],
-    annotation: "A living notebook. Scroll to watch the house take shape.",
     place: "The sketch",
     actions: [
       { label: "Explore my work", type: "section", href: "#work", primary: true },

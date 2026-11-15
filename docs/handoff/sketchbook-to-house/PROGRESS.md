@@ -17,6 +17,7 @@ P5/new case routes and P6/exploration are not G2 prerequisites. Complete the rel
 
 - Confirm Arabic stays a visible site language (default: yes).
 - Confirm the build behind `public/assets/whisperbook.webp`, or capture a fresh one on the Nothing Phone 3 (needed for release 2 only).
+- Contact's place (15 November 2026, proposal): rename "The greenhouse" to "The postbox" (FR "La boîte aux lettres") and frame the postbox, since nothing on the page says what the greenhouse stands for. Not done until the user confirms.
 
 That capture question is required only if the image is reused as proof; text-first cases can ship without it.
 
