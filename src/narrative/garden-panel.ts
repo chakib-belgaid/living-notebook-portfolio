@@ -117,8 +117,13 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
     clearInterval(refresh);
     if (weatherMode === "live" && place) refresh = window.setInterval(() => { if (place && !root.hidden) loadWeather(place).catch(() => {}); }, REFRESH_MS);
   }
-  async function loadWeather(from: Place) {
-    live = await currentWeather(from);
+  /** Raised when the visitor chooses a place: a lookup started before then
+   * (the automatic one, or a refresh of the old place) is discarded. */
+  let generation = 0;
+  async function loadWeather(from: Place, asked = generation) {
+    const weather = await currentWeather(from);
+    if (asked !== generation) return;
+    live = weather;
     place = from;
     if (weatherMode === "live") {
       applyWeather();
@@ -133,6 +138,7 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
   let lookup: Promise<"ok" | "no-city" | "failed"> | null = null;
   function lookUp() {
     return lookup ??= (async () => {
+      const asked = generation;
       try {
         let granted = false;
         try {
@@ -140,7 +146,7 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
         } catch { /* Permissions API unavailable. */ }
         const from = granted ? await placeFromDevice() : await placeFromTimeZone();
         if (!from) return "no-city" as const;
-        await loadWeather(from);
+        await loadWeather(from, asked);
         return "ok" as const;
       } catch {
         lookup = null;
@@ -170,7 +176,8 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
     releaseNote();
     try {
       weatherMode = "live";
-      await loadWeather(await placeFromDevice());
+      const from = await placeFromDevice();
+      await loadWeather(from, ++generation);
     } catch {
       write(skyReport, place ? `Location wasn’t shared. Showing ${place.name}.` : "Location wasn’t shared.");
       applyWeather();
