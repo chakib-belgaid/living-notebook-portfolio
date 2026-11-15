@@ -7,7 +7,9 @@
  * motion, stills and sound controls; the ruler (src/narrative/ruler.ts)
  * shows the reading position and the visit's carbon tally; the garden
  * panel (src/narrative/garden-panel.ts) lets the visitor set the sky, the
- * season and the quality, and plant trees; card motion
+ * season and the quality, and plant trees, and its sky note shows the
+ * weather where the visitor is; the closing invitation
+ * (src/narrative/garden-invite.ts) offers sound and exploring at Contact; card motion
  * (src/narrative/card-motion.ts) gives each chapter card its stop and its
  * fade as the page scrolls. */
 import { initHeader } from "./narrative/header";
@@ -20,6 +22,7 @@ import { createNavigation } from "./navigation";
 import { createSceneMount } from "./narrative/scene-mount";
 import { createRuler } from "./narrative/ruler";
 import { createGardenPanel } from "./narrative/garden-panel";
+import { createGardenInvite } from "./narrative/garden-invite";
 
 initLocalization();
 initLocalizedLinks();
@@ -33,3 +36,4 @@ createNavigation(controller);
 const scene = createSceneMount(controller);
 createRuler(controller, scene);
 createGardenPanel(scene.garden);
+createGardenInvite(scene.garden);

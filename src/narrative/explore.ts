@@ -48,7 +48,9 @@ export interface ExploreDeps {
 }
 
 export interface Explorer {
-  enter(): void;
+  /** `returnTo` takes focus back when exploring ends (by default the garden
+   * panel's Explore button, with the panel open). */
+  enter(returnTo?: HTMLElement): void;
   exit(reason: ExitReason): void;
   active(): boolean;
 }
@@ -72,6 +74,7 @@ export function createExplorer(deps: ExploreDeps, root: Document = document): Ex
   let active = false;
   let stage: HTMLElement | null = null;
   let inerted: HTMLElement[] = [];
+  let returnTo: HTMLElement | null = null;
 
   function announce(text: string) {
     if (!status) return;
@@ -302,10 +305,11 @@ export function createExplorer(deps: ExploreDeps, root: Document = document): Ex
     html.classList.remove("explore-locked");
   }
 
-  function enter() {
+  function enter(from?: HTMLElement) {
     const el = deps.stage();
     if (active || !el || !deps.garden()) return;
     active = true;
+    returnTo = from ?? null;
     const dock = root.querySelector<HTMLDetailsElement>("details.garden");
     if (dock) dock.open = false;
     const into = deps.kind() === "portrait" ? openDialog() : null;
@@ -343,6 +347,7 @@ export function createExplorer(deps: ExploreDeps, root: Document = document): Ex
     // focus goes back where exploring was asked for.
     if (reason === "hotspot" || reason === "navigation") return;
     if (reason === "escape" || reason === "button" || focusWasOurs) {
+      if (returnTo?.isConnected && !returnTo.closest("[hidden]")) { returnTo.focus({ preventScroll: true }); return; }
       const dock = root.querySelector<HTMLDetailsElement>("details.garden");
       if (dock) dock.open = true;
       root.querySelector<HTMLButtonElement>("[data-explore]")?.focus({ preventScroll: true });

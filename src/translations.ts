@@ -240,6 +240,17 @@ export const translations: Record<string, string> = {
   "Finding your location": "Recherche de votre position",
   "Location wasn’t shared. Showing {place}.": "Position non partagée. Affichage de {place}.",
   "Location wasn’t shared.": "Position non partagée.",
+  // The sky note (src/narrative/garden-panel.ts; markup in src/render.ts skyNote()).
+  "{place} now": "{place}, maintenant",
+  "your time": "votre heure",
+  "Show the sky in {place} now: {weather}, {temperature}°C": "Montrer le ciel de {place} maintenant : {weather}, {temperature} °C",
+  "Show the garden at your time: {time}": "Montrer le jardin à votre heure : {time}",
+  "Bring this sky to the garden": "Amener ce ciel au jardin",
+  "The garden shows {place} now: {weather}, {temperature}°C.": "Le jardin montre {place} maintenant : {weather}, {temperature} °C.",
+  "Back to {time} in the garden.": "Retour à {time} au jardin.",
+  // The closing invitation (src/narrative/garden-invite.ts; markup in src/render.ts gardenInvite()).
+  "Turn the sound on and walk around the garden": "Allumez le son et promenez-vous dans le jardin",
+  "Walk around the garden": "Promenez-vous dans le jardin",
   "Unavailable": "Indisponible",
   "Under 0.01 mg CO₂e": "Moins de 0,01 mg CO₂e",
   // The reading ruler and carbon tally (src/render.ts ruler(), tally();

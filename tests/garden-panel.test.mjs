@@ -69,14 +69,82 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['ph
   });
 }
 
-test('no weather request is made until Live is pressed', async () => {
-  const p = await live({ width: 1440, height: 900 });
+test('the sky note shows the weather where the visitor is, and brings that sky to the garden and back', async () => {
+  const requests = [];
+  const p = await setupPage(browser, { viewport: { width: 1440, height: 900 }, timezoneId: 'Europe/Paris' }, async page => {
+    page.on('request', r => { if (/open-meteo/.test(r.url())) requests.push(new URL(r.url()).hostname); });
+    await page.goto(`${base}/#intro`);
+    await page.waitForFunction(() => document.documentElement.dataset.renderer === 'ready' && window.__notebookScene.state().live, null, { timeout: 60000 });
+  });
   try {
-    const requests = [];
-    p.on('request', r => { if (/open-meteo/.test(r.url())) requests.push(r.url()); });
+    const note = p.locator('[data-sky-note]');
+    await note.waitFor({ state: 'visible' });
+    // One lookup per visit: the place the time zone names, then its weather.
+    assert.deepEqual(requests, ['geocoding-api.open-meteo.com', 'api.open-meteo.com']);
+    const shown = () => p.evaluate(() => ({
+      figure: document.querySelector('[data-sky-note-figure]').textContent,
+      caption: document.querySelector('[data-sky-note-caption]').textContent,
+      label: document.querySelector('[data-sky-note]').getAttribute('aria-label'),
+      pressed: document.querySelector('[data-sky-note]').getAttribute('aria-pressed'),
+      weather: document.documentElement.dataset.weather,
+      hour: document.querySelector('[data-hour]').value,
+    }));
+    // Shown, not applied: the garden keeps its 22:00 clear night until pressed.
+    assert.deepEqual(await shown(), { figure: '12°C', caption: 'Paris now', label: 'Show the sky in Paris now: Light rain, 12°C', pressed: 'false', weather: 'clear', hour: '22' });
+    await note.click();
+    const on = await shown();
+    assert.equal(on.pressed, 'true');
+    assert.equal(on.weather, 'rain');
+    assert.equal(await p.evaluate(() => document.querySelector('[data-garden-status]').textContent), 'The garden shows Paris now: Light rain, 12°C.');
+    // The panel agrees, and Live needs no second request.
+    await p.locator('.garden > summary').click();
+    assert.equal(await p.locator('.garden-panel [data-weather="live"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await p.locator('[data-sky-report]').textContent(), 'Light rain, 12°C in Paris.');
+    await p.keyboard.press('Escape');
+    // Pressed again: back to what was shown before.
+    await note.click();
+    assert.deepEqual(await shown(), { ...on, pressed: 'false', weather: 'clear', hour: '22' });
+    // Setting the sky in the panel releases the note.
+    await note.click();
     await p.locator('.garden > summary').click();
     await p.locator('.garden-panel [data-weather="snow"]').click();
-    await p.waitForTimeout(300);
-    assert.deepEqual(requests, []);
+    assert.equal(await note.getAttribute('aria-pressed'), 'false');
+    assert.equal(requests.length, 2);
+  } finally { await p.context().close(); }
+});
+
+test('without weather, the sky note offers the visitor\'s own hour', async () => {
+  const p = await setupPage(browser, { viewport: { width: 1440, height: 900 } }, async page => {
+    await page.route('**/*open-meteo.com/**', r => r.abort());
+    await page.goto(`${base}/#intro`);
+    await page.waitForFunction(() => document.documentElement.dataset.renderer === 'ready' && window.__notebookScene.state().live, null, { timeout: 60000 });
+  });
+  try {
+    const note = p.locator('[data-sky-note]');
+    await note.waitFor({ state: 'visible' });
+    assert.equal(await p.locator('[data-sky-note-caption]').textContent(), 'your time');
+    await note.click();
+    assert.match(await p.evaluate(() => document.querySelector('[data-garden-status]').textContent), /^Light set to /);
+    assert.equal(await p.evaluate(() => document.documentElement.dataset.weather), 'clear');
+  } finally { await p.context().close(); }
+});
+
+test('at Contact, the closing invitation turns sound on, explores, and takes focus back', async () => {
+  const p = await live({ width: 1440, height: 900 }, '#contact');
+  try {
+    const invite = p.locator('[data-garden-invite] button');
+    await invite.waitFor({ state: 'visible' });
+    // Nowhere earlier in the story.
+    assert.equal(await p.locator('[data-garden-invite]').count(), 1);
+    assert.equal(await p.evaluate(() => document.querySelector('[data-garden-invite]').closest('section').id), 'contact');
+    assert.equal(await invite.textContent(), 'Turn the sound on and walk around the garden');
+    await invite.click();
+    await p.waitForFunction(() => document.documentElement.dataset.explore === 'true' && document.documentElement.dataset.sound === 'true', null, { timeout: 20000 });
+    await p.keyboard.press('Escape');
+    await p.waitForFunction(() => !document.documentElement.dataset.explore);
+    assert.equal(await p.evaluate(() => document.activeElement?.closest('[data-garden-invite]') !== null), true);
+    // Sound stays on; the invitation now offers only the walk.
+    assert.equal(await invite.textContent(), 'Walk around the garden');
+    assert.equal(await p.evaluate(() => document.documentElement.dataset.sound), 'true');
   } finally { await p.context().close(); }
 });

@@ -132,11 +132,17 @@ export interface GardenScene {
    * call). Without a live scene it asks for one, as turning "Still images"
    * off does, and enters once it is ready; where the renderer failed it
    * resolves without entering. */
-  explore(): Promise<void>;
+  explore(returnTo?: HTMLElement): Promise<void>;
   exitExplore(reason?: "escape" | "button" | "hotspot" | "layout"): void;
   exploring(): boolean;
   /** Exploring began (true) or ended (false). Returns an unsubscribe. */
   onExplore(listener: (on: boolean) => void): () => void;
+  /** Garden sound is on (it may still be silent: paused or hidden). */
+  sound(): boolean;
+  soundSupported(): boolean;
+  /** Turns sound on, as the Sound control does. Call it inside the click
+   * itself: browsers let audio start only from the visitor's gesture. */
+  startSound(): void;
   /** The visitor's own view of the live garden (drawn at once under a still preference). */
   rotateBy(radians: number): void;
   zoomBy(factor: number, x?: number, y?: number): void;
@@ -949,7 +955,7 @@ export function createSceneMount(controller: NarrativeController) {
       check();
     });
   }
-  async function startExplore() {
+  async function startExplore(returnTo?: HTMLElement) {
     if (exploring || state.renderer === "failed" || state.renderer === "context-lost") return;
     try {
       const module = explorerLoading ??= import("./explore");
@@ -975,7 +981,7 @@ export function createSceneMount(controller: NarrativeController) {
         end: endExplore,
         visit: id => { controller.visit(id, { push: true, focus: true, cause: "navigation" }); },
       });
-      explorer.enter();
+      explorer.enter(returnTo);
     } catch (error) {
       // The module did not load (offline): the panel says so.
       explorerLoading = null;
@@ -1153,6 +1159,9 @@ export function createSceneMount(controller: NarrativeController) {
     exitExplore(reason = "button") { if (exploring) leaveExplore(reason); },
     exploring: () => exploring,
     onExplore(listener) { exploreListeners.add(listener); return () => { exploreListeners.delete(listener); }; },
+    sound: () => state.sound,
+    soundSupported: () => typeof AudioContext !== "undefined",
+    startSound() { if (!state.sound) toggle("sound"); },
     rotateBy(radians) { view(g => g.rotateBy(radians)); },
     zoomBy(factor, x, y) { view(g => g.zoomBy(factor, x, y)); },
     panBy(dx, dy) { view(g => g.panBy(dx, dy)); },
