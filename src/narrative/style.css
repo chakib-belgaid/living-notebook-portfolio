@@ -43,9 +43,15 @@
   display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem;
   min-height: 4.5rem; padding-block: 0.35rem;
   padding-inline: max(var(--gutter), calc((100% - 82rem) / 2));
-  background: color-mix(in srgb, var(--paper) 78%, transparent);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--hairline);
+  /* Glass over the sky: thin enough that the header takes the sky's colour,
+     with a faint sheen and a light lower edge. */
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, white 5%, transparent), transparent),
+    color-mix(in srgb, var(--paper) 38%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-edge);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, black 14%, transparent), 0 10px 30px -22px color-mix(in srgb, black 70%, transparent);
 }
 .enhanced .masthead { position: sticky; top: 0; }
 .enhanced .masthead[data-flow] { position: relative; }
@@ -256,9 +262,13 @@
   .chapter-contact { justify-content: flex-end; }
   .chapter-card {
     padding: 1.4rem 1.6rem 1.1rem;
-    background: var(--slip); backdrop-filter: blur(12px);
-    border: 1px solid var(--hairline); border-radius: 14px;
-    box-shadow: var(--lift);
+    background:
+      linear-gradient(160deg, color-mix(in srgb, white 7%, transparent), transparent 45%),
+      var(--slip);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-edge); border-radius: 14px;
+    box-shadow: var(--glass-sheen), var(--lift);
   }
   .chapter .scene-host { display: none; }
   .scene-rail {
@@ -383,6 +393,12 @@
 .sky-note-caption { font-size: 0.8125rem; font-style: italic; color: var(--muted); }
 .sky-note[aria-pressed="true"] .sky-note-caption { color: var(--ink); }
 @keyframes sky-note-in { from { opacity: 0; } }
+/* When the visitor's sky arrives in the garden on its own, the note glows
+   three times, so the change has a source and a way back. */
+.sky-note[data-arrived] { animation: sky-note-in 0.8s ease both, sky-note-glow 1.6s ease-in-out 0.6s 3; }
+@keyframes sky-note-glow {
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--blueprint) 35%, transparent), 0 0 18px 2px color-mix(in srgb, var(--blueprint) 45%, transparent); border-color: var(--blueprint); }
+}
 
 /* The closing invitation (src/narrative/garden-invite.ts): a quiet text
    button under Contact's actions, after the story. */
@@ -535,7 +551,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .ruler-dot, .ruler-scrub::-webkit-slider-thumb, .tally > summary, .garden > summary, .chip, .sky-note { transition: none; }
-  .sky-note { animation: none; }
+  .sky-note, .sky-note[data-arrived] { animation: none; }
 }
 
 @media print {

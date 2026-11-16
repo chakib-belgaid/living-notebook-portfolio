@@ -21,9 +21,16 @@
   --action: #e6f0f8;
   --action-ink: #0e2b48;
   --hairline: color-mix(in srgb, var(--ink) 15%, transparent);
-  /* The text card and the header pills over the scene. */
-  --slip: color-mix(in srgb, var(--paper) 86%, transparent);
+  /* The text card and the header pills over the scene: tinted glass, so
+     the sky shows through, kept dark enough that the ink reads at 5:1 or
+     better even over the garden's pale stone. */
+  --slip: color-mix(in srgb, var(--paper) 70%, transparent);
   --lift: 0 18px 40px -24px color-mix(in srgb, black 60%, transparent);
+  /* Liquid glass: a frosted, slightly saturated blur, a light edge, and a
+     sheen along the top that catches the sky. */
+  --glass-blur: blur(18px) saturate(160%);
+  --glass-edge: color-mix(in srgb, white 14%, transparent);
+  --glass-sheen: inset 0 1px 0 color-mix(in srgb, white 16%, transparent), inset 0 -1px 0 color-mix(in srgb, black 18%, transparent);
   /* Behind posters and the live scene: the night sky's own navy. */
   --scene-bg: #0e2b48;
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
@@ -103,7 +110,7 @@ button { font: inherit; color: inherit; }
 .evidence-dialog > a { display: inline-flex; min-height: 2.75rem; align-items: center; }
 
 @media print {
-  :root { --paper: #fff; --ink: #162536; --muted: #37495b; --accent: #865718; --action: #1f3a44; --action-ink: #fff; --slip: transparent; --lift: none; color-scheme: light; }
+  :root { --paper: #fff; --ink: #162536; --muted: #37495b; --accent: #865718; --action: #1f3a44; --action-ink: #fff; --slip: transparent; --lift: none; --glass-sheen: none; color-scheme: light; }
   body { background: white; }
   .skip-link, .language-picker, .evidence-dialog { display: none !important; }
   a { color: inherit; }

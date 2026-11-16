@@ -14,9 +14,11 @@
  * `skyNote()`) is the hint that the sky can change: once the page is
  * enhanced it looks up the current weather from Open-Meteo for the place the
  * time zone names (or the device position, only if already granted; never
- * under data saver), and shows the temperature there. Pressing it brings
- * that hour, weather and season to the garden; pressing again returns to
- * what was shown before. Without weather it offers the visitor's own hour.
+ * under data saver), shows the temperature there and, unless the visitor has
+ * already set the sky, brings that hour, weather and season to the garden
+ * (the note shows pressed). Pressing it returns to what was shown before;
+ * pressing again brings the visitor's sky back. Without weather it offers
+ * the visitor's own hour.
  * No permission is asked until the visitor presses Use my exact location. */
 import { getLocale, onLocaleChange } from "../i18n";
 import type { Season } from "../scene";
@@ -219,6 +221,8 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
   let beforeNote: { hour: number; weather: "live" | WeatherKind; season: "now" | Season } | null = null;
   /** Weather was looked up (or will not be): the note can be shown. */
   let noteReady = false;
+  /** The visitor has set the sky themselves: the automatic lookup leaves it be. */
+  let touched = false;
   function showNote() {
     if (!note) return;
     noteReady = true;
@@ -241,11 +245,26 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
   }
   /** The visitor set the sky in the panel: the note no longer shows it. */
   function releaseNote() {
+    touched = true;
     if (!beforeNote) return;
     beforeNote = null;
     syncNote();
   }
+  /** The visitor's sky in the garden: their hour, and their weather and
+   * season when the lookup found them. */
+  function bringSky(say: boolean) {
+    beforeNote = { hour: Number(hourInput.value), weather: weatherMode, season: seasonMode };
+    setHour(clockHour());
+    if (live && place) {
+      weatherMode = "live";
+      seasonMode = "now";
+      applyWeather();
+      applySeason();
+      if (say) announce(`The garden shows ${place.name} now: ${live.label}, ${Math.round(live.temperature ?? 0)}°C.`);
+    } else if (say) announce(`Light set to ${formatHour(clockHour())}.`);
+  }
   const onNote = () => {
+    touched = true;
     if (beforeNote) {
       const back = beforeNote;
       beforeNote = null;
@@ -255,25 +274,30 @@ export function createGardenPanel(scene: GardenScene, root: Document = document)
       applyWeather();
       applySeason();
       announce(`Back to ${formatHour(back.hour)} in the garden.`);
-    } else {
-      beforeNote = { hour: Number(hourInput.value), weather: weatherMode, season: seasonMode };
-      setHour(clockHour());
-      if (live && place) {
-        weatherMode = "live";
-        seasonMode = "now";
-        applyWeather();
-        applySeason();
-        announce(`The garden shows ${place.name} now: ${live.label}, ${Math.round(live.temperature ?? 0)}°C.`);
-      } else announce(`Light set to ${formatHour(clockHour())}.`);
-    }
+    } else bringSky(true);
     syncNote();
   };
   note?.addEventListener("click", onNote);
   // Every visitor's page asks once, except under data saver; a failure, or
   // a time zone without a city, leaves the note offering the hour alone.
+  // Found, the visitor's sky comes to the garden by default (the note shows
+  // pressed, and a press returns to the night the story is drawn in), unless
+  // they set the sky themselves first. The note glows briefly as it arrives.
   if (note) {
     if (saveDataOn()) showNote();
-    else void lookUp().then(() => showNote());
+    else void lookUp().then(() => {
+      if (!touched && live && place) {
+        bringSky(false);
+        note.dataset.arrived = "";
+        const done = (event: AnimationEvent) => {
+          if (event.animationName !== "sky-note-glow") return;
+          delete note.dataset.arrived;
+          note.removeEventListener("animationend", done);
+        };
+        note.addEventListener("animationend", done);
+      }
+      showNote();
+    });
   }
 
   /* ---------- Planting and turning ---------- */

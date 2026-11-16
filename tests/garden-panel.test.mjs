@@ -69,7 +69,7 @@ for (const [label, viewport] of [['desktop', { width: 1440, height: 900 }], ['ph
   });
 }
 
-test('the sky note shows the weather where the visitor is, and brings that sky to the garden and back', async () => {
+test('the sky note shows the weather where the visitor is, brings that sky to the garden by default, and goes back', async () => {
   const requests = [];
   const p = await setupPage(browser, { viewport: { width: 1440, height: 900 }, timezoneId: 'Europe/Paris' }, async page => {
     page.on('request', r => { if (/open-meteo/.test(r.url())) requests.push(new URL(r.url()).hostname); });
@@ -89,27 +89,44 @@ test('the sky note shows the weather where the visitor is, and brings that sky t
       weather: document.documentElement.dataset.weather,
       hour: document.querySelector('[data-hour]').value,
     }));
-    // Shown, not applied: the garden keeps its 22:00 clear night until pressed.
-    assert.deepEqual(await shown(), { figure: '12°C', caption: 'Paris now', label: 'Show the sky in Paris now: Light rain, 12°C', pressed: 'false', weather: 'clear', hour: '22' });
-    await note.click();
+    // Applied by default: the garden shows Paris now, and the note is pressed.
     const on = await shown();
-    assert.equal(on.pressed, 'true');
-    assert.equal(on.weather, 'rain');
-    assert.equal(await p.evaluate(() => document.querySelector('[data-garden-status]').textContent), 'The garden shows Paris now: Light rain, 12°C.');
+    assert.deepEqual({ ...on, hour: undefined }, { figure: '12°C', caption: 'Paris now', label: 'Show the sky in Paris now: Light rain, 12°C', pressed: 'true', weather: 'rain', hour: undefined });
     // The panel agrees, and Live needs no second request.
     await p.locator('.garden > summary').click();
     assert.equal(await p.locator('.garden-panel [data-weather="live"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await p.locator('[data-sky-report]').textContent(), 'Light rain, 12°C in Paris.');
     await p.keyboard.press('Escape');
-    // Pressed again: back to what was shown before.
+    // Pressed: back to the 22:00 clear night the story is drawn in.
     await note.click();
     assert.deepEqual(await shown(), { ...on, pressed: 'false', weather: 'clear', hour: '22' });
-    // Setting the sky in the panel releases the note.
+    // Pressed again: the visitor's sky, announced.
     await note.click();
+    assert.deepEqual(await shown(), on);
+    assert.equal(await p.evaluate(() => document.querySelector('[data-garden-status]').textContent), 'The garden shows Paris now: Light rain, 12°C.');
+    // Setting the sky in the panel releases the note.
     await p.locator('.garden > summary').click();
     await p.locator('.garden-panel [data-weather="snow"]').click();
     assert.equal(await note.getAttribute('aria-pressed'), 'false');
     assert.equal(requests.length, 2);
+  } finally { await p.context().close(); }
+});
+
+test('a sky the visitor set before the weather arrived is kept', async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const p = await setupPage(browser, { viewport: { width: 1440, height: 900 }, timezoneId: 'Europe/Paris' }, async page => {
+    await page.route('**/geocoding-api.open-meteo.com/**', async r => { await gate; await r.fulfill({ json: { results: [{ name: 'Paris', latitude: 48.85, longitude: 2.35 }] } }); });
+    await page.goto(`${base}/#intro`);
+    await page.waitForFunction(() => document.documentElement.dataset.renderer === 'ready' && window.__notebookScene.state().live, null, { timeout: 60000 });
+  });
+  try {
+    await p.locator('.garden > summary').click();
+    await p.locator('.garden-panel [data-weather="snow"]').click();
+    release();
+    await p.locator('[data-sky-note]').waitFor({ state: 'visible' });
+    assert.equal(await p.locator('[data-sky-note]').getAttribute('aria-pressed'), 'false');
+    assert.equal(await p.evaluate(() => document.documentElement.dataset.weather), 'snow');
   } finally { await p.context().close(); }
 });
 
